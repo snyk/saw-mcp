@@ -1,0 +1,81 @@
+# Snyk API&Web (SAW) MCP Server Configuration
+saw:
+  base_url: "https://api.probely.com"
+  api_key: "CHANGEME"
+
+server:
+  name: "Snyk API&Web"
+
+# Tool filtering configuration
+# Use 'enabled' for whitelist (only these tools available) or 'disabled' for blacklist
+# If 'enabled' is set, it takes precedence over 'disabled'
+# If neither is set, all tools are available
+tools:
+  # All available tools (50 total):
+  # Uncomment 'enabled:' and comment out tools you want to disable
+  # enabled:
+    # Account
+    # - probely_get_account
+    # Authentication Configuration
+    # - probely_configure_2fa
+    # - probely_configure_form_login
+    # - probely_configure_sequence_login
+    # - probely_disable_2fa
+    # Extra Hosts
+    # - probely_create_extra_host
+    # - probely_delete_extra_host
+    # - probely_get_extra_host
+    # - probely_list_extra_hosts
+    # - probely_update_extra_host
+    # Findings
+    # - probely_bulk_update_findings
+    # - probely_get_finding
+    # - probely_list_findings
+    # - probely_update_finding
+    # Integrations
+    # - probely_get_integration
+    # - probely_list_integrations
+    # Labels
+    # - probely_create_label
+    # - probely_get_label
+    # - probely_list_labels
+    # - probely_update_label
+    # Login Sequences
+    # - probely_create_sequence
+    # - probely_delete_sequence
+    # - probely_get_sequence
+    # - probely_list_sequences
+    # - probely_update_sequence
+    # Read-only (Users, API Users, Domains, Roles, Teams)
+    # - probely_get_api_user
+    # - probely_get_domain
+    # - probely_get_role
+    # - probely_get_team
+    # - probely_get_user
+    # - probely_list_teams
+    # Reports
+    # - probely_create_scan_report
+    # - probely_download_report
+    # - probely_get_report
+    # Scans
+    # - probely_cancel_scan
+    # - probely_get_scan
+    # - probely_list_scans
+    # - probely_start_scan
+    # - probely_stop_scan
+    # Targets
+    # - probely_create_api_target_from_openapi
+    # - probely_create_api_target_from_postman
+    # - probely_create_target
+    # - probely_get_target
+    # - probely_get_target_settings
+    # - probely_list_targets
+    # - probely_update_target
+    # - probely_update_target_settings
+
+  # Blacklist: Disable specific tools (uncomment to use)
+   disabled:
+     - probely_delete_sequence
+     - probely_delete_extra_host
+     - probely_request
+
