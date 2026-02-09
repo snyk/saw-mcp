@@ -1,56 +1,13 @@
 ---
-name: saw-target-configuration
-description: Configure Snyk API&Web (SAW/Probely) targets with authentication, 2FA, login sequences, and logout detection. Use when creating SAW targets, configuring login sequences, setting up TOTP/2FA, or working with probely_* MCP tools.
+name: saw-web-target-configuration
+description: Configure Snyk API&Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
 ---
 
-# SAW Target Configuration Skill
+# SAW Web Target Configuration Skill
 
-Detailed procedures for configuring Snyk API&Web targets. For behavioral rules (vulnerability handling, scan monitoring), see the project rules. When you are adding a target, you may get a warning that the target (URL) already exists. In that case, ignore the warning and add the new target. When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
+Configure web application targets for Snyk API&Web (SAW/Probely) security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
 
-## API Onboarding Workflow
-
-When the user wants to scan an **API**, follow this workflow:
-
-### Step 1: Obtain API Schema
-
-Ask the user to provide **one of** the following (they are alternatives):
-1. **OpenAPI/Swagger schema** (URL or JSON/YAML file)
-2. **Postman collection** (URL or JSON file)
-
-If neither is available, offer to **generate an OpenAPI schema** by:
-- Analyzing the codebase for API endpoints
-- Looking for existing route definitions (Express, FastAPI, Flask, Django, etc.)
-- Creating a basic OpenAPI 3.0 schema from discovered endpoints
-
-### Step 2: Create API Target
-
-**For Postman collections:**
-```
-probely_create_api_target_from_postman(
-  name: "API Name",
-  target_url: "https://api.example.com",
-  postman_collection_url: "https://..." OR postman_collection_json: {...},
-  desc: "Description",
-  labels: ["api", "project-name"]
-)
-```
-
-**For OpenAPI schemas:**
-```
-probely_create_api_target_from_openapi(
-  name: "API Name",
-  target_url: "https://api.example.com",
-  openapi_schema_url: "https://..." OR openapi_schema_json: {...},
-  desc: "Description",
-  labels: ["api", "project-name"]
-)
-```
-
-### Step 3: Configure API Authentication (if needed)
-
-If the API requires authentication:
-- Ask user for auth type (API key, Bearer token, OAuth, Basic Auth)
-- Use `probely_update_target_settings` to configure authentication headers
+When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
 ## Web Application Onboarding Workflow
 
@@ -60,13 +17,13 @@ When the user wants to scan a **web application with authentication**, follow th
 
 Ask the user for (or derive):
 1. **Target URL** (e.g., https://app.example.com)
-2. **Target name**: use the name the user provides; if none, use **Agentic - &lt;web page title&gt;** (page title from the site’s `<title>` when you open it in Playwright).
+2. **Target name**: use the name the user provides; if none, use **Agentic - &lt;web page title&gt;** (page title from the site's `<title>` when you open it in Playwright).
 3. **Login credentials** (username/email and password)
 4. Any **2FA/MFA requirements** (including the TOTP seed if applicable)
 
 ### Step 2: Target name and authentication method
 
-**Target name:** Use the name the user provides in the prompt. **If the user does not specify a name**, use **Agentic - &lt;web page title&gt;** where the page title is the site’s `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Agentic - Patch Mutual**.
+**Target name:** Use the name the user provides in the prompt. **If the user does not specify a name**, use **Agentic - &lt;web page title&gt;** where the page title is the site's `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Agentic - Patch Mutual**.
 
 **Authentication:** When Playwright MCP is available, **always configure authentication using a login sequence** (record the flow in the browser). Do not use form login when Playwright is available.
 
@@ -85,7 +42,7 @@ Ask the user for (or derive):
    - **Generate the actual TOTP code** from the seed using the standard TOTP algorithm (SHA1, 6 digits, 30-second window)
    - Fill the OTP field with this **actual generated code** (e.g., "123456"), NOT a placeholder
    - This allows the login to complete successfully during recording
-6. **Verify login success and record post-login URL** - confirm login succeeded by checking for logged-in indicators. **IMPORTANT: Record the URL you land on after successful login** (e.g., `/dashboard`, `/admin.php`, `/home`) - this will be used as the `check_session_url` for logout detection.
+6. **Verify login success and record post-login URL** - confirm login succeeded by checking for logged-in indicators. **IMPORTANT: Record the absolute URL you land on after successful login** (e.g., `https://example.com/dashboard`) - this will be used as the `check_session_url` for logout detection.
 7. **Check for API calls to external hosts** - Use `browser_network_requests` to get all XHR/fetch requests made during login. Identify any requests to hostnames different from the target URL.
 8. **Generate the login sequence JSON** - When creating the sequence JSON from the recorded steps:
    - Replace the actual username value with `[CUSTOM_USERNAME]` placeholder
@@ -114,15 +71,18 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
       id: usernameField?.id,
       name: usernameField?.name,
       type: usernameField?.type,
-      selector: usernameField?.id ? `#${usernameField.id}` : 
-                usernameField?.name ? `input[name="${usernameField.name}"]` : null
+      // Check if ID looks random/generated (contains numbers, long strings)
+      isStableId: usernameField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(usernameField.id),
+      selector: usernameField?.name ? `input[name="${usernameField.name}"]` :
+                (usernameField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(usernameField.id)) ? `#${usernameField.id}` : null
     },
     password: {
       tag: passwordField?.tagName,
       id: passwordField?.id,
       name: passwordField?.name,
-      selector: passwordField?.id ? `#${passwordField.id}` : 
-                passwordField?.name ? `input[name="${passwordField.name}"]` : null
+      isStableId: passwordField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(passwordField.id),
+      selector: passwordField?.name ? `input[name="${passwordField.name}"]` :
+                (passwordField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(passwordField.id)) ? `#${passwordField.id}` : null
     },
     submit: {
       tag: submitElement?.tagName,
@@ -130,9 +90,10 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
       id: submitElement?.id,
       name: submitElement?.name,
       value: submitElement?.value,
+      isStableId: submitElement?.id && !/\d{3,}|[a-f0-9]{8,}/.test(submitElement.id),
       selector: submitElement?.name ? 
         `${submitElement.tagName.toLowerCase()}[type="submit"][name="${submitElement.name}"]` :
-        submitElement?.id ? `#${submitElement.id}` :
+        (submitElement?.id && !/\d{3,}|[a-f0-9]{8,}/.test(submitElement.id)) ? `#${submitElement.id}` :
         `${submitElement.tagName.toLowerCase()}[type="submit"]`
     }
   };
@@ -143,11 +104,14 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
 - Submit buttons can be **`<button type="submit">`** OR **`<input type="submit">`** - always check the actual HTML!
 - Use the inspected selectors (from the evaluation above) in your sequence JSON
 - Prefer selectors with multiple attributes: `input[type="submit"][name="btnSubmit"]` is better than just `button[type="submit"]`
-- Use ID selectors when available (`#uid`, `#password`) as they are most reliable
+- **Avoid IDs that look random or generated** (e.g., `id="input-123456"`, `id="form-abc123xyz"`) - these may change between page loads
+- Use **stable IDs** (like `#uid`, `#password`, `#login-btn`) or **name attributes** (like `input[name="username"]`) - these are most reliable
 
 Notes when creating the login sequence:
-- For each step that an input is filled in, save a click step before the “fill_value” to focus the input.
-- Use the best unique CSS selector for each element. Using button[type="submit"] is too common. Combine it with other element attributes, like the id or data-test and/or selectors from parent elements, like form#login-form input[name="username"]. 
+- For each step that an input is filled in, save a click step before the "fill_value" to focus the input.
+- **ALWAYS use the inspected CSS selectors** from the browser evaluation above - DO NOT guess or assume element types.
+- Prefer multi-attribute selectors: `input[type="submit"][name="btnSubmit"]` instead of generic `button[type="submit"]`.
+- Use stable ID-based selectors (like `#uid`, `#login-btn`) only when the ID is semantic and unlikely to change - avoid random/generated IDs.
 
 After recording, generate the login sequence JSON and use these MCP tools:
 
@@ -189,11 +153,11 @@ probely_configure_2fa(targetId, otp_secret="THE_SEED", otp_placeholder="123456")
 
 # 5. Configure logout detection (IMPORTANT!)
 # CRITICAL: ALWAYS provide logout_detector_type="sel" and logout_detector_value with the username field selector
-# Use the post-login redirect URL recorded in step 6 above (NOT the root URL or login page)
+# Use the FULL post-login redirect URL (not relative path) recorded in step 6 above
 probely_configure_logout_detection(
   targetId, 
   enabled=True, 
-  check_session_url="/dashboard",  # The URL you landed on after login
+  check_session_url="https://app.example.com/dashboard",  # FULL URL - not just "/dashboard"
   logout_detector_type="sel",  # REQUIRED - do not omit this
   logout_detector_value="#uid"  # REQUIRED - username field CSS selector from login sequence
 )
@@ -222,16 +186,16 @@ Add only the hostnames from requests that seem to be related to the target. Excl
 
 **Always configure logout detection** after setting up authentication:
 
-1. **Identify the check session URL** - **IMPORTANT: Use the URL you get redirected to immediately after a successful login.** This is the post-login landing page URL, NOT the login page URL or root URL.
-   - Example: If login redirects to `/admin.php` or `/dashboard`, use that URL
+1. **Identify the check session URL** - **IMPORTANT: Use the FULL URL you get redirected to immediately after a successful login.** This is the post-login landing page URL, NOT the login page URL or root URL.
+   - Example: If login redirects to `/admin.php` or `/dashboard`, use the **full URL**: `https://app.example.com/admin.php`
    - This URL should return 200 when logged in, and 401/403 or redirect to login when logged out
-   - **Record this URL during the login sequence** - after clicking the login button and waiting for navigation, capture the current URL
-   - Use the absolute URL (e.g., `https://app.example.com/dashboard`)
+   - **Record the FULL URL during the login sequence** - after clicking the login button and waiting for navigation, capture `window.location.href`
+   - **ALWAYS use absolute URLs** (e.g., `https://app.example.com/dashboard`) - **NEVER use relative paths** (e.g., `/dashboard`)
 
 2. **Use CSS selectors from the login form as logout detectors** - The best logout detectors are the CSS selectors you already recorded in the login sequence:
    - Username field selector (e.g., `input[placeholder='Enter Username...']`)
    - Password field selector (e.g., `input[type='password']`)
-   - Use selectors or text that are only visible when the user is logged out. The selectors or text shouldn’t exist on the page after the login. For text, the word “login” can be too common.
+   - Use selectors or text that are only visible when the user is logged out. The selectors or text shouldn't exist on the page after the login. For text, the word "login" can be too common.
    
    If these elements appear on the page, it means the user was logged out.
 
@@ -240,11 +204,13 @@ Add only the hostnames from requests that seem to be related to the target. Excl
    probely_configure_logout_detection(
      targetId,
      enabled=True,
-     check_session_url="https://app.example.com/dashboard",  # The post-login redirect URL
+     check_session_url="https://app.example.com/dashboard",  # FULL URL (not "/dashboard")
      logout_detector_type="sel",  # REQUIRED - always use "sel" for CSS selectors
      logout_detector_value="#uid"  # REQUIRED - use the username field CSS selector from your login sequence
    )
    ```
+   
+   **Important**: Always use the **FULL URL** including protocol and domain (e.g., `https://app.example.com/dashboard`), NOT relative paths (e.g., `/dashboard`).
 
 ### Login Sequence JSON Format
 
@@ -310,6 +276,8 @@ Example sequence with custom fields:
     "value": "Sign In",
     "frame": null
   }
+  // NOTE: If the submit button is an <input> instead of <button>, use:
+  // "css": "input[type='submit'][name='btnSubmit']"
 ]
 ```
 
@@ -432,7 +400,3 @@ probely_configure_form_login(
 ### Labels
 - `probely_list_labels()` - List all labels
 - `probely_create_label(name, color?)` - Create label
-
-### API Target Creation
-- `probely_create_api_target_from_postman(...)` - Create from Postman
-- `probely_create_api_target_from_openapi(...)` - Create from OpenAPI
