@@ -421,8 +421,9 @@ class ProbelyClient:
         return self.request("GET", f"/targets/{target_id}/scans/{scan_id}/")[1]
 
     def start_scan(self, target_id: str, profile: Optional[str] = None) -> Dict[str, Any]:
-        payload = {"profile": profile} if profile else None
-        return self.request("POST", f"/targets/{target_id}/scans/", json=payload)[1]
+        # Probely API uses POST /targets/:id/scan_now/ (not /scans/) per developers.probely.com
+        payload = {"scan_profile": profile} if profile else None
+        return self.request("POST", f"/targets/{target_id}/scan_now/", json=payload)[1]
 
     def stop_scan(self, target_id: str, scan_id: str) -> Dict[str, Any]:
         return self.request("POST", f"/targets/{target_id}/scans/{scan_id}/stop/")[1]

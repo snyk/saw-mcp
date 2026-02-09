@@ -1,9 +1,33 @@
 from __future__ import annotations
-from typing import Any, Callable, Dict, Optional
+import json as _json
+from typing import Any, Callable, Dict, List, Optional
 from functools import wraps
 from fastmcp import FastMCP
 from .probely_client import ProbelyClient
 from .config import load_config, get_probely_api_key, get_probely_base_url, get_tool_filter, is_tool_enabled
+
+
+def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
+    """Parse a value that should be a list of dicts.
+
+    MCP tool parameters with complex types (e.g. list[Dict[str, Any]]) are
+    sometimes delivered as JSON strings instead of native Python objects because
+    of how ``from __future__ import annotations`` interacts with FastMCP/Pydantic
+    schema generation.  This helper normalises both representations so that tool
+    functions always receive a proper ``list[dict]`` (or ``None``).
+    """
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = _json.loads(value)
+            if isinstance(parsed, list):
+                return parsed
+        except (_json.JSONDecodeError, TypeError):
+            pass
+    raise ValueError(f"Expected a JSON array (list of objects), got: {type(value).__name__}")
 
 
 def build_server() -> FastMCP:
@@ -134,16 +158,25 @@ def build_server() -> FastMCP:
 
     @register_tool("probely_create_sequence")
     def probely_create_sequence(targetId: str, name: str, content: str, sequence_type: str = "login", enabled: bool = True,
-                                custom_field_mappings: Optional[list[Dict[str, Any]]] = None) -> Dict[str, Any]:
-        """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content."""
+                                custom_field_mappings: Optional[str] = None) -> Dict[str, Any]:
+        """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
+        
+        custom_field_mappings should be a JSON array string, e.g.:
+        [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
+        """
+        mappings = _parse_list_of_dicts(custom_field_mappings)
         return client.create_sequence(target_id=targetId, name=name, sequence_type=sequence_type, content=content, 
-                                     enabled=enabled, custom_field_mappings=custom_field_mappings)
+                                     enabled=enabled, custom_field_mappings=mappings)
 
     @register_tool("probely_update_sequence")
     def probely_update_sequence(targetId: str, sequenceId: str, name: Optional[str] = None, 
                                  content: Optional[str] = None, enabled: Optional[bool] = None,
-                                 custom_field_mappings: Optional[list[Dict[str, Any]]] = None) -> Dict[str, Any]:
-        """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content."""
+                                 custom_field_mappings: Optional[str] = None) -> Dict[str, Any]:
+        """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
+        
+        custom_field_mappings should be a JSON array string, e.g.:
+        [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
+        """
         fields: Dict[str, Any] = {}
         if name is not None:
             fields["name"] = name
@@ -151,8 +184,9 @@ def build_server() -> FastMCP:
             fields["content"] = content
         if enabled is not None:
             fields["enabled"] = enabled
-        if custom_field_mappings is not None:
-            fields["custom_field_mappings"] = custom_field_mappings
+        mappings = _parse_list_of_dicts(custom_field_mappings)
+        if mappings is not None:
+            fields["custom_field_mappings"] = mappings
         return client.update_sequence(target_id=targetId, sequence_id=sequenceId, **fields)
 
     @register_tool("probely_delete_sequence")
