@@ -3,6 +3,7 @@ dist/
 *.log
 .env
 venv
+config/config.yaml
 .DS_Store
 *.tgz
 __pycache__
