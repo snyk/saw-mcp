@@ -5,8 +5,7 @@ description: Configure Snyk API&Web (SAW/Probely) targets with authentication, 2
 
 # SAW Target Configuration Skill
 
-Detailed procedures for configuring Snyk API&Web targets. For behavioral rules (vulnerability handling, scan monitoring), see the project rules.
-When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW, and a column if you added extra hosts or not and in case you did, which ones.
+Detailed procedures for configuring Snyk API&Web targets. For behavioral rules (vulnerability handling, scan monitoring), see the project rules. When you are adding a target, you may get a warning that the target (URL) already exists. In that case, ignore the warning and add the new target. When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
 ## API Onboarding Workflow
 
@@ -59,18 +58,20 @@ When the user wants to scan a **web application with authentication**, follow th
 
 ### Step 1: Gather Information
 
-Ask the user for:
-1. **Target name** (e.g., "My Web App - Production")
-2. **Target URL** (e.g., https://app.example.com)
+Ask the user for (or derive):
+1. **Target URL** (e.g., https://app.example.com)
+2. **Target name**: use the name the user provides; if none, use **Agentic - &lt;web page title&gt;** (page title from the site’s `<title>` when you open it in Playwright).
 3. **Login credentials** (username/email and password)
 4. Any **2FA/MFA requirements** (including the TOTP seed if applicable)
 
-### Step 2: Choose Authentication Method
+### Step 2: Target name and authentication method
 
-There are two ways to configure authentication:
+**Target name:** Use the name the user provides in the prompt. **If the user does not specify a name**, use **Agentic - &lt;web page title&gt;** where the page title is the site’s `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Agentic - Patch Mutual**.
 
-1. **Login Sequence** (recommended when Playwright is available) - Records browser interactions for complex login flows, multi-step authentication, 2FA, etc.
-2. **Form Login** (simpler, use when Playwright is NOT available) - Simple form-based authentication for basic username/password login pages.
+**Authentication:** When Playwright MCP is available, **always configure authentication using a login sequence** (record the flow in the browser). Do not use form login when Playwright is available.
+
+1. **Login Sequence** (use when Playwright is available) - Record the login in the browser; supports complex flows, 2FA, etc. **Prefer this whenever Playwright is available.**
+2. **Form Login** (only when Playwright is NOT available) - Simple form-based auth for basic username/password pages.
 
 ### Step 3A: Using Login Sequence (Playwright Available)
 
@@ -91,6 +92,59 @@ There are two ways to configure authentication:
    - Replace the actual password value with `[CUSTOM_PASSWORD]` placeholder
    - **Keep 2FA OTP codes hardcoded** (do NOT replace with custom fields)
 
+**CRITICAL: Inspect Form Elements Before Creating Selectors**
+
+Before generating the login sequence JSON, **always inspect the actual HTML elements** to get accurate selectors. Do NOT assume element types.
+
+Use `browser_evaluate` to inspect form elements after navigating to the login page:
+
+```javascript
+() => {
+  const usernameField = document.querySelector('input[type="text"], input[type="email"], input[name*="user"], input[name*="email"]');
+  const passwordField = document.querySelector('input[type="password"]');
+  
+  // Find submit element (can be button OR input)
+  const submitButton = document.querySelector('button[type="submit"]');
+  const submitInput = document.querySelector('input[type="submit"]');
+  const submitElement = submitButton || submitInput;
+  
+  return {
+    username: {
+      tag: usernameField?.tagName,
+      id: usernameField?.id,
+      name: usernameField?.name,
+      type: usernameField?.type,
+      selector: usernameField?.id ? `#${usernameField.id}` : 
+                usernameField?.name ? `input[name="${usernameField.name}"]` : null
+    },
+    password: {
+      tag: passwordField?.tagName,
+      id: passwordField?.id,
+      name: passwordField?.name,
+      selector: passwordField?.id ? `#${passwordField.id}` : 
+                passwordField?.name ? `input[name="${passwordField.name}"]` : null
+    },
+    submit: {
+      tag: submitElement?.tagName,
+      type: submitElement?.type,
+      id: submitElement?.id,
+      name: submitElement?.name,
+      value: submitElement?.value,
+      selector: submitElement?.name ? 
+        `${submitElement.tagName.toLowerCase()}[type="submit"][name="${submitElement.name}"]` :
+        submitElement?.id ? `#${submitElement.id}` :
+        `${submitElement.tagName.toLowerCase()}[type="submit"]`
+    }
+  };
+}
+```
+
+**Key Points:**
+- Submit buttons can be **`<button type="submit">`** OR **`<input type="submit">`** - always check the actual HTML!
+- Use the inspected selectors (from the evaluation above) in your sequence JSON
+- Prefer selectors with multiple attributes: `input[type="submit"][name="btnSubmit"]` is better than just `button[type="submit"]`
+- Use ID selectors when available (`#uid`, `#password`) as they are most reliable
+
 Notes when creating the login sequence:
 - For each step that an input is filled in, save a click step before the “fill_value” to focus the input.
 - Use the best unique CSS selector for each element. Using button[type="submit"] is too common. Combine it with other element attributes, like the id or data-test and/or selectors from parent elements, like form#login-form input[name="username"]. 
@@ -98,8 +152,8 @@ Notes when creating the login sequence:
 After recording, generate the login sequence JSON and use these MCP tools:
 
 ```
-# 1. Create the target
-probely_create_target(name, url, desc?)
+# 1. Create the target (if user didn't specify a name, use "Agentic - <Page Title>" from the page's <title>)
+probely_create_target(name=..., url, desc?)
 
 # 2. Create the login sequence with custom field mappings for credentials
 # IMPORTANT: Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content
@@ -134,8 +188,15 @@ probely_configure_sequence_login(targetId, enabled=True)
 probely_configure_2fa(targetId, otp_secret="THE_SEED", otp_placeholder="123456")  # The same code used in the sequence
 
 # 5. Configure logout detection (IMPORTANT!)
+# CRITICAL: ALWAYS provide logout_detector_type="sel" and logout_detector_value with the username field selector
 # Use the post-login redirect URL recorded in step 6 above (NOT the root URL or login page)
-probely_configure_logout_detection(targetId, enabled=True, check_session_url="/dashboard")  # The URL you landed on after login
+probely_configure_logout_detection(
+  targetId, 
+  enabled=True, 
+  check_session_url="/dashboard",  # The URL you landed on after login
+  logout_detector_type="sel",  # REQUIRED - do not omit this
+  logout_detector_value="#uid"  # REQUIRED - username field CSS selector from login sequence
+)
 
 # 6. If external API hosts were detected on the target URL or during the login flow, add them as extra hosts
 probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")
@@ -174,14 +235,14 @@ Add only the hostnames from requests that seem to be related to the target. Excl
    
    If these elements appear on the page, it means the user was logged out.
 
-3. **Configure it using the MCP tool**:
+3. **Configure it using the MCP tool** - **CRITICAL: You MUST explicitly provide both `logout_detector_type="sel"` and `logout_detector_value` parameters. Do NOT rely on automatic detection.**:
    ```
    probely_configure_logout_detection(
      targetId,
      enabled=True,
      check_session_url="https://app.example.com/dashboard",  # The post-login redirect URL
-     logout_detector_type="sel",
-     logout_detector_value="input[placeholder='Enter Username...']"
+     logout_detector_type="sel",  # REQUIRED - always use "sel" for CSS selectors
+     logout_detector_value="#uid"  # REQUIRED - use the username field CSS selector from your login sequence
    )
    ```
 
