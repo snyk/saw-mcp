@@ -13,6 +13,8 @@ When you finish adding/configuring a target, always summarize it with a table, a
 
 When the user wants to scan an **API**, follow this workflow:
 
+**Target name:** Use the name the user provides. **If the user does not specify a name**, use **Agentic - &lt;API name&gt;** where the API name is derived from the schema title, Postman collection name, or the domain. Example: no name given for https://api.example.com → **Agentic - Example API**.
+
 ### Step 1: Obtain API Schema
 
 Ask the user to provide **one of** the following (they are alternatives):
@@ -54,42 +56,3 @@ If the API requires authentication:
 - Ask user for auth type (API key, Bearer token, OAuth, Basic Auth)
 - Use `probely_update_target_settings` to configure authentication headers
 
-## Available MCP Tools Reference
-
-### Target Management
-- `probely_list_targets(search?)` - List all targets
-- `probely_get_target(targetId)` - Get target details
-- `probely_create_target(name, url, desc?, label_ids?)` - Create new target
-- `probely_update_target(targetId, name?, url?, desc?, label_ids?)` - Update target
-- `probely_delete_target(targetId)` - Delete target
-
-### API Target Creation
-- `probely_create_api_target_from_postman(...)` - Create from Postman
-- `probely_create_api_target_from_openapi(...)` - Create from OpenAPI
-
-### Scanning
-- `probely_list_scans(targetId)` - List scans
-- `probely_get_scan(targetId, scanId)` - Get scan details
-- `probely_start_scan(targetId, profile?)` - Start scan (only when user requests)
-- `probely_stop_scan(targetId, scanId)` - Stop scan
-- `probely_cancel_scan(targetId, scanId)` - Cancel scan
-
-### Findings
-- `probely_list_findings(targetId, severity?, state?)` - List findings
-- `probely_get_finding(targetId, findingId)` - Get finding details
-- `probely_update_finding(targetId, findingId, state?)` - Update finding
-- `probely_bulk_update_findings(targetId, findingIds, state?)` - Bulk update
-
-### Reports
-- `probely_create_scan_report(scanId, report_type?, format?)` - Create report
-- `probely_download_report(reportId)` - Download report
-- `probely_get_report(reportId)` - Get report status
-
-### Extra Hosts
-- `probely_list_extra_hosts(targetId)` - List extra hosts
-- `probely_create_extra_host(targetId, hostname, ip_address)` - Add extra host
-- `probely_update_extra_host(targetId, extraHostId, hostname?, ip_address?)` - Update extra host
-
-### Labels
-- `probely_list_labels()` - List all labels
-- `probely_create_label(name, color?)` - Create label

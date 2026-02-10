@@ -13,24 +13,20 @@ When you finish adding/configuring a target, always summarize it with a table, a
 
 When the user wants to scan a **web application with authentication**, follow this workflow:
 
-### Step 1: Gather Information
+### Step 1: Gather Information and Determine Authentication Method
 
 Ask the user for (or derive):
 1. **Target URL** (e.g., https://app.example.com)
-2. **Target name**: use the name the user provides; if none, use **Agentic - &lt;web page title&gt;** (page title from the site's `<title>` when you open it in Playwright).
+2. **Target name**: use the name the user provides. **If the user does not specify a name**, use **Agentic - &lt;web page title&gt;** where the page title is the site's `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Agentic - Patch Mutual**.
 3. **Login credentials** (username/email and password)
 4. Any **2FA/MFA requirements** (including the TOTP seed if applicable)
 
-### Step 2: Target name and authentication method
-
-**Target name:** Use the name the user provides in the prompt. **If the user does not specify a name**, use **Agentic - &lt;web page title&gt;** where the page title is the site's `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Agentic - Patch Mutual**.
-
-**Authentication:** When Playwright MCP is available, **always configure authentication using a login sequence** (record the flow in the browser). Do not use form login when Playwright is available.
+**Authentication method:** When Playwright MCP is available, **always configure authentication using a login sequence** (record the flow in the browser). Do not use form login when Playwright is available.
 
 1. **Login Sequence** (use when Playwright is available) - Record the login in the browser; supports complex flows, 2FA, etc. **Prefer this whenever Playwright is available.**
 2. **Form Login** (only when Playwright is NOT available) - Simple form-based auth for basic username/password pages.
 
-### Step 3A: Using Login Sequence (Playwright Available)
+### Step 2: Using Login Sequence (Playwright Available)
 
 **If Playwright MCP server IS available**, use it to navigate and record the login sequence:
 
@@ -60,7 +56,7 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
   const usernameField = document.querySelector('input[type="text"], input[type="email"], input[name*="user"], input[name*="email"]');
   const passwordField = document.querySelector('input[type="password"]');
   
-  // Find submit element (can be button OR input)
+  // Find submit element (the element that submits the login form)
   const submitButton = document.querySelector('button[type="submit"]');
   const submitInput = document.querySelector('input[type="submit"]');
   const submitElement = submitButton || submitInput;
@@ -101,17 +97,15 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
 ```
 
 **Key Points:**
-- Submit buttons can be **`<button type="submit">`** OR **`<input type="submit">`** - always check the actual HTML!
-- Use the inspected selectors (from the evaluation above) in your sequence JSON
-- Prefer selectors with multiple attributes: `input[type="submit"][name="btnSubmit"]` is better than just `button[type="submit"]`
-- **Avoid IDs that look random or generated** (e.g., `id="input-123456"`, `id="form-abc123xyz"`) - these may change between page loads
-- Use **stable IDs** (like `#uid`, `#password`, `#login-btn`) or **name attributes** (like `input[name="username"]`) - these are most reliable
-
-Notes when creating the login sequence:
-- For each step that an input is filled in, save a click step before the "fill_value" to focus the input.
 - **ALWAYS use the inspected CSS selectors** from the browser evaluation above - DO NOT guess or assume element types.
-- Prefer multi-attribute selectors: `input[type="submit"][name="btnSubmit"]` instead of generic `button[type="submit"]`.
-- Use stable ID-based selectors (like `#uid`, `#login-btn`) only when the ID is semantic and unlikely to change - avoid random/generated IDs.
+- Submit buttons can be any element that submits the form, including **`<button type="submit">`** OR **`<input type="submit">`** OR **`<span id="submit-form">Login</span>`** - always check the actual HTML!
+- Prefer selectors with multiple attributes: `input[type="submit"][name="btnSubmit"]` is better than just `button[type="submit"]`
+- **Avoid IDs that look random or generated** (e.g., `id="input-123456"`, `id="form-abc123xyz"`) - use **name attributes** (like `input[name="username"]`) or **stable IDs** (like `#uid`, `#login-btn`) instead.
+- For each step that an input is filled in, save a click step before the "fill_value" to focus the input.
+
+**XPath field:** The scanner uses CSS first; XPath is a fallback but must still be valid.
+- Prefer attribute-based XPaths: `//*[@name='email']`, `//*[@id='uid']`
+- Use positional XPaths (`/html/body/form/input[1]`) only as a last resort when the element has no usable attributes
 
 After recording, generate the login sequence JSON and use these MCP tools:
 
@@ -122,6 +116,7 @@ probely_create_target(name=..., url, desc?)
 # 2. Create the login sequence with custom field mappings for credentials
 # IMPORTANT: Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content
 # NOTE: For 2FA, use the actual generated OTP code hardcoded in the sequence (do NOT use custom fields)
+# The platform will automatically replace the placeholders with the configured values at runtime.
 probely_create_sequence(
   targetId,
   name="Login Sequence",
@@ -132,13 +127,13 @@ probely_create_sequence(
     {
       "name": "[CUSTOM_USERNAME]",
       "value": "actual_username_here",
-      "value_is_sensitive": False,
+      "value_is_sensitive": False,  # Set to True if username is sensitive
       "enabled": True
     },
     {
       "name": "[CUSTOM_PASSWORD]",
       "value": "actual_password_here",
-      "value_is_sensitive": True,  # Mark password as sensitive
+      "value_is_sensitive": True,  # Always mark passwords as sensitive
       "enabled": True
     }
   ]
@@ -151,16 +146,8 @@ probely_configure_sequence_login(targetId, enabled=True)
 # - Use the actual OTP code from the sequence as the placeholder (so Probely knows what to replace)
 probely_configure_2fa(targetId, otp_secret="THE_SEED", otp_placeholder="123456")  # The same code used in the sequence
 
-# 5. Configure logout detection (IMPORTANT!)
-# CRITICAL: ALWAYS provide logout_detector_type="sel" and logout_detector_value with the username field selector
-# Use the FULL post-login redirect URL (not relative path) recorded in step 6 above
-probely_configure_logout_detection(
-  targetId, 
-  enabled=True, 
-  check_session_url="https://app.example.com/dashboard",  # FULL URL - not just "/dashboard"
-  logout_detector_type="sel",  # REQUIRED - do not omit this
-  logout_detector_value="#uid"  # REQUIRED - username field CSS selector from login sequence
-)
+# 5. Configure logout detection - see "Configuring Logout Detection" section below for details
+probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=...)
 
 # 6. If external API hosts were detected on the target URL or during the login flow, add them as extra hosts
 probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")
@@ -240,7 +227,7 @@ Example sequence with custom fields:
     "type": "click",
     "timestamp": 1234567891,
     "css": "input[name='email']",
-    "xpath": "/html/body/form/input[1]",
+    "xpath": "//*[@name='email']",
     "value": "",
     "frame": null
   },
@@ -248,7 +235,7 @@ Example sequence with custom fields:
     "type": "fill_value",
     "timestamp": 1234567892,
     "css": "input[name='email']",
-    "xpath": "/html/body/form/input[1]",
+    "xpath": "//*[@name='email']",
     "value": "[CUSTOM_USERNAME]",
     "frame": null
   },
@@ -271,36 +258,13 @@ Example sequence with custom fields:
   {
     "type": "click",
     "timestamp": 1234567895,
-    "css": "button[type='submit']",
+    "css": "button[name='btnSubmit']",
     "xpath": "/html/body/form/button",
     "value": "Sign In",
     "frame": null
   }
-  // NOTE: If the submit button is an <input> instead of <button>, use:
-  // "css": "input[type='submit'][name='btnSubmit']"
 ]
 ```
-
-**Configure custom fields via API** when creating/updating the sequence using the `custom_field_mappings` parameter:
-
-```python
-custom_field_mappings=[
-  {
-    "name": "[CUSTOM_USERNAME]",
-    "value": "user@example.com",
-    "value_is_sensitive": False,
-    "enabled": True
-  },
-  {
-    "name": "[CUSTOM_PASSWORD]",
-    "value": "password123",
-    "value_is_sensitive": True,  # Always mark passwords as sensitive
-    "enabled": True
-  }
-]
-```
-
-The platform will automatically replace `[CUSTOM_USERNAME]` and `[CUSTOM_PASSWORD]` placeholders in the sequence content with the configured values.
 
 **For 2FA**, generate the actual TOTP code and use it **hardcoded** in the sequence (do NOT use a custom field):
 ```json
@@ -333,7 +297,7 @@ The platform will automatically replace `[CUSTOM_USERNAME]` and `[CUSTOM_PASSWOR
 | `press_key` | Press a key | `css`, `xpath`, `value` (keyCode), `frame` |
 | `mouseover` | Hover over element | `css`, `xpath`, `value`, `frame` |
 
-### Step 3B: Using Form Login (Playwright NOT Available)
+### Step 3: Using Form Login (Playwright NOT Available)
 
 **If Playwright MCP server is NOT available**, use form-based login:
 
@@ -349,54 +313,3 @@ probely_configure_form_login(
 )
 ```
 
-**IMPORTANT**: Form login does NOT support 2FA. If the application requires 2FA, you MUST use login sequences with Playwright.
-
-## Available MCP Tools Reference
-
-### Target Management
-- `probely_list_targets(search?)` - List all targets
-- `probely_get_target(targetId)` - Get target details
-- `probely_create_target(name, url, desc?, label_ids?)` - Create new target
-- `probely_update_target(targetId, name?, url?, desc?, label_ids?)` - Update target
-- `probely_delete_target(targetId)` - Delete target
-
-### Login Sequences
-- `probely_list_sequences(targetId)` - List all login sequences
-- `probely_get_sequence(targetId, sequenceId)` - Get sequence details
-- `probely_create_sequence(targetId, name, content, sequence_type?, enabled?, custom_field_mappings?)` - Create sequence with custom field mappings for credentials
-- `probely_update_sequence(targetId, sequenceId, name?, content?, enabled?, custom_field_mappings?)` - Update sequence, including custom field mappings
-
-### Authentication Configuration
-- `probely_configure_form_login(...)` - Configure form-based login
-- `probely_configure_sequence_login(targetId, enabled?)` - Enable/disable sequence login
-- `probely_configure_2fa(targetId, otp_secret, otp_placeholder?, ...)` - Configure 2FA/TOTP
-- `probely_disable_2fa(targetId)` - Disable 2FA
-- `probely_configure_logout_detection(targetId, enabled?, check_session_url?, ...)` - Configure logout detection
-- `probely_create_logout_detector(targetId, detector_type, value)` - Create logout detector
-
-### Scanning
-- `probely_list_scans(targetId)` - List scans
-- `probely_get_scan(targetId, scanId)` - Get scan details
-- `probely_start_scan(targetId, profile?)` - Start scan (only when user requests)
-- `probely_stop_scan(targetId, scanId)` - Stop scan
-- `probely_cancel_scan(targetId, scanId)` - Cancel scan
-
-### Findings
-- `probely_list_findings(targetId, severity?, state?)` - List findings
-- `probely_get_finding(targetId, findingId)` - Get finding details
-- `probely_update_finding(targetId, findingId, state?)` - Update finding
-- `probely_bulk_update_findings(targetId, findingIds, state?)` - Bulk update
-
-### Reports
-- `probely_create_scan_report(scanId, report_type?, format?)` - Create report
-- `probely_download_report(reportId)` - Download report
-- `probely_get_report(reportId)` - Get report status
-
-### Extra Hosts
-- `probely_list_extra_hosts(targetId)` - List extra hosts
-- `probely_create_extra_host(targetId, hostname, ip_address)` - Add extra host
-- `probely_update_extra_host(targetId, extraHostId, hostname?, ip_address?)` - Update extra host
-
-### Labels
-- `probely_list_labels()` - List all labels
-- `probely_create_label(name, color?)` - Create label
