@@ -9,6 +9,8 @@ Configure web application targets for Snyk API&Web (SAW/Probely) security scanni
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
+**Delegating to subagents:** When spinning up subagents to configure targets in parallel, include this skill file's path in each task prompt so the subagent reads it first and follows the full workflow.
+
 ## Web Application Onboarding Workflow
 
 When the user wants to scan a **web application with authentication**, follow this workflow:
@@ -37,9 +39,9 @@ Ask the user for (or derive):
    - **Multi-step login** (no password field): only the username/email and a "Next"/"Continue" button are returned. Fill the username, click next, then **run the inspection script again** on the second screen to get the password field and submit button.
 4. **Fill credentials and submit** - for each step, fill the visible fields and click the step's button. Record selectors from each step for the login sequence JSON.
 5. **Handle 2FA if needed** - if 2FA is required:
-   - Use `probely_generate_totp(secret="THE_SEED")` to generate the current TOTP code
-   - Fill the OTP field with the returned **actual code** (e.g., "123456"), NOT a placeholder
-   - This allows the login to complete successfully during recording
+   - Use `probely_generate_totp(secret="THE_SEED")` to generate a TOTP code for the live Playwright login
+   - Fill the OTP field with the returned **actual code** (e.g., "123456") to complete the login during recording
+   - Later, when configuring the target, `probely_configure_2fa_totp` will auto-generate a fresh code for the sequence
 6. **Verify login success and record post-login URL** - confirm login succeeded by checking for logged-in indicators. **IMPORTANT: Record the absolute URL you land on after successful login** (e.g., `https://example.com/dashboard`) - this will be used as the `check_session_url` for logout detection.
 7. **Check for API calls to external hosts** - Use `browser_network_requests` to get all XHR/fetch requests made during login. Identify any requests to hostnames different from the target URL.
 8. **Generate the login sequence JSON** - When creating the sequence JSON from the recorded steps:
@@ -171,18 +173,21 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
 
 After recording, generate the login sequence JSON and use the MCP tools below.
 
-**IMPORTANT: The `content` parameter MUST be formatted/pretty-printed JSON (with newlines and indentation), NOT minified.** This makes sequences readable and debuggable in the Probely UI.
-
 ```
 # 1. ALWAYS create a new target — do NOT search for or reuse existing targets, even if one with the same URL already exists.
 # The default label (e.g. "Agentic") is auto-applied from config — no need to pass labels here.
 # Only pass labels= if the user explicitly requests additional labels.
 probely_create_target(name=..., url, desc?)
 
-# 2. Create the login sequence with custom field mappings for credentials
-# IMPORTANT: Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content
-# NOTE: For 2FA, use the actual generated OTP code hardcoded in the sequence (do NOT use custom fields)
-# The platform will automatically replace the placeholders with the configured values at runtime.
+# 2. If 2FA is needed, configure it BEFORE creating the sequence.
+# The tool auto-generates a TOTP code from the secret. Use the returned otp_code
+# in the sequence's fill_value step for the OTP input.
+result = probely_configure_2fa_totp(targetId, otp_secret="THE_SEED")
+# result["otp_code"] → e.g. "829182" — use this in the sequence
+
+# 3. Create the login sequence with custom field mappings for credentials
+# Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content.
+# For 2FA, hardcode the otp_code from step 2 in the OTP fill_value step (do NOT use custom fields for OTP).
 probely_create_sequence(
   targetId,
   name="Login Sequence",
@@ -205,12 +210,8 @@ probely_create_sequence(
   ]
 )
 
-# 3. Enable sequence login on the target
+# 4. Enable sequence login on the target
 probely_configure_sequence_login(targetId, enabled=True)
-
-# 4. If 2FA is needed, configure it:
-# - Use the actual OTP code from the sequence as the placeholder (so Probely knows what to replace)
-probely_configure_2fa(targetId, otp_secret="THE_SEED", otp_placeholder="123456")  # The same code used in the sequence
 
 # 5. Configure logout detection - see "Configuring Logout Detection" section below for details
 probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=...)
@@ -332,23 +333,18 @@ Example sequence with custom fields:
 ]
 ```
 
-**For 2FA**, generate the actual TOTP code and use it **hardcoded** in the sequence (do NOT use a custom field):
+**For 2FA**, use the `otp_code` returned by `probely_configure_2fa_totp` **hardcoded** in the sequence (do NOT use a custom field for OTP):
 ```json
 {
-  "type": "fill_otp",
+  "type": "fill_value",
   "timestamp": 1234567896000,
   "css": "#otp",
   "xpath": "//*[@id='otp']",
-  "value": "783757",
+  "value": "829182",
   "frame": null
 }
 ```
-
-**IMPORTANT for 2FA configuration:**
-- Generate the TOTP code using `probely_generate_totp(secret="THE_SEED")` — do NOT write custom scripts
-- Use this actual code **hardcoded** in the sequence (2FA OTP should NOT use custom fields)
-- **CRITICAL ORDER**: Configure `probely_configure_2fa` with `otp_placeholder` set to the SAME code BEFORE updating/creating the sequence
-- Probely will automatically convert `fill_value` entries matching the OTP placeholder to `fill_otp` type
+Probely will automatically convert `fill_value` entries matching the configured OTP code to `fill_otp` type at scan time.
 
 ### Sequence Event Types
 

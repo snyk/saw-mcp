@@ -1,5 +1,11 @@
 from __future__ import annotations
 import json as _json
+import hmac as _hmac
+import hashlib as _hashlib
+import struct as _struct
+import time as _time
+import base64 as _base64
+import re as _re
 from typing import Any, Callable, Dict, List, Optional
 from functools import wraps
 from fastmcp import FastMCP
@@ -28,6 +34,29 @@ def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
         except (_json.JSONDecodeError, TypeError):
             pass
     raise ValueError(f"Expected a JSON array (list of objects), got: {type(value).__name__}")
+
+
+def _generate_totp(secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30) -> Dict[str, Any]:
+    """Generate a TOTP code from a base32 secret.
+
+    Returns dict with ``code``, ``remaining_seconds``, ``algorithm``, and ``digits``.
+    """
+    clean = _re.sub(r'[\s-]', '', secret).upper()
+    padding = (8 - len(clean) % 8) % 8
+    key = _base64.b32decode(clean + '=' * padding)
+
+    hash_func = getattr(_hashlib, algorithm.lower(), _hashlib.sha1)
+    now = int(_time.time())
+    counter = now // period
+    remaining = period - (now % period)
+
+    msg = _struct.pack('>Q', counter)
+    mac = _hmac.new(key, msg, hash_func).digest()
+    offset = mac[-1] & 0x0F
+    code_int = _struct.unpack('>I', mac[offset:offset + 4])[0] & 0x7FFFFFFF
+    code = str(code_int % (10 ** digits)).zfill(digits)
+
+    return {"code": code, "remaining_seconds": remaining, "algorithm": algorithm, "digits": digits}
 
 
 def build_server() -> FastMCP:
@@ -163,10 +192,10 @@ def build_server() -> FastMCP:
 
     @register_tool("probely_create_sequence")
     def probely_create_sequence(targetId: str, name: str, content: str, sequence_type: str = "login", enabled: bool = True,
-                                custom_field_mappings: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+                                custom_field_mappings: Optional[Any] = None) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
 
-        custom_field_mappings should be a JSON array string, e.g.:
+        custom_field_mappings should be a JSON array or JSON array string, e.g.:
         [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
         """
         mappings = _parse_list_of_dicts(custom_field_mappings)
@@ -176,7 +205,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_update_sequence")
     def probely_update_sequence(targetId: str, sequenceId: str, name: Optional[str] = None, 
                                  content: Optional[str] = None, enabled: Optional[bool] = None,
-                                 custom_field_mappings: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+                                 custom_field_mappings: Optional[Any] = None) -> Dict[str, Any]:
         """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
         
         custom_field_mappings should be a JSON array string, e.g.:
@@ -203,7 +232,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_configure_form_login")
     def probely_configure_form_login(targetId: str, login_url: str, username_field: str, password_field: str,
                                      username: str, password: str, check_pattern: Optional[str] = None) -> Dict[str, Any]:
-        """Configure form-based login authentication. Use this when you don't have Playwright to record a login sequence."""
+        """Configure form-based login authentication. Only use this as a fallback when Playwright is NOT available. When Playwright IS available, always record a login sequence instead (probely_create_sequence)."""
         return client.configure_form_login(target_id=targetId, login_url=login_url, username_field=username_field,
                                            password_field=password_field, username=username, password=password,
                                            check_pattern=check_pattern)
@@ -213,12 +242,22 @@ def build_server() -> FastMCP:
         """Enable or disable sequence-based login. Call this after creating a login sequence."""
         return client.configure_sequence_login(target_id=targetId, enabled=enabled)
 
-    @register_tool("probely_configure_2fa")
-    def probely_configure_2fa(targetId: str, otp_secret: str, otp_placeholder: str = "{{OTP}}",
-                              otp_algorithm: str = "SHA1", otp_digits: int = 6, otp_type: str = "totp") -> Dict[str, Any]:
-        """Configure 2FA/OTP settings. The otp_placeholder should match the value used in the login sequence."""
-        return client.configure_2fa(target_id=targetId, otp_secret=otp_secret, otp_placeholder=otp_placeholder,
-                                    otp_algorithm=otp_algorithm, otp_digits=otp_digits, otp_type=otp_type)
+    @register_tool("probely_configure_2fa_totp")
+    def probely_configure_2fa_totp(targetId: str, otp_secret: str,
+                                   otp_algorithm: str = "SHA1", otp_digits: int = 6) -> Dict[str, Any]:
+        """Configure TOTP-based 2FA for a target. Automatically generates a TOTP code from the
+        secret and configures it as the OTP placeholder for the login sequence.
+
+        Call this BEFORE creating/updating the login sequence. The response includes an
+        ``otp_code`` field — use this exact code hardcoded in the sequence's fill_value step
+        for the OTP input. Probely will auto-convert that step to ``fill_otp`` at scan time."""
+        totp = _generate_totp(otp_secret, algorithm=otp_algorithm, digits=otp_digits)
+        result = client.configure_2fa(target_id=targetId, otp_secret=otp_secret,
+                                      otp_placeholder=totp["code"],
+                                      otp_algorithm=otp_algorithm, otp_digits=otp_digits,
+                                      otp_type="totp")
+        result["otp_code"] = totp["code"]
+        return result
 
     @register_tool("probely_disable_2fa")
     def probely_disable_2fa(targetId: str) -> Dict[str, Any]:
@@ -229,32 +268,7 @@ def build_server() -> FastMCP:
     def probely_generate_totp(secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30) -> Dict[str, Any]:
         """Generate a TOTP code from a secret/seed. Use this when recording login sequences that require 2FA.
         Returns the current TOTP code and its remaining validity in seconds."""
-        import hmac
-        import hashlib
-        import struct
-        import time
-        import base64
-        import re
-
-        # Decode base32 secret (strip spaces/dashes, pad if needed)
-        clean = re.sub(r'[\s-]', '', secret).upper()
-        padding = (8 - len(clean) % 8) % 8
-        key = base64.b32decode(clean + '=' * padding)
-
-        # TOTP parameters
-        hash_func = getattr(hashlib, algorithm.lower(), hashlib.sha1)
-        now = int(time.time())
-        counter = now // period
-        remaining = period - (now % period)
-
-        # HOTP calculation (RFC 4226)
-        msg = struct.pack('>Q', counter)
-        mac = hmac.new(key, msg, hash_func).digest()
-        offset = mac[-1] & 0x0F
-        code_int = struct.unpack('>I', mac[offset:offset + 4])[0] & 0x7FFFFFFF
-        code = str(code_int % (10 ** digits)).zfill(digits)
-
-        return {"code": code, "remaining_seconds": remaining, "algorithm": algorithm, "digits": digits}
+        return _generate_totp(secret, algorithm=algorithm, digits=digits, period=period)
 
     @register_tool("probely_list_logout_detectors")
     def probely_list_logout_detectors(targetId: str) -> Dict[str, Any]:
