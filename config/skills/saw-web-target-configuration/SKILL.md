@@ -107,7 +107,7 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
 - Prefer attribute-based XPaths: `//*[@name='email']`, `//*[@id='uid']`
 - Use positional XPaths (`/html/body/form/input[1]`) only as a last resort when the element has no usable attributes
 
-After recording, generate the login sequence JSON and use these MCP tools:
+After recording, generate the login sequence JSON, as **formatted/pretty-printed JSON** (not minified), and use these MCP tools.
 
 ```
 # 1. Create the target (if user didn't specify a name, use "Agentic - <Page Title>" from the page's <title>)
@@ -217,7 +217,7 @@ Example sequence with custom fields:
 [
   {
     "type": "goto",
-    "timestamp": 1234567890,
+    "timestamp": 1234567890000,
     "url": "https://app.example.com/login",
     "windowWidth": 1280,
     "windowHeight": 720,
@@ -225,7 +225,7 @@ Example sequence with custom fields:
   },
   { 
     "type": "click",
-    "timestamp": 1234567891,
+    "timestamp": 1234567891000,
     "css": "input[name='email']",
     "xpath": "//*[@name='email']",
     "value": "",
@@ -233,7 +233,7 @@ Example sequence with custom fields:
   },
   {
     "type": "fill_value",
-    "timestamp": 1234567892,
+    "timestamp": 1234567892000,
     "css": "input[name='email']",
     "xpath": "//*[@name='email']",
     "value": "[CUSTOM_USERNAME]",
@@ -241,7 +241,7 @@ Example sequence with custom fields:
   },
   { 
     "type": "click",
-    "timestamp": 1234567893,
+    "timestamp": 1234567893000,
     "css": "input[name='password']",
     "xpath": "/html/body/form/input[2]",
     "value": "",
@@ -249,7 +249,7 @@ Example sequence with custom fields:
   },
   {
     "type": "fill_value",
-    "timestamp": 1234567894,
+    "timestamp": 1234567894000,
     "css": "input[name='password']",
     "xpath": "/html/body/form/input[2]",
     "value": "[CUSTOM_PASSWORD]",
@@ -257,7 +257,7 @@ Example sequence with custom fields:
   },
   {
     "type": "click",
-    "timestamp": 1234567895,
+    "timestamp": 1234567895000,
     "css": "button[name='btnSubmit']",
     "xpath": "/html/body/form/button",
     "value": "Sign In",
@@ -270,7 +270,7 @@ Example sequence with custom fields:
 ```json
 {
   "type": "fill_otp",
-  "timestamp": 1234567894,
+  "timestamp": 1234567896000,
   "css": "#otp",
   "xpath": "//*[@id='otp']",
   "value": "783757",
