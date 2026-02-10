@@ -163,7 +163,7 @@ def build_server() -> FastMCP:
 
     @register_tool("probely_create_sequence")
     def probely_create_sequence(targetId: str, name: str, content: str, sequence_type: str = "login", enabled: bool = True,
-                                custom_field_mappings: Optional[Any] = None) -> Dict[str, Any]:
+                                custom_field_mappings: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
 
         custom_field_mappings should be a JSON array string, e.g.:
@@ -176,7 +176,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_update_sequence")
     def probely_update_sequence(targetId: str, sequenceId: str, name: Optional[str] = None, 
                                  content: Optional[str] = None, enabled: Optional[bool] = None,
-                                 custom_field_mappings: Optional[Any] = None) -> Dict[str, Any]:
+                                 custom_field_mappings: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
         
         custom_field_mappings should be a JSON array string, e.g.:
@@ -224,6 +224,37 @@ def build_server() -> FastMCP:
     def probely_disable_2fa(targetId: str) -> Dict[str, Any]:
         """Disable 2FA/OTP for a target."""
         return client.disable_2fa(target_id=targetId)
+
+    @register_tool("probely_generate_totp")
+    def probely_generate_totp(secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30) -> Dict[str, Any]:
+        """Generate a TOTP code from a secret/seed. Use this when recording login sequences that require 2FA.
+        Returns the current TOTP code and its remaining validity in seconds."""
+        import hmac
+        import hashlib
+        import struct
+        import time
+        import base64
+        import re
+
+        # Decode base32 secret (strip spaces/dashes, pad if needed)
+        clean = re.sub(r'[\s-]', '', secret).upper()
+        padding = (8 - len(clean) % 8) % 8
+        key = base64.b32decode(clean + '=' * padding)
+
+        # TOTP parameters
+        hash_func = getattr(hashlib, algorithm.lower(), hashlib.sha1)
+        now = int(time.time())
+        counter = now // period
+        remaining = period - (now % period)
+
+        # HOTP calculation (RFC 4226)
+        msg = struct.pack('>Q', counter)
+        mac = hmac.new(key, msg, hash_func).digest()
+        offset = mac[-1] & 0x0F
+        code_int = struct.unpack('>I', mac[offset:offset + 4])[0] & 0x7FFFFFFF
+        code = str(code_int % (10 ** digits)).zfill(digits)
+
+        return {"code": code, "remaining_seconds": remaining, "algorithm": algorithm, "digits": digits}
 
     @register_tool("probely_list_logout_detectors")
     def probely_list_logout_detectors(targetId: str) -> Dict[str, Any]:

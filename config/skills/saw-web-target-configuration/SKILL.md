@@ -37,8 +37,8 @@ Ask the user for (or derive):
    - **Multi-step login** (no password field): only the username/email and a "Next"/"Continue" button are returned. Fill the username, click next, then **run the inspection script again** on the second screen to get the password field and submit button.
 4. **Fill credentials and submit** - for each step, fill the visible fields and click the step's button. Record selectors from each step for the login sequence JSON.
 5. **Handle 2FA if needed** - if 2FA is required:
-   - **Generate the actual TOTP code** from the seed using the standard TOTP algorithm (SHA1, 6 digits, 30-second window)
-   - Fill the OTP field with this **actual generated code** (e.g., "123456"), NOT a placeholder
+   - Use `probely_generate_totp(secret="THE_SEED")` to generate the current TOTP code
+   - Fill the OTP field with the returned **actual code** (e.g., "123456"), NOT a placeholder
    - This allows the login to complete successfully during recording
 6. **Verify login success and record post-login URL** - confirm login succeeded by checking for logged-in indicators. **IMPORTANT: Record the absolute URL you land on after successful login** (e.g., `https://example.com/dashboard`) - this will be used as the `check_session_url` for logout detection.
 7. **Check for API calls to external hosts** - Use `browser_network_requests` to get all XHR/fetch requests made during login. Identify any requests to hostnames different from the target URL.
@@ -169,7 +169,9 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
 - Prefer attribute-based XPaths: `//*[@name='email']`, `//*[@id='uid']`
 - Use positional XPaths (`/html/body/form/input[1]`) only as a last resort when the element has no usable attributes
 
-After recording, generate the login sequence JSON, as **formatted/pretty-printed JSON** (not minified), and use these MCP tools.
+After recording, generate the login sequence JSON and use the MCP tools below.
+
+**IMPORTANT: The `content` parameter MUST be formatted/pretty-printed JSON (with newlines and indentation), NOT minified.** This makes sequences readable and debuggable in the Probely UI.
 
 ```
 # 1. ALWAYS create a new target — do NOT search for or reuse existing targets, even if one with the same URL already exists.
@@ -343,7 +345,7 @@ Example sequence with custom fields:
 ```
 
 **IMPORTANT for 2FA configuration:**
-- Generate the TOTP code using: seed + SHA1 algorithm + 6 digits + 30-second window
+- Generate the TOTP code using `probely_generate_totp(secret="THE_SEED")` — do NOT write custom scripts
 - Use this actual code **hardcoded** in the sequence (2FA OTP should NOT use custom fields)
 - **CRITICAL ORDER**: Configure `probely_configure_2fa` with `otp_placeholder` set to the SAME code BEFORE updating/creating the sequence
 - Probely will automatically convert `fill_value` entries matching the OTP placeholder to `fill_otp` type

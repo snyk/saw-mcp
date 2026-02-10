@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json as _json
 from typing import Any, Dict, Optional, Tuple
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -244,13 +245,22 @@ class ProbelyClient:
     def get_sequence(self, target_id: str, sequence_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/targets/{target_id}/sequences/{sequence_id}/")[1]
 
+    @staticmethod
+    def _pretty_json_content(content: str) -> str:
+        """Ensure sequence content is pretty-printed JSON for readability in the UI."""
+        try:
+            parsed = _json.loads(content)
+            return _json.dumps(parsed, indent=2)
+        except (_json.JSONDecodeError, TypeError):
+            return content
+
     def create_sequence(self, target_id: str, name: str, sequence_type: str, content: str, enabled: bool = True,
                        custom_field_mappings: Optional[list[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps."""
         payload: Dict[str, Any] = {
             "name": name,
             "type": sequence_type,
-            "content": content,
+            "content": self._pretty_json_content(content),
             "enabled": enabled
         }
         if custom_field_mappings is not None:
@@ -258,6 +268,8 @@ class ProbelyClient:
         return self.request("POST", f"/targets/{target_id}/sequences/", json=payload)[1]
 
     def update_sequence(self, target_id: str, sequence_id: str, **fields: Any) -> Dict[str, Any]:
+        if "content" in fields and isinstance(fields["content"], str):
+            fields["content"] = self._pretty_json_content(fields["content"])
         return self.request("PATCH", f"/targets/{target_id}/sequences/{sequence_id}/", json=fields)[1]
 
     def delete_sequence(self, target_id: str, sequence_id: str) -> Dict[str, Any]:
