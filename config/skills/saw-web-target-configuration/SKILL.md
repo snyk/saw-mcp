@@ -9,19 +9,26 @@ Configure web application targets for Snyk API&Web (SAW/Probely) security scanni
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
-## Multiple Targets — MUST Use Subagents
+## Multiple Targets — MUST Use Subagents in Parallel
 
-**When the user provides more than one target, you MUST launch a separate `generalPurpose` subagent for each target immediately.** Do NOT process targets one at a time yourself.
+**When the user provides more than one target, you MUST launch ALL subagents in a single message.**
 
-1. Read this skill file yourself first.
-2. For **each** target, launch a `generalPurpose` subagent (via the Task tool) with a prompt that:
-   - Includes the full contents of this skill file so the subagent follows the complete workflow.
-   - Provides all known details for that target (URL, credentials, 2FA seed, name if given).
-   - Tells the subagent to return a summary (target ID, name, URL, login sequence status, logout detection status, extra hosts, SAW link).
-3. Launch **all** subagents in a **single message** so they run in parallel (up to 4 at a time; queue the rest).
-4. After all subagents finish, compile their summaries into a single table for the user.
+Each subagent prompt should be short — just the target details and an instruction to read the skill file:
 
-> **Why?** Each target's workflow (browser recording, API configuration) is independent. Parallelizing via subagents is faster and avoids the risk of a browser lock or error on one target blocking the others.
+```
+Configure a Snyk API&Web web target:
+- URL: <url>
+- Username: <user>
+- Password: <pass>
+- 2FA TOTP seed: <seed or "none">
+
+First, read the skill file at <ABSOLUTE_PATH_TO_THIS_SKILL_FILE> and follow the full workflow.
+Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, SAW link (https://plus.probely.app/targets/{targetId}).
+```
+
+**Do NOT embed the full skill text in each prompt** — that makes prompts too large to launch in parallel. Each subagent can read the skill file itself.
+
+Launch **all** Task tool calls in a **single assistant message** (max 4 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
 
 ## Web Application Onboarding Workflow
 
@@ -204,11 +211,8 @@ result = probely_configure_2fa_totp(targetId, otp_secret="THE_SEED")
 # Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content.
 # For 2FA, hardcode the otp_code from step 2 in the OTP fill_value step (do NOT use custom fields for OTP).
 #
-# COMMON MISTAKES — read before calling:
-#   - content must be a JSON string of an array, e.g. "[{\"type\":\"goto\",...}]".
-#     Do NOT double-serialize (string of a string).
-#   - custom_field_mappings is REQUIRED when content uses [CUSTOM_USERNAME] or
-#     [CUSTOM_PASSWORD]. Omitting it causes a 400 error.
+# NOTE: custom_field_mappings is REQUIRED when content uses [CUSTOM_USERNAME] or
+# [CUSTOM_PASSWORD]. Omitting it causes a 400 error from the API.
 probely_create_sequence(
   targetId,
   name="Login Sequence",

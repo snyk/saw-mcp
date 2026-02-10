@@ -27,13 +27,31 @@ def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
     if isinstance(value, list):
         return value
     if isinstance(value, str):
+        # Try standard JSON first
         try:
             parsed = _json.loads(value)
             if isinstance(parsed, list):
                 return parsed
+            # Single object → wrap in a list
+            if isinstance(parsed, dict):
+                return [parsed]
         except (_json.JSONDecodeError, TypeError):
             pass
-    raise ValueError(f"Expected a JSON array (list of objects), got: {type(value).__name__}")
+        # Fallback: MCP frameworks may deliver Python-repr strings (single
+        # quotes, True/False instead of true/false).  Try ast.literal_eval.
+        import ast as _ast
+        try:
+            parsed = _ast.literal_eval(value)
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, dict):
+                return [parsed]
+        except (ValueError, SyntaxError):
+            pass
+    # Single dict passed as a native object → wrap in a list
+    if isinstance(value, dict):
+        return [value]
+    raise ValueError(f"Expected a JSON array (list of objects), got: {type(value).__name__}. Value: {repr(value)[:200]}")
 
 
 def _generate_totp(secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30) -> Dict[str, Any]:

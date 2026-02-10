@@ -103,11 +103,9 @@ Use `probely_update_finding` or `probely_bulk_update_findings` to mark findings 
 
 ## Multiple Targets: Use Subagents in Parallel
 
-When the user asks to add, configure, or onboard **more than one** SAW target in a single request, you **MUST** launch a separate `generalPurpose` subagent for each target via the Task tool. Do NOT process them sequentially yourself.
+When the user asks to add, configure, or onboard **more than one** SAW target in a single request, you **MUST** launch a separate `generalPurpose` subagent for each target via the Task tool.
 
-Each subagent prompt must instruct the subagent to read the relevant skill file first (e.g. the `saw-web-target-configuration` skill).
-
-**CRITICAL: All subagent Task tool calls MUST be in a single assistant message** so they run concurrently (max 4 at a time). Do NOT wait for one subagent to finish before launching the next — that defeats the purpose. Example: if the user provides 3 targets, your response must contain 3 Task tool calls, not 1 followed by another after it completes.
+**CRITICAL: All Task tool calls MUST be in a single assistant message.** Keep each subagent prompt short (target details + instruction to read the skill file). Do NOT embed the full skill text in each prompt — that makes the message too large and causes sequential execution. Each subagent reads the skill file itself.
 
 ### Subagent workspace discipline
 
