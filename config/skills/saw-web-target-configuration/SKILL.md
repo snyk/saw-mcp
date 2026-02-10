@@ -9,7 +9,19 @@ Configure web application targets for Snyk API&Web (SAW/Probely) security scanni
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
-**Delegating to subagents:** When spinning up subagents to configure targets in parallel, include this skill file's path in each task prompt so the subagent reads it first and follows the full workflow.
+## Multiple Targets — MUST Use Subagents
+
+**When the user provides more than one target, you MUST launch a separate `generalPurpose` subagent for each target immediately.** Do NOT process targets one at a time yourself.
+
+1. Read this skill file yourself first.
+2. For **each** target, launch a `generalPurpose` subagent (via the Task tool) with a prompt that:
+   - Includes the full contents of this skill file so the subagent follows the complete workflow.
+   - Provides all known details for that target (URL, credentials, 2FA seed, name if given).
+   - Tells the subagent to return a summary (target ID, name, URL, login sequence status, logout detection status, extra hosts, SAW link).
+3. Launch **all** subagents in a **single message** so they run in parallel (up to 4 at a time; queue the rest).
+4. After all subagents finish, compile their summaries into a single table for the user.
+
+> **Why?** Each target's workflow (browser recording, API configuration) is independent. Parallelizing via subagents is faster and avoids the risk of a browser lock or error on one target blocking the others.
 
 ## Web Application Onboarding Workflow
 
@@ -184,10 +196,19 @@ probely_create_target(name=..., url, desc?)
 # in the sequence's fill_value step for the OTP input.
 result = probely_configure_2fa_totp(targetId, otp_secret="THE_SEED")
 # result["otp_code"] → e.g. "829182" — use this in the sequence
+#
+# Build the COMPLETE sequence JSON (including the OTP fill step with the
+# otp_code above) and pass it all to a single probely_create_sequence call.
 
 # 3. Create the login sequence with custom field mappings for credentials
 # Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content.
 # For 2FA, hardcode the otp_code from step 2 in the OTP fill_value step (do NOT use custom fields for OTP).
+#
+# COMMON MISTAKES — read before calling:
+#   - content must be a JSON string of an array, e.g. "[{\"type\":\"goto\",...}]".
+#     Do NOT double-serialize (string of a string).
+#   - custom_field_mappings is REQUIRED when content uses [CUSTOM_USERNAME] or
+#     [CUSTOM_PASSWORD]. Omitting it causes a 400 error.
 probely_create_sequence(
   targetId,
   name="Login Sequence",

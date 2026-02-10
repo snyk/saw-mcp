@@ -16,6 +16,15 @@ These rules define behavioral constraints and proactive behaviors for projects u
 - ALWAYS use the `probely_*` MCP tools provided by the SAW MCP server
 - The SAW MCP server handles authentication, retries, and error handling for you
 
+### If a `probely_*` tool call fails, fix the parameters and retry
+
+NEVER work around MCP tool failures by:
+- Writing Python/shell scripts to call the Probely API directly
+- Using curl or any HTTP client as a substitute
+- Creating helper files to generate or fix payloads
+
+The MCP tools handle formatting (e.g., pretty-printing login sequences). Bypassing them loses that.
+
 ### Trigger Keywords
 
 Use SAW MCP tools when the user mentions any of:
@@ -91,6 +100,18 @@ Use `probely_update_finding` or `probely_bulk_update_findings` to mark findings 
 - `fixed` - after the user has applied the fix
 - `false_positive` - if verified as not exploitable
 - `accepted_risk` - with user approval for business-justified risks
+
+## Multiple Targets: Use Subagents in Parallel
+
+When the user asks to add, configure, or onboard **more than one** SAW target in a single request, you **MUST** launch a separate `generalPurpose` subagent for each target via the Task tool. Do NOT process them sequentially yourself.
+
+Each subagent prompt must instruct the subagent to read the relevant skill file first (e.g. the `saw-web-target-configuration` skill).
+
+**CRITICAL: All subagent Task tool calls MUST be in a single assistant message** so they run concurrently (max 4 at a time). Do NOT wait for one subagent to finish before launching the next — that defeats the purpose. Example: if the user provides 3 targets, your response must contain 3 Task tool calls, not 1 followed by another after it completes.
+
+### Subagent workspace discipline
+
+Subagents configuring SAW targets must NOT grep or search the local workspace for patterns (e.g., searching for "OTP" examples in project source files). The workspace content is unrelated to target configuration. All necessary context must come from the task prompt and the MCP tool responses.
 
 ## Reporting
 
