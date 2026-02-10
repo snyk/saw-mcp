@@ -13,7 +13,7 @@ When you finish adding/configuring a target, always summarize it with a table, a
 
 When the user wants to scan an **API**, follow this workflow:
 
-**Target name:** Use the name the user provides. **If the user does not specify a name**, use **Agentic - &lt;API name&gt;** where the API name is derived from the schema title, Postman collection name, or the domain. Example: no name given for https://api.example.com → **Agentic - Example API**.
+**Target name:** Use the name the user provides. **If the user does not specify a name**, use the API name derived from the schema title, Postman collection name, or the domain. Example: no name given for https://api.example.com → **Example API**. A default label (e.g. "Agentic") is auto-applied from the MCP server config — **do NOT look up, create, or pass labels manually** unless the user explicitly asks for additional labels.
 
 ### Step 1: Obtain API Schema
 

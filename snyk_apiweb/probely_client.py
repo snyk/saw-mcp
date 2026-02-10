@@ -173,6 +173,17 @@ class ProbelyClient:
     def delete_label(self, label_id: str) -> Dict[str, Any]:
         return self.request("DELETE", f"/labels/{label_id}/")[1]
 
+    def resolve_labels(self, label_names: list[str]) -> list[Dict[str, str]]:
+        """Convert label name strings to API-compatible label objects.
+
+        The Probely target API accepts labels as ``[{"name": "..."}]`` and
+        performs its own name-based matching (reuses existing, creates missing).
+        No lookups or ID resolution needed.
+        """
+        if not label_names:
+            return []
+        return [{"name": name} for name in label_names]
+
     # Targets
     def list_targets(self, page: Optional[int] = None, search: Optional[str] = None) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
@@ -185,19 +196,36 @@ class ProbelyClient:
     def get_target(self, target_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/targets/{target_id}/")[1]
 
-    def create_target(self, name: str, url: str, desc: Optional[str] = None, label_ids: Optional[list[str]] = None) -> Dict[str, Any]:
-        """Create a new target. Both name and URL must be nested under 'site' per the Probely API."""
+    def create_target(self, name: str, url: str, desc: Optional[str] = None,
+                      label_names: Optional[list[str]] = None,
+                      default_label: Optional[Dict[str, str]] = None,
+                      name_prefix: str = "") -> Dict[str, Any]:
+        """Create a new target. Both name and URL must be nested under 'site' per the Probely API.
+
+        ``label_names`` accepts a list of label name strings (e.g. ``["Production"]``).
+        ``default_label`` from config (e.g. ``{"name": "Agentic"}``) is auto-merged.
+        ``name_prefix`` from config (e.g. ``"Agentic - "``) is prepended to the target name.
+        The Probely API resolves labels by name — no lookups needed.
+        """
         payload: Dict[str, Any] = {
             "site": {
-                "name": name,
+                "name": f"{name_prefix}{name}",
                 "url": url
             }
         }
         if desc:
             payload["site"]["desc"] = desc
-        if label_ids:
-            # Labels must be provided as list of label objects with 'id' field
-            payload["labels"] = [{"id": lid} for lid in label_ids]
+
+        # Build labels: config default + any user-specified, deduplicated by name
+        seen: set[str] = set()
+        labels: list[Dict[str, str]] = []
+        for lbl in ([default_label] if default_label else []) + self.resolve_labels(label_names or []):
+            if lbl["name"] not in seen:
+                labels.append(lbl)
+                seen.add(lbl["name"])
+        if labels:
+            payload["labels"] = labels
+
         return self.request("POST", "/targets/", json=payload)[1]
 
     def update_target(self, target_id: str, **fields: Any) -> Dict[str, Any]:
@@ -238,10 +266,15 @@ class ProbelyClient:
     # Authentication Configuration (via target site settings)
     def configure_form_login(self, target_id: str, login_url: str, username_field: str, password_field: str,
                              username: str, password: str, check_pattern: Optional[str] = None) -> Dict[str, Any]:
-        """Configure form-based login authentication for a target."""
+        """Configure form-based login authentication for a target.
+
+        Sequence login is automatically disabled since the Probely API
+        does not allow both to be active simultaneously.
+        """
         payload: Dict[str, Any] = {
             "site": {
                 "has_form_login": True,
+                "has_sequence_login": False,
                 "form_login_url": login_url,
                 "form_login": [
                     {"name": username_field, "value": username},
@@ -255,13 +288,19 @@ class ProbelyClient:
         return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
 
     def configure_sequence_login(self, target_id: str, enabled: bool = True) -> Dict[str, Any]:
-        """Enable or disable sequence-based login authentication for a target."""
+        """Enable or disable sequence-based login authentication for a target.
+
+        When enabling sequence login, form login is automatically disabled
+        since the Probely API does not allow both to be active simultaneously.
+        """
         payload: Dict[str, Any] = {
             "site": {
                 "has_sequence_login": enabled,
                 "auth_enabled": enabled
             }
         }
+        if enabled:
+            payload["site"]["has_form_login"] = False
         return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
 
     def configure_2fa(self, target_id: str, otp_secret: str, otp_placeholder: str = "{{OTP}}",
@@ -503,9 +542,9 @@ class ProbelyClient:
         return self.request("GET", f"/integrations/{integration_id}/")[1]
 
     # API Target via Postman Collection (best-effort; endpoint may vary by Probely account)
-    def create_api_target_from_postman(self, name: str, target_url: str, postman_json: Dict[str, Any], desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
+    def create_api_target_from_postman(self, name: str, target_url: str, postman_json: Dict[str, Any], desc: Optional[str] = None, label_names: Optional[list[str]] = None, default_label: Optional[Dict[str, str]] = None, name_prefix: str = "") -> Dict[str, Any]:
         # Step 1: Create target
-        target = self.create_target(name=name, url=target_url, desc=desc, labels=labels)
+        target = self.create_target(name=name, url=target_url, desc=desc, label_names=label_names, default_label=default_label, name_prefix=name_prefix)
         target_id = target.get("id") or target.get("target_id") or target.get("uuid")
         if not target_id:
             return {"error": {"message": "Could not determine created target id", "target_response": target}}
@@ -536,9 +575,9 @@ class ProbelyClient:
         }
 
     # API Target via OpenAPI Schema (best-effort; endpoint may vary by Probely account)
-    def create_api_target_from_openapi(self, name: str, target_url: str, openapi_schema: Dict[str, Any], desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
+    def create_api_target_from_openapi(self, name: str, target_url: str, openapi_schema: Dict[str, Any], desc: Optional[str] = None, label_names: Optional[list[str]] = None, default_label: Optional[Dict[str, str]] = None, name_prefix: str = "") -> Dict[str, Any]:
         # Step 1: Create target
-        target = self.create_target(name=name, url=target_url, desc=desc, labels=labels)
+        target = self.create_target(name=name, url=target_url, desc=desc, label_names=label_names, default_label=default_label, name_prefix=name_prefix)
         target_id = target.get("id") or target.get("target_id") or target.get("uuid")
         if not target_id:
             return {"error": {"message": "Could not determine created target id", "target_response": target}}

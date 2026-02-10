@@ -17,7 +17,7 @@ When the user wants to scan a **web application with authentication**, follow th
 
 Ask the user for (or derive):
 1. **Target URL** (e.g., https://app.example.com)
-2. **Target name**: use the name the user provides. **If the user does not specify a name**, use **Agentic - &lt;web page title&gt;** where the page title is the site's `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Agentic - Patch Mutual**.
+2. **Target name**: use the name the user provides. **If the user does not specify a name**, use the site's `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Patch Mutual**. A default label (e.g. "Agentic") is auto-applied from the MCP server config — **do NOT look up, create, or pass labels manually** unless the user explicitly asks for additional labels.
 3. **Login credentials** (username/email and password)
 4. Any **2FA/MFA requirements** (including the TOTP seed if applicable)
 
@@ -32,8 +32,10 @@ Ask the user for (or derive):
 
 1. **Navigate to target URL** using Playwright
 2. **Find the login page** - look for login links, buttons, or redirects. **Record the login page URL.**
-3. **Identify login form elements** - get the CSS selectors for username, password fields, and submit button
-4. **Fill credentials and submit** - enter the provided credentials and click submit
+3. **Inspect the current step's form elements** - run the inspection script (see below) to detect what's visible. The script auto-detects whether this is a single-page or multi-step login:
+   - **Single-page login** (password field present): username, password, and submit are all returned at once.
+   - **Multi-step login** (no password field): only the username/email and a "Next"/"Continue" button are returned. Fill the username, click next, then **run the inspection script again** on the second screen to get the password field and submit button.
+4. **Fill credentials and submit** - for each step, fill the visible fields and click the step's button. Record selectors from each step for the login sequence JSON.
 5. **Handle 2FA if needed** - if 2FA is required:
    - **Generate the actual TOTP code** from the seed using the standard TOTP algorithm (SHA1, 6 digits, 30-second window)
    - Fill the OTP field with this **actual generated code** (e.g., "123456"), NOT a placeholder
@@ -49,49 +51,109 @@ Ask the user for (or derive):
 
 Before generating the login sequence JSON, **always inspect the actual HTML elements** to get accurate selectors. Do NOT assume element types.
 
-Use `browser_evaluate` to inspect form elements after navigating to the login page:
+Use `browser_evaluate` to inspect form elements after navigating to the login page.
+
+**Run this script on every step of the login flow.** It auto-detects the current step:
+- If a password field is visible → **single-page login** (returns username + password + submit).
+- If no password field → **multi-step login** (returns only the current step's input + button). After filling and clicking "Next", run it again on the next screen.
 
 ```javascript
 () => {
-  const usernameField = document.querySelector('input[type="text"], input[type="email"], input[name*="user"], input[name*="email"]');
+  // Helpers
+  const isStable = (id) => id && !/\d{3,}|[a-f0-9]{8,}/.test(id);
+  const selectorFor = (el) => {
+    if (!el) return null;
+    if (el.name) return `${el.tagName.toLowerCase()}[name="${el.name}"]`;
+    if (isStable(el.id)) return `#${el.id}`;
+    if (el.type) return `${el.tagName.toLowerCase()}[type="${el.type}"]`;
+    return null;
+  };
+  const describe = (el) => !el ? null : {
+    tag: el.tagName, id: el.id, name: el.name, type: el.type,
+    value: el.value, text: el.textContent?.trim()?.slice(0, 40),
+    isStableId: isStable(el.id), selector: selectorFor(el)
+  };
+  const describeSubmit = (el) => {
+    if (!el) return null;
+    const d = describe(el);
+    // For submit elements, prefer compound selectors when possible
+    d.selector = el.name
+      ? `${el.tagName.toLowerCase()}[type="${el.type || 'submit'}"][name="${el.name}"]`
+      : d.selector;
+    return d;
+  };
+
   const passwordField = document.querySelector('input[type="password"]');
-  
-  // Find submit element (the element that submits the login form)
-  const submitButton = document.querySelector('button[type="submit"]');
-  const submitInput = document.querySelector('input[type="submit"]');
-  const submitElement = submitButton || submitInput;
-  
-  return {
-    username: {
-      tag: usernameField?.tagName,
-      id: usernameField?.id,
-      name: usernameField?.name,
-      type: usernameField?.type,
-      // Check if ID looks random/generated (contains numbers, long strings)
-      isStableId: usernameField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(usernameField.id),
-      selector: usernameField?.name ? `input[name="${usernameField.name}"]` :
-                (usernameField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(usernameField.id)) ? `#${usernameField.id}` : null
-    },
-    password: {
-      tag: passwordField?.tagName,
-      id: passwordField?.id,
-      name: passwordField?.name,
-      isStableId: passwordField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(passwordField.id),
-      selector: passwordField?.name ? `input[name="${passwordField.name}"]` :
-                (passwordField?.id && !/\d{3,}|[a-f0-9]{8,}/.test(passwordField.id)) ? `#${passwordField.id}` : null
-    },
-    submit: {
-      tag: submitElement?.tagName,
-      type: submitElement?.type,
-      id: submitElement?.id,
-      name: submitElement?.name,
-      value: submitElement?.value,
-      isStableId: submitElement?.id && !/\d{3,}|[a-f0-9]{8,}/.test(submitElement.id),
-      selector: submitElement?.name ? 
-        `${submitElement.tagName.toLowerCase()}[type="submit"][name="${submitElement.name}"]` :
-        (submitElement?.id && !/\d{3,}|[a-f0-9]{8,}/.test(submitElement.id)) ? `#${submitElement.id}` :
-        `${submitElement.tagName.toLowerCase()}[type="submit"]`
+
+  // ── Single-page login: password field IS visible ──
+  if (passwordField) {
+    const form = passwordField.closest('form')
+      || passwordField.closest('div, table, section, fieldset, main');
+
+    let usernameField = null;
+    if (form) {
+      usernameField = form.querySelector(
+        'input[type="text"], input[type="email"], input[name*="user"], input[name*="email"], input[name*="login"]'
+      );
     }
+    if (!usernameField) {
+      const all = Array.from(document.querySelectorAll('input[type="text"], input[type="email"]'));
+      usernameField = all.reverse().find(
+        el => el.compareDocumentPosition(passwordField) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    }
+
+    let submitEl = null;
+    if (form) {
+      submitEl = form.querySelector('input[type="submit"], button[type="submit"], button:not([type])');
+    }
+    if (!submitEl) {
+      const all = Array.from(document.querySelectorAll('input[type="submit"], button[type="submit"]'));
+      submitEl = all.find(
+        el => passwordField.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING
+      ) || all[all.length - 1];
+    }
+
+    return {
+      step: 'single_page',
+      username: describe(usernameField),
+      password: describe(passwordField),
+      submit: describeSubmit(submitEl)
+    };
+  }
+
+  // ── Multi-step login: no password field on this screen ──
+  // Find the primary visible input (username/email) and the step's action button
+  const candidates = Array.from(document.querySelectorAll(
+    'input[type="text"], input[type="email"], input[name*="user"], input[name*="email"], input[name*="login"]'
+  )).filter(el => el.offsetParent !== null); // visible only
+
+  // Pick the most likely login input (prefer inputs inside a form, skip search boxes)
+  let primaryInput = null;
+  for (const el of candidates) {
+    const inForm = el.closest('form');
+    const looksLikeSearch = /search|query|q$/i.test(el.name || '') || /search|query|q$/i.test(el.id || '');
+    if (!looksLikeSearch) { primaryInput = el; break; }
+  }
+  if (!primaryInput && candidates.length) primaryInput = candidates[0];
+
+  const container = primaryInput
+    ? (primaryInput.closest('form') || primaryInput.closest('div, table, section, fieldset, main'))
+    : document.body;
+
+  let stepButton = null;
+  if (container) {
+    stepButton = container.querySelector('input[type="submit"], button[type="submit"], button:not([type])');
+  }
+  if (!stepButton) {
+    stepButton = document.querySelector('input[type="submit"], button[type="submit"]');
+  }
+
+  return {
+    step: 'multi_step',
+    note: 'No password field on this screen. Fill the input, click the button, then run this script again on the next screen.',
+    input: describe(primaryInput),
+    button: describeSubmit(stepButton)
   };
 }
 ```
@@ -110,7 +172,9 @@ Use `browser_evaluate` to inspect form elements after navigating to the login pa
 After recording, generate the login sequence JSON, as **formatted/pretty-printed JSON** (not minified), and use these MCP tools.
 
 ```
-# 1. Create the target (if user didn't specify a name, use "Agentic - <Page Title>" from the page's <title>)
+# 1. ALWAYS create a new target — do NOT search for or reuse existing targets, even if one with the same URL already exists.
+# The default label (e.g. "Agentic") is auto-applied from config — no need to pass labels here.
+# Only pass labels= if the user explicitly requests additional labels.
 probely_create_target(name=..., url, desc?)
 
 # 2. Create the login sequence with custom field mappings for credentials

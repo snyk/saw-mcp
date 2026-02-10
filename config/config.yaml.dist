@@ -6,6 +6,16 @@ saw:
 server:
   name: "Snyk API&Web"
 
+# Default settings auto-applied to every new target (all fields optional)
+target_defaults:
+  # Label automatically applied to targets created by this MCP server.
+  # If the label does not exist it will be created automatically. Go to the UI to set the color.
+  # Remove or leave empty to not set a label.
+  label: "Agentic"
+  # Prefix prepended to every target name, e.g. "Agentic - My App".
+  # Remove or leave empty to use the target name as-is.
+  # name_prefix: "Agentic - "
+
 # Tool filtering configuration
 # Use 'enabled' for whitelist (only these tools available) or 'disabled' for blacklist
 # If 'enabled' is set, it takes precedence over 'disabled'

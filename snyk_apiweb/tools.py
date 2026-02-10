@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional
 from functools import wraps
 from fastmcp import FastMCP
 from .probely_client import ProbelyClient
-from .config import load_config, get_probely_api_key, get_probely_base_url, get_tool_filter, is_tool_enabled
+from .config import load_config, get_probely_api_key, get_probely_base_url, get_tool_filter, get_target_defaults, is_tool_enabled
 
 
 def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
@@ -36,6 +36,7 @@ def build_server() -> FastMCP:
     api_key = get_probely_api_key(cfg)
     client = ProbelyClient(base_url=base_url, api_key=api_key)
     tool_filter = get_tool_filter(cfg)
+    target_defaults = get_target_defaults(cfg)
 
     app = FastMCP(cfg.get("server", {}).get("name", "Snyk APIWeb"))
 
@@ -119,14 +120,18 @@ def build_server() -> FastMCP:
         return client.get_target(target_id=targetId)
 
     @register_tool("probely_create_target")
-    def probely_create_target(name: str, url: str, desc: Optional[str] = None, label_ids: Optional[list[str]] = None) -> Dict[str, Any]:
-        """Create a new target. Use label_ids (not label names) if you want to assign labels."""
-        return client.create_target(name=name, url=url, desc=desc, label_ids=label_ids)
+    def probely_create_target(name: str, url: str, desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
+        """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
+        Existing labels are reused; missing ones are created automatically."""
+        return client.create_target(name=name, url=url, desc=desc, label_names=labels,
+                                    default_label=target_defaults.get("default_label"),
+                                    name_prefix=target_defaults.get("name_prefix", ""))
 
     @register_tool("probely_update_target")
     def probely_update_target(targetId: str, name: Optional[str] = None, url: Optional[str] = None,
-                              desc: Optional[str] = None, label_ids: Optional[list[str]] = None) -> Dict[str, Any]:
-        """Update a target. Use label_ids (not label names) if you want to update labels."""
+                              desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
+        """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
+        Existing labels are reused; missing ones are created automatically."""
         fields: Dict[str, Any] = {}
         site_fields: Dict[str, Any] = {}
         if name is not None:
@@ -137,8 +142,8 @@ def build_server() -> FastMCP:
             site_fields["desc"] = desc
         if site_fields:
             fields["site"] = site_fields
-        if label_ids is not None:
-            fields["labels"] = [{"id": lid} for lid in label_ids]
+        if labels is not None:
+            fields["labels"] = client.resolve_labels(labels)
         return client.update_target(target_id=targetId, **fields)
 
     @register_tool("probely_delete_target")
@@ -396,7 +401,9 @@ def build_server() -> FastMCP:
             collection = r.json()
         if not collection:
             return {"error": {"message": "Provide postman_collection_url or postman_collection_json"}}
-        return client.create_api_target_from_postman(name=name, target_url=target_url, postman_json=collection, desc=desc, labels=labels)
+        return client.create_api_target_from_postman(name=name, target_url=target_url, postman_json=collection, desc=desc, label_names=labels,
+                                                        default_label=target_defaults.get("default_label"),
+                                                        name_prefix=target_defaults.get("name_prefix", ""))
 
     # API Target from OpenAPI
     @register_tool("probely_create_api_target_from_openapi")
@@ -418,6 +425,8 @@ def build_server() -> FastMCP:
                 schema = r.json()
         if not schema:
             return {"error": {"message": "Provide openapi_schema_url or openapi_schema_json"}}
-        return client.create_api_target_from_openapi(name=name, target_url=target_url, openapi_schema=schema, desc=desc, labels=labels)
+        return client.create_api_target_from_openapi(name=name, target_url=target_url, openapi_schema=schema, desc=desc, label_names=labels,
+                                                        default_label=target_defaults.get("default_label"),
+                                                        name_prefix=target_defaults.get("name_prefix", ""))
 
     return app

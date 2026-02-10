@@ -55,6 +55,29 @@ def get_probely_api_key(cfg: Dict[str, Any]) -> str:
     return key
 
 
+def get_target_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Get default settings auto-applied to new targets.
+
+    Returns a dict that may contain:
+    - default_label: a ``{"name": "..."}`` dict ready for the Probely target
+      API, or ``None`` if not configured.  The API resolves labels by name
+      (reuses existing, creates missing) so no ID or lookup is needed.
+    - name_prefix: a string prepended to every target name (e.g. ``"Agentic - "``),
+      or ``""`` if not configured.
+    """
+    td = cfg.get("target_defaults") or {}
+
+    default_label = None
+    label_name = td.get("label") or ""
+    if label_name:
+        default_label = {"name": label_name}
+
+    return {
+        "default_label": default_label,
+        "name_prefix": td.get("name_prefix") or "",
+    }
+
+
 def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """Get tool filtering configuration.
     
