@@ -239,7 +239,8 @@ probely_create_sequence(
 probely_configure_sequence_login(targetId, enabled=True)
 
 # 5. Configure logout detection - see "Configuring Logout Detection" section below for details
-probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=...)
+# logout_condition defaults to 'any' (OR). Use 'all' (AND) when some detectors match even when logged in.
+probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=..., logout_condition=...)
 
 # 6. If external API hosts were detected on the target URL or during the login flow, add them as extra hosts
 probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")
@@ -285,9 +286,14 @@ Add only the hostnames from requests that seem to be related to the target. Excl
      enabled=True,
      check_session_url="https://app.example.com/dashboard",  # FULL URL (not "/dashboard")
      logout_detector_type="sel",  # REQUIRED - always use "sel" for CSS selectors
-     logout_detector_value="#uid"  # REQUIRED - use the username field CSS selector from your login sequence
+     logout_detector_value="#uid",  # REQUIRED - use the username field CSS selector from your login sequence
+     logout_condition="any"  # "any" (default, OR logic) or "all" (AND logic)
    )
    ```
+   
+   **`logout_condition` parameter:**
+   - `"any"` (default): The target is considered logged out if **ANY** detector matches (OR logic). Use when each detector uniquely identifies the logged-out state.
+   - `"all"`: The target is considered logged out only if **ALL** detectors match (AND logic). Use when some detector patterns (e.g., `input[name='username']`) also appear on the logged-in page in a different context (e.g., a read-only profile field). With `"all"`, you combine that ambiguous detector with another unambiguous one so both must match.
    
    **Important**: Always use the **FULL URL** including protocol and domain (e.g., `https://app.example.com/dashboard`), NOT relative paths (e.g., `/dashboard`).
 

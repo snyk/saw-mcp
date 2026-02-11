@@ -309,7 +309,8 @@ def build_server() -> FastMCP:
     def probely_configure_logout_detection(targetId: str, enabled: bool = True, 
                                            check_session_url: Optional[str] = None,
                                            logout_detector_type: Optional[str] = None,
-                                           logout_detector_value: Optional[str] = None) -> Dict[str, Any]:
+                                           logout_detector_value: Optional[str] = None,
+                                           logout_condition: Optional[str] = None) -> Dict[str, Any]:
         """Configure logout detection for a target. This helps the scanner detect when it needs to re-authenticate.
         
         The Probely API requires BOTH check_session_url AND at least one logout detector to be defined
@@ -328,13 +329,18 @@ def build_server() -> FastMCP:
                                   Options: 'sel' (CSS selector - recommended), 'text' (text after logout), 'url' (redirect URL).
                                   If not provided, auto-extracts CSS selector from login sequence, or falls back to 'text: Login'.
             logout_detector_value: Value for the logout detector. Required if logout_detector_type is provided.
+            logout_condition: When to consider the target logged out based on detectors.
+                              'any' (default) = logged out if ANY detector matches (OR logic).
+                              'all' = logged out only if ALL detectors match (AND logic).
+                              Use 'all' when some detector patterns also appear on the logged-in page.
         """
         return client.configure_logout_detection(
             target_id=targetId, 
             enabled=enabled, 
             check_session_url=check_session_url,
             logout_detector_type=logout_detector_type,
-            logout_detector_value=logout_detector_value
+            logout_detector_value=logout_detector_value,
+            logout_condition=logout_condition
         )
 
     # Extra Hosts

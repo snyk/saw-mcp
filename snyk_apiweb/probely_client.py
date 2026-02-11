@@ -358,7 +358,8 @@ class ProbelyClient:
     def configure_logout_detection(self, target_id: str, enabled: bool = True, 
                                    check_session_url: Optional[str] = None,
                                    logout_detector_type: Optional[str] = None,
-                                   logout_detector_value: Optional[str] = None) -> Dict[str, Any]:
+                                   logout_detector_value: Optional[str] = None,
+                                   logout_condition: Optional[str] = None) -> Dict[str, Any]:
         """Configure logout detection for a target.
         
         Args:
@@ -369,6 +370,10 @@ class ProbelyClient:
                                   Required when enabling logout detection if no detectors exist.
             logout_detector_value: Value for the logout detector. 
                                    Required when enabling logout detection if no detectors exist.
+            logout_condition: When to consider the target logged out based on detectors.
+                              'any' (default) = logged out if ANY detector matches (OR logic).
+                              'all' = logged out only if ALL detectors match (AND logic).
+                              Use 'all' when some detector patterns also appear on the logged-in page.
         
         Note: The Probely API requires BOTH check_session_url AND at least one logout detector 
         to be defined before logout_detection can be enabled. This function handles the proper
@@ -411,6 +416,8 @@ class ProbelyClient:
                     "logout_detection_enabled": True
                 }
             }
+            if logout_condition is not None:
+                enable_payload["site"]["logout_condition"] = logout_condition
             return self.request("PATCH", f"/targets/{target_id}/", json=enable_payload)[1]
         else:
             # Disabling logout detection or setting URL without enabling
@@ -421,6 +428,8 @@ class ProbelyClient:
             }
             if check_session_url is not None:
                 payload["site"]["check_session_url"] = check_session_url
+            if logout_condition is not None:
+                payload["site"]["logout_condition"] = logout_condition
             return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
 
     def _find_login_sequence_selector(self, target_id: str) -> Optional[str]:

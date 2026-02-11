@@ -47,13 +47,13 @@ saw:
 {
   "mcpServers": {
     "SAW": {
-      "command": "./venv/bin/python",
+      "command": "/<basedir>/saw-mcpserver/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "MCP_SAW_CONFIG_PATH": "./config/config.yaml"
+        "PYTHONPATH": "/<basedir>/saw-mcpserver",
+        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcpserver/config/config.yaml"
       }
     }
-  }
 }
 ```
 
