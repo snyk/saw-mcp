@@ -28,7 +28,7 @@ Return a summary with: target ID, name, URL, login sequence status, logout detec
 
 **Do NOT embed the full skill text in each prompt** — that makes prompts too large to launch in parallel. Each subagent can read the skill file itself.
 
-Launch **all** Task tool calls in a **single assistant message** (max 4 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
+Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
 
 ## Web Application Onboarding Workflow
 
@@ -62,8 +62,16 @@ Ask the user for (or derive):
    - Fill the OTP field with the returned **actual code** (e.g., "123456") to complete the login during recording
    - Later, when configuring the target, `probely_configure_2fa_totp` will auto-generate a fresh code for the sequence
 6. **Verify login success and record post-login URL** - confirm login succeeded by checking for logged-in indicators. **IMPORTANT: Record the absolute URL you land on after successful login** (e.g., `https://example.com/dashboard`) - this will be used as the `check_session_url` for logout detection.
-7. **Check for API calls to external hosts** - Use `browser_network_requests` to get all XHR/fetch requests made during login. Identify any requests to hostnames different from the target URL.
-8. **Generate the login sequence JSON** - When creating the sequence JSON from the recorded steps:
+7. **Verify login selectors are NOT on the post-login page** - After login succeeds, check whether the CSS selectors used in the login sequence (e.g., username/password fields) still exist on the post-login page. Use `browser_evaluate` to test each selector:
+   ```javascript
+   () => ({
+     usernameExists: !!document.querySelector("input[name='username']"),
+     passwordExists: !!document.querySelector("input[name='password']")
+   })
+   ```
+   If any selector **still exists** after login (e.g., a read-only username field on a profile section), record this — you will need it to pick a proper `check_session_url` and a more specific logout detector (see "Configuring Logout Detection" below).
+8. **Check for API calls to external hosts** - Use `browser_network_requests` to get all XHR/fetch requests made during login. Identify any requests to hostnames different from the target URL.
+9. **Generate the login sequence JSON** - When creating the sequence JSON from the recorded steps:
    - Replace the actual username value with `[CUSTOM_USERNAME]` placeholder
    - Replace the actual password value with `[CUSTOM_PASSWORD]` placeholder
    - **Keep 2FA OTP codes hardcoded** (do NOT replace with custom fields)
@@ -264,38 +272,52 @@ Add only the hostnames from requests that seem to be related to the target. Excl
 
 ### Configuring Logout Detection
 
-**Always configure logout detection** after setting up authentication:
+**Always configure logout detection** after setting up authentication.
 
-1. **Identify the check session URL** - **IMPORTANT: Use the FULL URL you get redirected to immediately after a successful login.** This is the post-login landing page URL, NOT the login page URL or root URL.
-   - Example: If login redirects to `/admin.php` or `/dashboard`, use the **full URL**: `https://app.example.com/admin.php`
-   - This URL should return 200 when logged in, and 401/403 or redirect to login when logged out
-   - **Record the FULL URL during the login sequence** - after clicking the login button and waiting for navigation, capture `window.location.href`
-   - **ALWAYS use absolute URLs** (e.g., `https://app.example.com/dashboard`) - **NEVER use relative paths** (e.g., `/dashboard`)
+The login form selectors you recorded may also exist on the post-login page (e.g., a read-only username field on a profile section, or a password field inside a "change password" form). If you don't account for this, the scanner will think it's always logged out and fail. **Step 7 above detects this.** Use the guidance below to handle it.
 
-2. **Use CSS selectors from the login form as logout detectors** - The best logout detectors are the CSS selectors you already recorded in the login sequence:
-   - Username field selector (e.g., `input[placeholder='Enter Username...']`)
-   - Password field selector (e.g., `input[type='password']`)
-   - Use selectors or text that are only visible when the user is logged out. The selectors or text shouldn't exist on the page after the login. For text, the word "login" can be too common.
-   
-   If these elements appear on the page, it means the user was logged out.
+#### 1. Pick the `check_session_url`
 
-3. **Configure it using the MCP tool** - **CRITICAL: You MUST explicitly provide both `logout_detector_type="sel"` and `logout_detector_value` parameters. Do NOT rely on automatic detection.**:
-   ```
-   probely_configure_logout_detection(
-     targetId,
-     enabled=True,
-     check_session_url="https://app.example.com/dashboard",  # FULL URL (not "/dashboard")
-     logout_detector_type="sel",  # REQUIRED - always use "sel" for CSS selectors
-     logout_detector_value="#uid",  # REQUIRED - use the username field CSS selector from your login sequence
-     logout_condition="any"  # "any" (default, OR logic) or "all" (AND logic)
-   )
-   ```
-   
-   **`logout_condition` parameter:**
-   - `"any"` (default): The target is considered logged out if **ANY** detector matches (OR logic). Use when each detector uniquely identifies the logged-out state.
-   - `"all"`: The target is considered logged out only if **ALL** detectors match (AND logic). Use when some detector patterns (e.g., `input[name='username']`) also appear on the logged-in page in a different context (e.g., a read-only profile field). With `"all"`, you combine that ambiguous detector with another unambiguous one so both must match.
-   
-   **Important**: Always use the **FULL URL** including protocol and domain (e.g., `https://app.example.com/dashboard`), NOT relative paths (e.g., `/dashboard`).
+- **Default**: Use the **FULL absolute URL** you land on immediately after login (e.g., `https://app.example.com/dashboard`). Record it via `window.location.href` during the login sequence.
+- **If login selectors still exist on the post-login landing page**: Pick a **different authenticated URL** where those selectors do NOT exist — for example a `/settings`, `/profile`, or `/dashboard` page. Browse the post-login page during recording to find a suitable link.
+- **ALWAYS use absolute URLs** (e.g., `https://app.example.com/settings`) — **NEVER relative paths** (e.g., `/settings`).
+
+#### 2. Pick the logout detector
+
+The best logout detectors are CSS selectors from the login form. But they **must only exist when logged out**.
+
+- **If the selector does NOT exist on the post-login page** (the common case): use it directly.
+  ```
+  logout_detector_type="sel"
+  logout_detector_value="input[name='username']"
+  ```
+- **If the selector DOES exist on the post-login page** (detected in step 7): use a **more specific CSS selector** that includes a parent element unique to the login form. For example, if the login form has `id="formlogin"`:
+  ```
+  logout_detector_type="sel"
+  logout_detector_value="#formlogin input[name='username']"
+  ```
+  Or scope via the form's action, a wrapping div, etc. The goal is a selector that **only matches the login form**, not the logged-in profile/settings page.
+
+- **`logout_condition` parameter** — controls how multiple detectors combine:
+  - `"any"` (default, OR): logged out if **ANY** detector matches. Use when each detector uniquely identifies the logged-out state.
+  - `"all"` (AND): logged out only if **ALL** detectors match. Use as a **fallback** when you cannot craft a selector specific enough to avoid the post-login page. Add a second unambiguous detector (e.g., text that only appears on the login page) and set `logout_condition="all"` so both must match.
+
+#### 3. Configure via the MCP tool
+
+**CRITICAL: You MUST explicitly provide both `logout_detector_type` and `logout_detector_value`. Do NOT rely on automatic detection.**
+
+```
+probely_configure_logout_detection(
+  targetId,
+  enabled=True,
+  check_session_url="https://app.example.com/dashboard",  # FULL absolute URL
+  logout_detector_type="sel",    # REQUIRED
+  logout_detector_value="#uid",  # REQUIRED — must NOT match when logged in
+  logout_condition="any"         # "any" (default) or "all"
+)
+```
+
+**Important**: Always use the **FULL URL** including protocol and domain (e.g., `https://app.example.com/dashboard`), NOT relative paths (e.g., `/dashboard`).
 
 ### Login Sequence JSON Format
 
