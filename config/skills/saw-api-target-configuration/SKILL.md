@@ -40,6 +40,7 @@ probely_create_api_target_from_postman(
 ```
 
 **For OpenAPI schemas:**
+Validate the schema file before uploading it. If the schema has violations fix them first. 
 ```
 probely_create_api_target_from_openapi(
   name: "API Name",

@@ -457,21 +457,28 @@ class ProbelyClient:
             pass
         return None
 
-    # Extra Hosts
+    # Extra Hosts (API path: /targets/{id}/assets/)
     def list_extra_hosts(self, target_id: str, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/extra-hosts/", params={"page": page} if page else None)[1]
+        return self.request("GET", f"/targets/{target_id}/assets/", params={"page": page} if page else None)[1]
 
     def get_extra_host(self, target_id: str, extra_host_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/extra-hosts/{extra_host_id}/")[1]
+        return self.request("GET", f"/targets/{target_id}/assets/{extra_host_id}/")[1]
 
-    def create_extra_host(self, target_id: str, hostname: str, ip_address: str) -> Dict[str, Any]:
-        return self.request("POST", f"/targets/{target_id}/extra-hosts/", json={"hostname": hostname, "ip_address": ip_address})[1]
+    def create_extra_host(self, target_id: str, hostname: str, ip_address: str = "") -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"host": hostname, "name": hostname}
+        if ip_address:
+            payload["desc"] = f"IP: {ip_address}"
+        return self.request("POST", f"/targets/{target_id}/assets/", json=payload,
+                            params={"skip_reachability_check": "true"})[1]
 
     def update_extra_host(self, target_id: str, extra_host_id: str, **fields: Any) -> Dict[str, Any]:
-        return self.request("PATCH", f"/targets/{target_id}/extra-hosts/{extra_host_id}/", json=fields)[1]
+        # Map 'hostname' to 'host' for the API
+        if "hostname" in fields:
+            fields["host"] = fields.pop("hostname")
+        return self.request("PATCH", f"/targets/{target_id}/assets/{extra_host_id}/", json=fields)[1]
 
     def delete_extra_host(self, target_id: str, extra_host_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/targets/{target_id}/extra-hosts/{extra_host_id}/")[1]
+        return self.request("DELETE", f"/targets/{target_id}/assets/{extra_host_id}/")[1]
 
     # Scans
     def list_scans(self, target_id: str, page: Optional[int] = None) -> Dict[str, Any]:
