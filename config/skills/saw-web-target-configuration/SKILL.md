@@ -70,7 +70,7 @@ Ask the user for (or derive):
    })
    ```
    If any selector **still exists** after login (e.g., a read-only username field on a profile section), record this — you will need it to pick a proper `check_session_url` and a more specific logout detector (see "Configuring Logout Detection" below).
-8. **Check for API calls to external hosts** - Use `browser_network_requests` to get all XHR/fetch requests made during login. Identify any requests to hostnames different from the target URL.
+8. **Detect external API hosts (CRITICAL)** - Follow the full procedure in "Detecting and Configuring Extra Hosts" below. This step is **mandatory** — do NOT skip it even if browser calls fail. Use the multi-layered detection approach (network requests + JavaScript introspection) to identify any hostnames different from the target URL.
 9. **Generate the login sequence JSON** - When creating the sequence JSON from the recorded steps:
    - Replace the actual username value with `[CUSTOM_USERNAME]` placeholder
    - Replace the actual password value with `[CUSTOM_PASSWORD]` placeholder
@@ -256,19 +256,78 @@ probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")
 
 ### Detecting and Configuring Extra Hosts
 
-During login sequence recording, **always check for API calls to different hostnames**:
+Extra host detection is **CRITICAL** — missing an API host means the scanner cannot test those endpoints. Use a **multi-layered approach** with retries and fallbacks to ensure no hosts are missed.
 
-1. After completing the login flow, call `browser_network_requests()` to get all network requests
-2. Parse the request URLs and extract hostnames
-3. Compare each hostname against the target's primary hostname
-4. If any XHR/fetch requests go to a different hostname (common patterns):
-   - `api.example.com` vs `app.example.com`
-   - `auth.example.com` vs `www.example.com`
-5. For each different hostname found:
-   - Use `probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")`
-   - **Inform the user**: "Detected API calls to `api.example.com` during login. Added as extra host."
+#### Layer 1: Network request capture (primary method, with retries)
 
-Add only the hostnames from requests that seem to be related to the target. Exclude hostnames from vendor requests.
+Capture network requests at **two checkpoints** during the login flow:
+
+1. **After initial page navigation** (before login) — call `browser_network_requests()` right after navigating to the target URL and the login page loads. Some apps make API calls on page load.
+2. **After login completes** — call `browser_network_requests()` again after successful login. Login and post-login pages often trigger additional API calls.
+
+**If `browser_network_requests()` fails at any checkpoint, retry it up to 2 more times** (3 attempts total). Take a `browser_snapshot` between retries to re-stabilize the session. Do NOT skip this step on failure — exhaust all retries first.
+
+From the collected requests, extract hostnames and compare against the target's primary hostname. Common patterns:
+- `api.example.com` vs `app.example.com` or `example.com`
+- `auth.example.com` vs `www.example.com`
+- `backend.example.com` vs `example.com`
+
+#### Layer 2: JavaScript introspection (fallback)
+
+**Always run this as a secondary check**, even if Layer 1 succeeded. Use `browser_evaluate` on the post-login page to discover API base URLs embedded in the page's JavaScript context:
+
+```javascript
+() => {
+  const found = new Set();
+  const targetHost = location.hostname;
+
+  const extractHosts = (str) => {
+    const matches = str.match(/https?:\/\/[a-zA-Z0-9][-a-zA-Z0-9.]*[a-zA-Z0-9](?::\d+)?/g);
+    if (matches) matches.forEach(u => {
+      try {
+        const h = new URL(u).hostname;
+        if (h !== targetHost && h.endsWith(targetHost.replace(/^www\./, '').replace(/^[^.]+\./, '')))
+          found.add(h);
+      } catch {}
+    });
+  };
+
+  // Next.js embedded data
+  if (window.__NEXT_DATA__) extractHosts(JSON.stringify(window.__NEXT_DATA__));
+
+  // Environment / config globals (common patterns)
+  for (const key of Object.keys(window)) {
+    if (/env|config|settings|api/i.test(key)) {
+      try { extractHosts(JSON.stringify(window[key])); } catch {}
+    }
+  }
+
+  // Inline and external script contents
+  document.querySelectorAll('script:not([src])').forEach(s => extractHosts(s.textContent));
+
+  // Meta tags (some apps store API URLs here)
+  document.querySelectorAll('meta[content*="http"]').forEach(m => extractHosts(m.content));
+
+  return { apiHosts: [...found], targetHost };
+}
+```
+
+Merge the results from Layer 2 with any hosts found in Layer 1.
+
+#### Filtering and adding extra hosts
+
+From the combined results of both layers:
+- **Include** hostnames that share the same base domain as the target (e.g., `api.example.com` for a target at `example.com`).
+- **Exclude** unrelated third-party/vendor hostnames (e.g., `cdn.jsdelivr.net`, `fonts.googleapis.com`, `analytics.google.com`).
+
+For each relevant hostname found:
+```
+probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")
+```
+
+**Always report** what was detected: "Detected API calls to `api.example.com`. Added as extra host."
+
+If both layers returned zero extra hosts, report: "No external API hosts detected (checked via network requests and JS introspection)."
 
 ### Configuring Logout Detection
 
