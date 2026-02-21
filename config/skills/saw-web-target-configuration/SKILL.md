@@ -18,6 +18,8 @@ Each subagent prompt should be short — just the target details and an instruct
 ```
 Configure a Snyk API&Web web target:
 - URL: <url>
+- Name: <name or "auto" — if "auto", derive from the site's <title>>
+- Labels: <["Label1", ...] or "default" — if "default", do NOT pass labels param>
 - Username: <user>
 - Password: <pass>
 - 2FA TOTP seed: <seed or "none">
@@ -38,9 +40,15 @@ When the user wants to scan a **web application with authentication**, follow th
 
 Ask the user for (or derive):
 1. **Target URL** (e.g., https://app.example.com)
-2. **Target name**: use the name the user provides. **If the user does not specify a name**, use the site's `<title>` (e.g. from the login or home page when opened in Playwright). Example: no name given for https://patchmutual.com → **Patch Mutual**. A default label (e.g. "Agentic") is auto-applied from the MCP server config — **do NOT look up, create, or pass labels manually** unless the user explicitly asks for additional labels.
-3. **Login credentials** (username/email and password)
-4. Any **2FA/MFA requirements** (including the TOTP seed if applicable)
+2. **Target name** (resolved in priority order):
+   1. Use the name the user provides, if any.
+   2. Otherwise, use the site's `<title>` tag (e.g. from the login or home page when opened in Playwright).
+   3. If the page has no `<title>`, use the FQDN of the target URL (e.g. `app.example.com`).
+   
+   **NEVER use a label value as the target name.**
+3. **Labels**: If the user specifies labels, pass **only those labels** via `labels=[...]` when creating the target — do NOT add the default "Agentic" label. If the user does NOT specify any labels, do NOT pass `labels` at all (the default label is auto-applied from the MCP server config).
+4. **Login credentials** (username/email and password)
+5. Any **2FA/MFA requirements** (including the TOTP seed if applicable)
 
 **Authentication method:** When Playwright MCP is available, **always configure authentication using a login sequence** (record the flow in the browser). Do not use form login when Playwright is available.
 
@@ -202,9 +210,10 @@ After recording, generate the login sequence JSON and use the MCP tools below.
 
 ```
 # 1. ALWAYS create a new target — do NOT search for or reuse existing targets, even if one with the same URL already exists.
-# The default label (e.g. "Agentic") is auto-applied from config — no need to pass labels here.
-# Only pass labels= if the user explicitly requests additional labels.
-probely_create_target(name=..., url, desc?)
+# Labels: If the user specified labels, pass ONLY those via labels=[...] (do NOT add "Agentic").
+#         If the user did NOT specify labels, omit the labels param entirely (the default is auto-applied from config).
+# Name: Use user-provided name > site <title> > FQDN. NEVER use a label as the name.
+probely_create_target(name=..., url, desc?, labels?)
 
 # 2. If 2FA is needed, configure it BEFORE creating the sequence.
 # The tool auto-generates a TOTP code from the secret. Use the returned otp_code
