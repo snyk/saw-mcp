@@ -200,12 +200,14 @@ class ProbelyClient:
     def create_target(self, name: str, url: str, desc: Optional[str] = None,
                       label_names: Optional[list[str]] = None,
                       default_label: Optional[Dict[str, str]] = None,
-                      name_prefix: str = "") -> Dict[str, Any]:
+                      name_prefix: str = "",
+                      scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Create a new target. Both name and URL must be nested under 'site' per the Probely API.
 
         ``label_names`` accepts a list of label name strings (e.g. ``["Production"]``).
         ``default_label`` from config (e.g. ``{"name": "Agentic"}``) is auto-merged.
         ``name_prefix`` from config (e.g. ``"Agentic - "``) is prepended to the target name.
+        ``scanning_agent_id`` assigns a scanning agent for internal/private targets.
         The Probely API resolves labels by name — no lookups needed.
         """
         payload: Dict[str, Any] = {
@@ -226,6 +228,9 @@ class ProbelyClient:
                 seen.add(lbl["name"])
         if labels:
             payload["labels"] = labels
+
+        if scanning_agent_id is not None:
+            payload["scanning_agent"] = {"id": scanning_agent_id}
 
         return self.request("POST", "/targets/", json=payload)[1]
 
@@ -635,6 +640,23 @@ class ProbelyClient:
             "target_id": target_id,
             "import_error": last_resp or {"message": "No import endpoint succeeded"},
         }
+
+    # Scanning Agents
+    def list_scanning_agents(self, page: Optional[int] = None, length: Optional[int] = None,
+                             status: Optional[str] = None, search: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if page is not None:
+            params["page"] = page
+        if length is not None:
+            params["length"] = length
+        if status is not None:
+            params["status"] = status
+        if search is not None:
+            params["search"] = search
+        return self.request("GET", "/scanning-agents/", params=params or None)[1]
+
+    def get_scanning_agent(self, agent_id: str) -> Dict[str, Any]:
+        return self.request("GET", f"/scanning-agents/{agent_id}/")[1]
 
     # Generic fallback
     def raw(self, method: str, path: str, params: Optional[Dict[str, Any]] = None, json: Optional[Dict[str, Any]] = None,

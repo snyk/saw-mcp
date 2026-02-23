@@ -167,18 +167,23 @@ def build_server() -> FastMCP:
         return client.get_target(target_id=targetId)
 
     @register_tool("probely_create_target")
-    def probely_create_target(name: str, url: str, desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
+    def probely_create_target(name: str, url: str, desc: Optional[str] = None, labels: Optional[list[str]] = None,
+                              scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
-        Existing labels are reused; missing ones are created automatically."""
+        Existing labels are reused; missing ones are created automatically.
+        Use scanning_agent_id to assign a scanning agent for internal/private targets."""
         return client.create_target(name=name, url=url, desc=desc, label_names=labels,
                                     default_label=target_defaults.get("default_label"),
-                                    name_prefix=target_defaults.get("name_prefix", ""))
+                                    name_prefix=target_defaults.get("name_prefix", ""),
+                                    scanning_agent_id=scanning_agent_id)
 
     @register_tool("probely_update_target")
     def probely_update_target(targetId: str, name: Optional[str] = None, url: Optional[str] = None,
-                              desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
+                              desc: Optional[str] = None, labels: Optional[list[str]] = None,
+                              scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
-        Existing labels are reused; missing ones are created automatically."""
+        Existing labels are reused; missing ones are created automatically.
+        Use scanning_agent_id to assign or change the scanning agent. Pass "" to remove it."""
         fields: Dict[str, Any] = {}
         site_fields: Dict[str, Any] = {}
         if name is not None:
@@ -191,6 +196,8 @@ def build_server() -> FastMCP:
             fields["site"] = site_fields
         if labels is not None:
             fields["labels"] = client.resolve_labels(labels)
+        if scanning_agent_id is not None:
+            fields["scanning_agent"] = {"id": scanning_agent_id} if scanning_agent_id else None
         return client.update_target(target_id=targetId, **fields)
 
     @register_tool("probely_delete_target")
@@ -455,6 +462,18 @@ def build_server() -> FastMCP:
     @register_tool("probely_get_integration")
     def probely_get_integration(integrationId: str) -> Dict[str, Any]:
         return client.get_integration(integration_id=integrationId)
+
+    # Scanning Agents
+    @register_tool("probely_list_scanning_agents")
+    def probely_list_scanning_agents(page: Optional[int] = None, length: Optional[int] = None,
+                                     status: Optional[str] = None, search: Optional[str] = None) -> Dict[str, Any]:
+        """List scanning agents. Use status to filter: 'connected', 'connected_with_issues', 'disconnected'."""
+        return client.list_scanning_agents(page=page, length=length, status=status, search=search)
+
+    @register_tool("probely_get_scanning_agent")
+    def probely_get_scanning_agent(agentId: str) -> Dict[str, Any]:
+        """Get details of a specific scanning agent."""
+        return client.get_scanning_agent(agent_id=agentId)
 
     # API Target from Postman
     @register_tool("probely_create_api_target_from_postman")

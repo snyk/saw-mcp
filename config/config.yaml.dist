@@ -67,6 +67,9 @@ tools:
     # - probely_create_scan_report
     # - probely_download_report
     # - probely_get_report
+    # Scanning Agents
+    # - probely_list_scanning_agents
+    # - probely_get_scanning_agent
     # Scans
     # - probely_cancel_scan
     # - probely_get_scan
