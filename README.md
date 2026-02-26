@@ -62,11 +62,44 @@ Note: If your IDE does not resolve relative paths from the project root, use abs
 ## Devon and other IDEs
 Configure a custom MCP server with the same command and arguments above. Ensure the environment variable `MCP_SAW_CONFIG_PATH` points to your `config.yaml`.
 
-## Project Rules
+## Installing Skills and Rules
 
-The full SAW usage rules are in `config/project_rules.yaml`. Copy this file to your project's `.cursor/rules/` directory (as `saw_rules.mdc`) to enable automatic SAW MCP server usage.
+The SAW MCP server ships with **project rules** and **agent skills** that teach the AI how to use the tools effectively. These must be linked into the correct locations so Cursor can find them.
 
-Key rules include:
+### Project Rules
+
+The rules file tells the AI to use SAW MCP tools for any Snyk API&Web task. Hard-link it into each project where you want SAW integration:
+
+```bash
+# From your project root
+mkdir -p .cursor/rules
+ln /<basedir>/saw-mcpserver/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
+```
+
+### Agent Skills
+
+Skills provide step-by-step workflows for target onboarding (web apps, APIs). Hard-link the skill files into your global Cursor skills folder:
+
+```bash
+# Create the global skills directories
+mkdir -p ~/.cursor/skills/saw-web-target-configuration
+mkdir -p ~/.cursor/skills/saw-api-target-configuration
+
+# Hard-link each skill file
+ln /<basedir>/saw-mcpserver/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
+ln /<basedir>/saw-mcpserver/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
+```
+
+> **Why hard links?** Hard links keep a single source of truth in the MCP server repo. When skills or rules are updated (e.g. via `git pull`), every project picks up the changes automatically — no need to copy files again. Hard links are preferred over symlinks because some tools and editors don't follow symbolic links correctly.
+
+### Available skills
+
+| Skill | Path | Description |
+|-------|------|-------------|
+| Web Target Configuration | `config/skills/saw-web-target-configuration/` | Configure web app targets with login sequences, 2FA, logout detection, and extra host detection |
+| API Target Configuration | `config/skills/saw-api-target-configuration/` | Configure API targets from OpenAPI/Swagger schemas or Postman collections |
+
+### Key rules include
 - Always use SAW MCP tools for any Snyk API&Web / SAW / Probely task
 - API onboarding: Obtain OpenAPI/Postman schema, create API target
 - Webapp onboarding: Record login sequence with Playwright, configure auth
