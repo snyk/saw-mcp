@@ -1,8 +1,18 @@
 from __future__ import annotations
-import json as _json
+
+import json
+import logging
 from typing import Any, Dict, Optional, Tuple
+
 import requests
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ProbelyClient:
@@ -11,17 +21,25 @@ class ProbelyClient:
         self.api_key = api_key
         self.timeout = timeout
         self._session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"JWT {self.api_key}",
-            "Accept": "application/json",
-        })
+        self._session.headers.update(
+            {
+                "Authorization": f"JWT {self.api_key}",
+                "Accept": "application/json",
+            }
+        )
 
     def _url(self, path: str) -> str:
         path = path if path.startswith("/") else f"/{path}"
         return f"{self.base_url}{path}"
 
-    @retry(reraise=True, stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8),
-           retry=retry_if_exception_type((requests.ConnectionError, requests.Timeout)))
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        retry=retry_if_exception_type(
+            (requests.ConnectionError, requests.Timeout)
+        ),
+    )
     def request(
         self,
         method: str,
@@ -33,6 +51,7 @@ class ProbelyClient:
         headers: Optional[Dict[str, str]] = None,
     ) -> Tuple[int, Dict[str, Any]]:
         url = self._url(path)
+        logger.debug("%s %s", method.upper(), url)
         resp = self._session.request(
             method=method.upper(),
             url=url,
@@ -46,7 +65,6 @@ class ProbelyClient:
         content_type = resp.headers.get("Content-Type", "")
         if "application/json" in content_type:
             json_data = resp.json()
-            # Handle both dict and list responses (some endpoints return arrays)
             if isinstance(json_data, dict):
                 body: Dict[str, Any] = json_data
             else:
@@ -54,25 +72,37 @@ class ProbelyClient:
         else:
             body = {"raw": resp.text}
         if not resp.ok:
-            # include more details for troubleshooting
             if isinstance(body, dict):
                 body.setdefault("error", {})
-                body["error"].update({
-                    "status": resp.status_code,
-                    "reason": resp.reason,
-                    "url": url,
-                })
+                body["error"].update(
+                    {
+                        "status": resp.status_code,
+                        "reason": resp.reason,
+                        "url": url,
+                    }
+                )
+            logger.warning(
+                "%s %s returned %s %s",
+                method.upper(),
+                url,
+                resp.status_code,
+                resp.reason,
+            )
         return resp.status_code, body
 
     # Convenience wrappers for common resources
     # Users
     def list_users(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/users/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/users/", params={"page": page} if page else None
+        )[1]
 
     def get_user(self, user_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/users/{user_id}/")[1]
 
-    def create_user(self, email: str, name: str, role: Optional[str] = None) -> Dict[str, Any]:
+    def create_user(
+        self, email: str, name: str, role: Optional[str] = None
+    ) -> Dict[str, Any]:
         payload = {"email": email, "name": name}
         if role:
             payload["role"] = role
@@ -86,12 +116,16 @@ class ProbelyClient:
 
     # API Users
     def list_api_users(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/api-users/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/api-users/", params={"page": page} if page else None
+        )[1]
 
     def get_api_user(self, api_user_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/api-users/{api_user_id}/")[1]
 
-    def create_api_user(self, name: str, permissions: Optional[list[str]] = None) -> Dict[str, Any]:
+    def create_api_user(
+        self, name: str, permissions: Optional[list[str]] = None
+    ) -> Dict[str, Any]:
         payload = {"name": name}
         if permissions is not None:
             payload["permissions"] = permissions
@@ -109,22 +143,30 @@ class ProbelyClient:
 
     # Roles & Permissions
     def list_roles(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/roles/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/roles/", params={"page": page} if page else None
+        )[1]
 
     def get_role(self, role_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/roles/{role_id}/")[1]
 
     def list_permissions(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/permissions/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/permissions/", params={"page": page} if page else None
+        )[1]
 
     # Teams
     def list_teams(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/teams/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/teams/", params={"page": page} if page else None
+        )[1]
 
     def get_team(self, team_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/teams/{team_id}/")[1]
 
-    def create_team(self, name: str, description: Optional[str] = None) -> Dict[str, Any]:
+    def create_team(
+        self, name: str, description: Optional[str] = None
+    ) -> Dict[str, Any]:
         payload = {"name": name}
         if description:
             payload["description"] = description
@@ -138,7 +180,9 @@ class ProbelyClient:
 
     # Domains
     def list_domains(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/domains/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/domains/", params={"page": page} if page else None
+        )[1]
 
     def get_domain(self, domain_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/domains/{domain_id}/")[1]
@@ -154,12 +198,16 @@ class ProbelyClient:
 
     # Labels
     def list_labels(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", "/labels/", params={"page": page} if page else None)[1]
+        return self.request(
+            "GET", "/labels/", params={"page": page} if page else None
+        )[1]
 
     def get_label(self, label_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/labels/{label_id}/")[1]
 
-    def create_label(self, name: str, color: Optional[str] = None) -> Dict[str, Any]:
+    def create_label(
+        self, name: str, color: Optional[str] = None
+    ) -> Dict[str, Any]:
         payload = {"name": name}
         if color:
             payload["color"] = color
@@ -183,7 +231,9 @@ class ProbelyClient:
         return [{"name": name} for name in label_names]
 
     # Targets
-    def list_targets(self, page: Optional[int] = None, search: Optional[str] = None) -> Dict[str, Any]:
+    def list_targets(
+        self, page: Optional[int] = None, search: Optional[str] = None
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
         if page:
             params["page"] = page
@@ -195,7 +245,10 @@ class ProbelyClient:
         return self.request("GET", f"/targets/{target_id}/")[1]
 
     def _build_create_target_payload(
-        self, name: str, url: str, desc: Optional[str] = None,
+        self,
+        name: str,
+        url: str,
+        desc: Optional[str] = None,
         label_names: Optional[list[str]] = None,
         default_label: Optional[Dict[str, str]] = None,
         name_prefix: str = "",
@@ -210,17 +263,16 @@ class ProbelyClient:
         The Probely API resolves labels by name — no lookups needed.
         """
         payload: Dict[str, Any] = {
-            "site": {
-                "name": f"{name_prefix}{name}",
-                "url": url
-            }
+            "site": {"name": f"{name_prefix}{name}", "url": url}
         }
         if desc:
             payload["site"]["desc"] = desc
 
         seen: set[str] = set()
         labels: list[Dict[str, str]] = []
-        for lbl in ([default_label] if default_label else []) + self.resolve_labels(label_names or []):
+        for lbl in (
+            [default_label] if default_label else []
+        ) + self.resolve_labels(label_names or []):
             if lbl["name"] not in seen:
                 labels.append(lbl)
                 seen.add(lbl["name"])
@@ -232,23 +284,40 @@ class ProbelyClient:
 
         return payload
 
-    def create_target(self, name: str, url: str, desc: Optional[str] = None,
-                      label_names: Optional[list[str]] = None,
-                      default_label: Optional[Dict[str, str]] = None,
-                      name_prefix: str = "",
-                      scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
+    def create_target(
+        self,
+        name: str,
+        url: str,
+        desc: Optional[str] = None,
+        label_names: Optional[list[str]] = None,
+        default_label: Optional[Dict[str, str]] = None,
+        name_prefix: str = "",
+        scanning_agent_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Create a new web target."""
         payload = self._build_create_target_payload(
-            name, url, desc, label_names, default_label, name_prefix, scanning_agent_id)
+            name,
+            url,
+            desc,
+            label_names,
+            default_label,
+            name_prefix,
+            scanning_agent_id,
+        )
         return self.request("POST", "/targets/", json=payload)[1]
 
-    def create_api_target(self, name: str, target_url: str,
-                          schema_type: str, schema: Dict[str, Any],
-                          desc: Optional[str] = None,
-                          label_names: Optional[list[str]] = None,
-                          default_label: Optional[Dict[str, str]] = None,
-                          name_prefix: str = "",
-                          scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
+    def create_api_target(
+        self,
+        name: str,
+        target_url: str,
+        schema_type: str,
+        schema: Dict[str, Any],
+        desc: Optional[str] = None,
+        label_names: Optional[list[str]] = None,
+        default_label: Optional[Dict[str, str]] = None,
+        name_prefix: str = "",
+        scanning_agent_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Create a new API target with its schema included in the creation payload.
 
         Args:
@@ -256,7 +325,14 @@ class ProbelyClient:
             schema: The Postman collection or OpenAPI schema JSON content
         """
         payload = self._build_create_target_payload(
-            name, target_url, desc, label_names, default_label, name_prefix, scanning_agent_id)
+            name,
+            target_url,
+            desc,
+            label_names,
+            default_label,
+            name_prefix,
+            scanning_agent_id,
+        )
         schema_key = "collection" if schema_type == "postman" else "schema"
         payload[schema_key] = schema
         return self.request("POST", "/targets/", json=payload)[1]
@@ -271,45 +347,80 @@ class ProbelyClient:
         return self.request("POST", f"/targets/{target_id}/verify/")[1]
 
     # Login Sequences
-    def list_sequences(self, target_id: str, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/sequences/", params={"page": page} if page else None)[1]
+    def list_sequences(
+        self, target_id: str, page: Optional[int] = None
+    ) -> Dict[str, Any]:
+        return self.request(
+            "GET",
+            f"/targets/{target_id}/sequences/",
+            params={"page": page} if page else None,
+        )[1]
 
     def get_sequence(self, target_id: str, sequence_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/sequences/{sequence_id}/")[1]
+        return self.request(
+            "GET", f"/targets/{target_id}/sequences/{sequence_id}/"
+        )[1]
 
     @staticmethod
-    def _pretty_json_content(content: str) -> str:
+    def _prettyjson_content(content: str) -> str:
         """Ensure sequence content is pretty-printed JSON for readability in the UI."""
         try:
-            parsed = _json.loads(content)
-            return _json.dumps(parsed, indent=2)
-        except (_json.JSONDecodeError, TypeError):
+            parsed = json.loads(content)
+            return json.dumps(parsed, indent=2)
+        except (json.JSONDecodeError, TypeError):
             return content
 
-    def create_sequence(self, target_id: str, name: str, sequence_type: str, content: str, enabled: bool = True,
-                       custom_field_mappings: Optional[list[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def create_sequence(
+        self,
+        target_id: str,
+        name: str,
+        sequence_type: str,
+        content: str,
+        enabled: bool = True,
+        custom_field_mappings: Optional[list[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps."""
         payload: Dict[str, Any] = {
             "name": name,
             "type": sequence_type,
-            "content": self._pretty_json_content(content),
-            "enabled": enabled
+            "content": self._prettyjson_content(content),
+            "enabled": enabled,
         }
         if custom_field_mappings is not None:
             payload["custom_field_mappings"] = custom_field_mappings
-        return self.request("POST", f"/targets/{target_id}/sequences/", json=payload)[1]
+        return self.request(
+            "POST", f"/targets/{target_id}/sequences/", json=payload
+        )[1]
 
-    def update_sequence(self, target_id: str, sequence_id: str, **fields: Any) -> Dict[str, Any]:
+    def update_sequence(
+        self, target_id: str, sequence_id: str, **fields: Any
+    ) -> Dict[str, Any]:
         if "content" in fields and isinstance(fields["content"], str):
-            fields["content"] = self._pretty_json_content(fields["content"])
-        return self.request("PATCH", f"/targets/{target_id}/sequences/{sequence_id}/", json=fields)[1]
+            fields["content"] = self._prettyjson_content(fields["content"])
+        return self.request(
+            "PATCH",
+            f"/targets/{target_id}/sequences/{sequence_id}/",
+            json=fields,
+        )[1]
 
-    def delete_sequence(self, target_id: str, sequence_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/targets/{target_id}/sequences/{sequence_id}/")[1]
+    def delete_sequence(
+        self, target_id: str, sequence_id: str
+    ) -> Dict[str, Any]:
+        return self.request(
+            "DELETE", f"/targets/{target_id}/sequences/{sequence_id}/"
+        )[1]
 
     # Authentication Configuration (via target site settings)
-    def configure_form_login(self, target_id: str, login_url: str, username_field: str, password_field: str,
-                             username: str, password: str, check_pattern: Optional[str] = None) -> Dict[str, Any]:
+    def configure_form_login(
+        self,
+        target_id: str,
+        login_url: str,
+        username_field: str,
+        password_field: str,
+        username: str,
+        password: str,
+        check_pattern: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Configure form-based login authentication for a target.
 
         Sequence login is automatically disabled since the Probely API
@@ -322,33 +433,39 @@ class ProbelyClient:
                 "form_login_url": login_url,
                 "form_login": [
                     {"name": username_field, "value": username},
-                    {"name": password_field, "value": password}
+                    {"name": password_field, "value": password},
                 ],
-                "auth_enabled": True
+                "auth_enabled": True,
             }
         }
         if check_pattern:
             payload["site"]["form_login_check_pattern"] = check_pattern
         return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
 
-    def configure_sequence_login(self, target_id: str, enabled: bool = True) -> Dict[str, Any]:
+    def configure_sequence_login(
+        self, target_id: str, enabled: bool = True
+    ) -> Dict[str, Any]:
         """Enable or disable sequence-based login authentication for a target.
 
         When enabling sequence login, form login is automatically disabled
         since the Probely API does not allow both to be active simultaneously.
         """
         payload: Dict[str, Any] = {
-            "site": {
-                "has_sequence_login": enabled,
-                "auth_enabled": enabled
-            }
+            "site": {"has_sequence_login": enabled, "auth_enabled": enabled}
         }
         if enabled:
             payload["site"]["has_form_login"] = False
         return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
 
-    def configure_2fa(self, target_id: str, otp_secret: str, otp_placeholder: str = "{{OTP}}",
-                      otp_algorithm: str = "SHA1", otp_digits: int = 6, otp_type: str = "totp") -> Dict[str, Any]:
+    def configure_2fa(
+        self,
+        target_id: str,
+        otp_secret: str,
+        otp_placeholder: str = "{{OTP}}",
+        otp_algorithm: str = "SHA1",
+        otp_digits: int = 6,
+        otp_type: str = "totp",
+    ) -> Dict[str, Any]:
         """Configure 2FA/OTP settings for a target."""
         payload: Dict[str, Any] = {
             "site": {
@@ -357,7 +474,7 @@ class ProbelyClient:
                 "otp_login_sequence_totp_value": otp_placeholder,
                 "otp_algorithm": otp_algorithm,
                 "otp_digits": otp_digits,
-                "otp_type": otp_type
+                "otp_type": otp_type,
             }
         }
         return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
@@ -365,10 +482,7 @@ class ProbelyClient:
     def disable_2fa(self, target_id: str) -> Dict[str, Any]:
         """Disable 2FA/OTP for a target."""
         payload: Dict[str, Any] = {
-            "site": {
-                "has_otp": False,
-                "otp_secret": ""
-            }
+            "site": {"has_otp": False, "otp_secret": ""}
         }
         return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
 
@@ -376,38 +490,47 @@ class ProbelyClient:
         """List logout detectors for a target."""
         return self.request("GET", f"/targets/{target_id}/logout/")[1]
 
-    def create_logout_detector(self, target_id: str, detector_type: str, value: str) -> Dict[str, Any]:
+    def create_logout_detector(
+        self, target_id: str, detector_type: str, value: str
+    ) -> Dict[str, Any]:
         """Create a logout detector for a target.
-        
+
         Args:
             target_id: The target ID
             detector_type: Type of detector - 'text', 'url', or 'sel' (CSS selector)
             value: The value for the detector (e.g., "Login", "/login", ".login-form")
         """
-        return self.request("POST", f"/targets/{target_id}/logout/", 
-                          json={"type": detector_type, "value": value})[1]
+        return self.request(
+            "POST",
+            f"/targets/{target_id}/logout/",
+            json={"type": detector_type, "value": value},
+        )[1]
 
-    def configure_logout_detection(self, target_id: str, enabled: bool = True, 
-                                   check_session_url: Optional[str] = None,
-                                   logout_detector_type: Optional[str] = None,
-                                   logout_detector_value: Optional[str] = None,
-                                   logout_condition: Optional[str] = None) -> Dict[str, Any]:
+    def configure_logout_detection(
+        self,
+        target_id: str,
+        enabled: bool = True,
+        check_session_url: Optional[str] = None,
+        logout_detector_type: Optional[str] = None,
+        logout_detector_value: Optional[str] = None,
+        logout_condition: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Configure logout detection for a target.
-        
+
         Args:
             target_id: The target ID
             enabled: Whether to enable logout detection
             check_session_url: URL to check if session is still valid (should return 401/403 when logged out)
-            logout_detector_type: Type of logout detector - 'text', 'url', or 'sel'. 
+            logout_detector_type: Type of logout detector - 'text', 'url', or 'sel'.
                                   Required when enabling logout detection if no detectors exist.
-            logout_detector_value: Value for the logout detector. 
+            logout_detector_value: Value for the logout detector.
                                    Required when enabling logout detection if no detectors exist.
             logout_condition: When to consider the target logged out based on detectors.
                               'any' (default) = logged out if ANY detector matches (OR logic).
                               'all' = logged out only if ALL detectors match (AND logic).
                               Use 'all' when some detector patterns also appear on the logged-in page.
-        
-        Note: The Probely API requires BOTH check_session_url AND at least one logout detector 
+
+        Note: The Probely API requires BOTH check_session_url AND at least one logout detector
         to be defined before logout_detection can be enabled. This function handles the proper
         ordering automatically.
         """
@@ -415,58 +538,64 @@ class ProbelyClient:
             # Step 1: Set check_session_url if provided
             if check_session_url is not None:
                 url_payload: Dict[str, Any] = {
-                    "site": {
-                        "check_session_url": check_session_url
-                    }
+                    "site": {"check_session_url": check_session_url}
                 }
-                self.request("PATCH", f"/targets/{target_id}/", json=url_payload)
-            
+                self.request(
+                    "PATCH", f"/targets/{target_id}/", json=url_payload
+                )
+
             # Step 2: Check if logout detectors exist, create one if needed
             try:
                 detectors = self.list_logout_detectors(target_id)
                 detector_list = detectors.get("results", [])
             except Exception:
                 detector_list = []
-            
+
             if not detector_list:
                 # No logout detectors exist, we need to create one
                 if logout_detector_type and logout_detector_value:
-                    self.create_logout_detector(target_id, logout_detector_type, logout_detector_value)
+                    self.create_logout_detector(
+                        target_id, logout_detector_type, logout_detector_value
+                    )
                 else:
                     # Try to find a CSS selector from the login sequence to use as logout detector
                     # This is the most reliable approach: if the login form elements appear, user is logged out
-                    css_selector = self._find_login_sequence_selector(target_id)
+                    css_selector = self._find_login_sequence_selector(
+                        target_id
+                    )
                     if css_selector:
-                        self.create_logout_detector(target_id, "sel", css_selector)
+                        self.create_logout_detector(
+                            target_id, "sel", css_selector
+                        )
                     else:
                         # Fallback to text-based detector if no login sequence found
                         self.create_logout_detector(target_id, "text", "Login")
-            
+
             # Step 3: Enable logout detection
             enable_payload: Dict[str, Any] = {
-                "site": {
-                    "logout_detection_enabled": True
-                }
+                "site": {"logout_detection_enabled": True}
             }
             if logout_condition is not None:
                 enable_payload["site"]["logout_condition"] = logout_condition
-            return self.request("PATCH", f"/targets/{target_id}/", json=enable_payload)[1]
+            return self.request(
+                "PATCH", f"/targets/{target_id}/", json=enable_payload
+            )[1]
         else:
             # Disabling logout detection or setting URL without enabling
             payload: Dict[str, Any] = {
-                "site": {
-                    "logout_detection_enabled": enabled
-                }
+                "site": {"logout_detection_enabled": enabled}
             }
             if check_session_url is not None:
                 payload["site"]["check_session_url"] = check_session_url
             if logout_condition is not None:
                 payload["site"]["logout_condition"] = logout_condition
-            return self.request("PATCH", f"/targets/{target_id}/", json=payload)[1]
+            return self.request(
+                "PATCH", f"/targets/{target_id}/", json=payload
+            )[1]
 
     def _find_login_sequence_selector(self, target_id: str) -> Optional[str]:
         """Find a CSS selector from the target's login sequence to use as logout detector.
-        
+
         Returns the first CSS selector found in the login sequence (typically username field),
         or None if no login sequence exists.
         """
@@ -476,61 +605,109 @@ class ProbelyClient:
                 if seq.get("type") == "login" and seq.get("enabled"):
                     content = seq.get("content", "")
                     if isinstance(content, str):
-                        steps = _json.loads(content)
+                        steps = json.loads(content)
                     else:
                         steps = content
-                    
+
                     # Find the first fill_value step with a CSS selector (usually username field)
                     for step in steps:
-                        if step.get("type") == "fill_value" and step.get("css"):
+                        if step.get("type") == "fill_value" and step.get(
+                            "css"
+                        ):
                             return step["css"]
         except Exception:
             pass
         return None
 
     # Extra Hosts (API path: /targets/{id}/assets/)
-    def list_extra_hosts(self, target_id: str, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/assets/", params={"page": page} if page else None)[1]
+    def list_extra_hosts(
+        self, target_id: str, page: Optional[int] = None
+    ) -> Dict[str, Any]:
+        return self.request(
+            "GET",
+            f"/targets/{target_id}/assets/",
+            params={"page": page} if page else None,
+        )[1]
 
-    def get_extra_host(self, target_id: str, extra_host_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/assets/{extra_host_id}/")[1]
+    def get_extra_host(
+        self, target_id: str, extra_host_id: str
+    ) -> Dict[str, Any]:
+        return self.request(
+            "GET", f"/targets/{target_id}/assets/{extra_host_id}/"
+        )[1]
 
-    def create_extra_host(self, target_id: str, hostname: str, ip_address: str = "") -> Dict[str, Any]:
+    def create_extra_host(
+        self, target_id: str, hostname: str, ip_address: str = ""
+    ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"host": hostname, "name": hostname}
         if ip_address:
             payload["desc"] = f"IP: {ip_address}"
-        return self.request("POST", f"/targets/{target_id}/assets/", json=payload,
-                            params={"skip_reachability_check": "true"})[1]
+        return self.request(
+            "POST",
+            f"/targets/{target_id}/assets/",
+            json=payload,
+            params={"skip_reachability_check": "true"},
+        )[1]
 
-    def update_extra_host(self, target_id: str, extra_host_id: str, **fields: Any) -> Dict[str, Any]:
+    def update_extra_host(
+        self, target_id: str, extra_host_id: str, **fields: Any
+    ) -> Dict[str, Any]:
         # Map 'hostname' to 'host' for the API
         if "hostname" in fields:
             fields["host"] = fields.pop("hostname")
-        return self.request("PATCH", f"/targets/{target_id}/assets/{extra_host_id}/", json=fields)[1]
+        return self.request(
+            "PATCH",
+            f"/targets/{target_id}/assets/{extra_host_id}/",
+            json=fields,
+        )[1]
 
-    def delete_extra_host(self, target_id: str, extra_host_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/targets/{target_id}/assets/{extra_host_id}/")[1]
+    def delete_extra_host(
+        self, target_id: str, extra_host_id: str
+    ) -> Dict[str, Any]:
+        return self.request(
+            "DELETE", f"/targets/{target_id}/assets/{extra_host_id}/"
+        )[1]
 
     # Scans
-    def list_scans(self, target_id: str, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/scans/", params={"page": page} if page else None)[1]
+    def list_scans(
+        self, target_id: str, page: Optional[int] = None
+    ) -> Dict[str, Any]:
+        return self.request(
+            "GET",
+            f"/targets/{target_id}/scans/",
+            params={"page": page} if page else None,
+        )[1]
 
     def get_scan(self, target_id: str, scan_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/targets/{target_id}/scans/{scan_id}/")[1]
 
-    def start_scan(self, target_id: str, profile: Optional[str] = None) -> Dict[str, Any]:
+    def start_scan(
+        self, target_id: str, profile: Optional[str] = None
+    ) -> Dict[str, Any]:
         # Probely API uses POST /targets/:id/scan_now/ (not /scans/) per developers.probely.com
         payload = {"scan_profile": profile} if profile else None
-        return self.request("POST", f"/targets/{target_id}/scan_now/", json=payload)[1]
+        return self.request(
+            "POST", f"/targets/{target_id}/scan_now/", json=payload
+        )[1]
 
     def stop_scan(self, target_id: str, scan_id: str) -> Dict[str, Any]:
-        return self.request("POST", f"/targets/{target_id}/scans/{scan_id}/stop/")[1]
+        return self.request(
+            "POST", f"/targets/{target_id}/scans/{scan_id}/stop/"
+        )[1]
 
     def cancel_scan(self, target_id: str, scan_id: str) -> Dict[str, Any]:
-        return self.request("POST", f"/targets/{target_id}/scans/{scan_id}/cancel/")[1]
+        return self.request(
+            "POST", f"/targets/{target_id}/scans/{scan_id}/cancel/"
+        )[1]
 
     # Findings
-    def list_findings(self, target_id: str, page: Optional[int] = None, severity: Optional[str] = None, state: Optional[str] = None) -> Dict[str, Any]:
+    def list_findings(
+        self,
+        target_id: str,
+        page: Optional[int] = None,
+        severity: Optional[str] = None,
+        state: Optional[str] = None,
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
         if page:
             params["page"] = page
@@ -538,35 +715,60 @@ class ProbelyClient:
             params["severity"] = severity
         if state:
             params["state"] = state
-        return self.request("GET", f"/targets/{target_id}/findings/", params=params or None)[1]
+        return self.request(
+            "GET", f"/targets/{target_id}/findings/", params=params or None
+        )[1]
 
     def get_finding(self, target_id: str, finding_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/targets/{target_id}/findings/{finding_id}/")[1]
+        return self.request(
+            "GET", f"/targets/{target_id}/findings/{finding_id}/"
+        )[1]
 
-    def update_finding(self, target_id: str, finding_id: str, state: Optional[str] = None) -> Dict[str, Any]:
+    def update_finding(
+        self, target_id: str, finding_id: str, state: Optional[str] = None
+    ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {}
         if state:
             payload["state"] = state
-        return self.request("PATCH", f"/targets/{target_id}/findings/{finding_id}/", json=payload or None)[1]
+        return self.request(
+            "PATCH",
+            f"/targets/{target_id}/findings/{finding_id}/",
+            json=payload or None,
+        )[1]
 
-    def bulk_update_findings(self, target_id: str, finding_ids: list[str], state: Optional[str] = None) -> Dict[str, Any]:
+    def bulk_update_findings(
+        self,
+        target_id: str,
+        finding_ids: list[str],
+        state: Optional[str] = None,
+    ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"findingIds": finding_ids}
         if state:
             payload["state"] = state
-        return self.request("POST", f"/targets/{target_id}/findings/bulk-update/", json=payload)[1]
+        return self.request(
+            "POST", f"/targets/{target_id}/findings/bulk-update/", json=payload
+        )[1]
 
     # Target Settings
     def get_target_settings(self, target_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/targets/{target_id}/settings/")[1]
 
-    def update_target_settings(self, target_id: str, **fields: Any) -> Dict[str, Any]:
-        return self.request("PATCH", f"/targets/{target_id}/settings/", json=fields)[1]
+    def update_target_settings(
+        self, target_id: str, **fields: Any
+    ) -> Dict[str, Any]:
+        return self.request(
+            "PATCH", f"/targets/{target_id}/settings/", json=fields
+        )[1]
 
     # Reports (using top-level /report/ endpoint)
-    def create_scan_report(self, scan_id: str, report_type: str = "default",
-                           report_format: str = "pdf") -> Dict[str, Any]:
+    def create_scan_report(
+        self,
+        scan_id: str,
+        report_type: str = "default",
+        report_format: str = "pdf",
+    ) -> Dict[str, Any]:
         """Create a report for a scan. Returns report metadata including the report ID.
-        
+
         Args:
             scan_id: The scan ID to generate the report for
             report_type: Type of report. Options include:
@@ -581,7 +783,7 @@ class ProbelyClient:
         payload: Dict[str, Any] = {
             "scan": scan_id,
             "type": report_type,
-            "format": report_format
+            "format": report_format,
         }
         return self.request("POST", "/report/", json=payload)[1]
 
@@ -601,8 +803,13 @@ class ProbelyClient:
         return self.request("GET", f"/integrations/{integration_id}/")[1]
 
     # Scanning Agents
-    def list_scanning_agents(self, page: Optional[int] = None, length: Optional[int] = None,
-                             status: Optional[str] = None, search: Optional[str] = None) -> Dict[str, Any]:
+    def list_scanning_agents(
+        self,
+        page: Optional[int] = None,
+        length: Optional[int] = None,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
         if page is not None:
             params["page"] = page
@@ -612,12 +819,22 @@ class ProbelyClient:
             params["status"] = status
         if search is not None:
             params["search"] = search
-        return self.request("GET", "/scanning-agents/", params=params or None)[1]
+        return self.request("GET", "/scanning-agents/", params=params or None)[
+            1
+        ]
 
     def get_scanning_agent(self, agent_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/scanning-agents/{agent_id}/")[1]
 
     # Generic fallback
-    def raw(self, method: str, path: str, params: Optional[Dict[str, Any]] = None, json: Optional[Dict[str, Any]] = None,
-            data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        return self.request(method, path, params=params, json=json, data=data)[1]
+    def raw(
+        self,
+        method: str,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return self.request(method, path, params=params, json=json, data=data)[
+            1
+        ]

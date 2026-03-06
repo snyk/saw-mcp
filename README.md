@@ -7,7 +7,7 @@ An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools, cove
 - Uses Snyk API&Web API key from config only (no hardcoding)
 - Easy setup with Python venv
 - Simple packaging to `.tgz` for distribution
-- IDE-friendly (Cursor, Devon, etc.)
+- IDE-friendly (Cursor, Devin, etc.)
 
 ## Requirements
 - Python 3.10+
