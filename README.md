@@ -59,7 +59,7 @@ saw:
 
 Note: If your IDE does not resolve relative paths from the project root, use absolute paths for `command` and set `PYTHONPATH` to the project directory.
 
-## Devon and other IDEs
+## Devin and other IDEs
 Configure a custom MCP server with the same command and arguments above. Ensure the environment variable `MCP_SAW_CONFIG_PATH` points to your `config.yaml`.
 
 ## Installing Skills and Rules
