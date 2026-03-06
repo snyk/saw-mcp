@@ -21,11 +21,9 @@ target_defaults:
 # If 'enabled' is set, it takes precedence over 'disabled'
 # If neither is set, all tools are available
 tools:
-  # All available tools (50 total):
-  # Uncomment 'enabled:' and comment out tools you want to disable
+  # All available tools:
+  # Uncomment 'enabled:' and list only the tools you want active (whitelist mode)
   # enabled:
-    # Account
-    # - probely_get_account
     # Authentication Configuration
     # - probely_configure_2fa
     # - probely_configure_form_login
@@ -42,26 +40,17 @@ tools:
     # - probely_get_finding
     # - probely_list_findings
     # - probely_update_finding
-    # Integrations
-    # - probely_get_integration
-    # - probely_list_integrations
     # Labels
     # - probely_create_label
-    # - probely_get_label
-    # - probely_list_labels
-    # - probely_update_label
     # Login Sequences
     # - probely_create_sequence
     # - probely_delete_sequence
     # - probely_get_sequence
     # - probely_list_sequences
     # - probely_update_sequence
-    # Read-only (Users, API Users, Domains, Roles, Teams)
-    # - probely_get_api_user
-    # - probely_get_domain
-    # - probely_get_role
-    # - probely_get_team
+    # Read-only (Users, Teams)
     # - probely_get_user
+    # - probely_get_team
     # - probely_list_teams
     # Reports
     # - probely_create_scan_report

@@ -20,30 +20,28 @@ This MCP server enables AI assistants (like Cursor, Devon, Windsurf) to interact
 - Start and monitor security scans
 - View and manage security findings
 - Generate security reports
-- Manage teams, users, and permissions
-- Configure integrations
-- And much more...
+- Manage teams and users
+- Configure authentication (form login, login sequences, 2FA, logout detection)
 
 ## Features Implemented
 
-### Complete API Coverage
+### API Coverage
 
-The server implements **ALL** Snyk API&Web API functionality (75+ tools):
+The server exposes the most-used Snyk API&Web functionality as MCP tools:
 
-- **User Management** - List, create, update, delete users  
-- **API User Management** - Manage API keys and users  
-- **Account Management** - View and update account settings  
-- **Roles & Permissions** - Manage user roles and permissions  
-- **Teams** - Create and manage teams  
-- **Domains** - Add, verify, and manage domains  
-- **Labels** - Create labels for organization  
-- **Integrations** - Configure JIRA, Slack, etc.  
-- **Targets** - Create and manage scan targets  
-- **Extra Hosts** - Configure additional hosts  
+- **Targets** - Create and manage scan targets (web and API)  
 - **Scans** - Start, stop, monitor scans  
 - **Findings** - View and manage vulnerabilities  
+- **Login Sequences** - Record and manage login sequences  
+- **Authentication** - Configure form login, sequence login, 2FA  
+- **Logout Detection** - Configure logout detectors and session checks  
+- **Extra Hosts** - Configure additional hosts  
+- **Labels** - Create labels for organization  
+- **Teams** - List and view teams  
+- **Users** - View user details  
+- **Scanning Agents** - List and view scanning agents  
 - **Target Settings** - Configure scan profiles  
-- **Reports** - Generate PDF, HTML, CSV, JSON reports  
+- **Reports** - Generate PDF and HTML reports  
 
 ## Project Structure
 
@@ -170,22 +168,21 @@ The MCP server (`snyk_apiweb/tools.py`) implements:
 - STDIO transport
 
 ### Tool Categories
-- 5 User Management tools
-- 4 API User Management tools
-- 2 Account Management tools
-- 3 Roles & Permissions tools
-- 5 Team Management tools
-- 5 Domain Management tools
-- 5 Label Management tools
-- 5 Integration tools
-- 6 Target Management tools
+- 1 User tool (read-only)
+- 2 Team tools (read-only)
+- 1 Label tool
+- 7 Target Management tools
+- 5 Login Sequence tools
+- 7 Authentication & Logout tools
 - 5 Extra Host tools
-- 5 Scan Management tools
-- 4 Finding Management tools
+- 5 Scan tools
+- 4 Finding tools
 - 2 Target Settings tools
-- 4 Report Generation tools
+- 3 Report tools
+- 2 Scanning Agent tools
+- 2 API Target Creation tools
 
-**Total: 60+ tools**
+**Total: 46 tools**
 
 ## Security Considerations
 

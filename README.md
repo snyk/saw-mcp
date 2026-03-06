@@ -1,6 +1,6 @@
 # Snyk API&Web (SAW) MCP Server
 
-An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools, covering: User Management, API Users, Account, Roles & Permissions, Teams, Domains, Extra Hosts, Labels, Integrations, Targets, Scans, Findings, Target Settings, and Reports. It can also create API targets from OpenAPI schemas or Postman collections.
+An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools, covering: Targets, Scans, Findings, Login Sequences, Authentication, Logout Detection, Extra Hosts, Labels, Teams, Users, Scanning Agents, Target Settings, and Reports. It can also create API targets from OpenAPI schemas or Postman collections.
 
 ## Features
 - Full coverage via dedicated tools plus a generic `probely_request` for any API path

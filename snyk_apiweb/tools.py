@@ -140,20 +140,6 @@ def build_server() -> FastMCP:
     def probely_get_user(userId: str) -> Dict[str, Any]:
         return client.get_user(user_id=userId)
 
-    @register_tool("probely_get_api_user")
-    def probely_get_api_user(apiUserId: str) -> Dict[str, Any]:
-        return client.get_api_user(api_user_id=apiUserId)
-
-    # Account
-    @register_tool("probely_get_account")
-    def probely_get_account() -> Dict[str, Any]:
-        return client.get_account()
-
-    # Roles (read-only)
-    @register_tool("probely_get_role")
-    def probely_get_role(roleId: str) -> Dict[str, Any]:
-        return client.get_role(role_id=roleId)
-
     # Teams (read-only)
     @register_tool("probely_list_teams")
     def probely_list_teams(page: Optional[int] = None) -> Dict[str, Any]:
@@ -163,36 +149,12 @@ def build_server() -> FastMCP:
     def probely_get_team(teamId: str) -> Dict[str, Any]:
         return client.get_team(team_id=teamId)
 
-    # Domains (read-only)
-    @register_tool("probely_get_domain")
-    def probely_get_domain(domainId: str) -> Dict[str, Any]:
-        return client.get_domain(domain_id=domainId)
-
     # Labels
-    @register_tool("probely_list_labels")
-    def probely_list_labels(page: Optional[int] = None) -> Dict[str, Any]:
-        return client.list_labels(page=page)
-
-    @register_tool("probely_get_label")
-    def probely_get_label(labelId: str) -> Dict[str, Any]:
-        return client.get_label(label_id=labelId)
-
     @register_tool("probely_create_label")
     def probely_create_label(
         name: str, color: Optional[str] = None
     ) -> Dict[str, Any]:
         return client.create_label(name=name, color=color)
-
-    @register_tool("probely_update_label")
-    def probely_update_label(
-        labelId: str, name: Optional[str] = None, color: Optional[str] = None
-    ) -> Dict[str, Any]:
-        fields: Dict[str, Any] = {}
-        if name is not None:
-            fields["name"] = name
-        if color is not None:
-            fields["color"] = color
-        return client.update_label(label_id=labelId, **fields)
 
     # Targets
     @register_tool("probely_list_targets")
@@ -623,15 +585,6 @@ def build_server() -> FastMCP:
     def probely_getreport(reportId: str) -> Dict[str, Any]:
         """Get report metadata/status by ID."""
         return client.getreport(report_id=reportId)
-
-    # Integrations
-    @register_tool("probely_list_integrations")
-    def probely_list_integrations() -> Dict[str, Any]:
-        return client.list_integrations()
-
-    @register_tool("probely_get_integration")
-    def probely_get_integration(integrationId: str) -> Dict[str, Any]:
-        return client.get_integration(integration_id=integrationId)
 
     # Scanning Agents
     @register_tool("probely_list_scanning_agents")

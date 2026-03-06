@@ -58,7 +58,7 @@
 │  SAW MCP Server  │                              │
 │  ┌───────────────┴───────────────────────┐      │
 │  │  FastMCP 2.0 app  (tools.py)          │      │
-│  │  50+ registered tool functions        │      │
+│  │  46 registered tool functions          │      │
 │  └───────────────┬───────────────────────┘      │
 │                  │                               │
 │  ┌───────────────┴───────────────────────┐      │
@@ -418,7 +418,7 @@ This is the central factory that:
 3. Creates `ProbelyClient(base_url, api_key)`.
 4. Creates `FastMCP` app with server name from config.
 5. Defines a `register_tool(name)` decorator that conditionally registers tools based on the tool filter.
-6. Registers all 50+ tool functions.
+6. Registers all tool functions.
 7. Returns the `FastMCP` app instance.
 
 #### Helper Functions
@@ -475,17 +475,6 @@ All tool names are prefixed with `probely_` for namespacing.
 | Tool | Parameters | Description |
 |------|-----------|-------------|
 | `probely_get_user` | `userId` | Get user details |
-| `probely_get_api_user` | `apiUserId` | Get API user details |
-
-### Account
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `probely_get_account` | — | Get account info |
-
-### Roles (read-only)
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `probely_get_role` | `roleId` | Get role details |
 
 ### Teams
 | Tool | Parameters | Description |
@@ -493,18 +482,10 @@ All tool names are prefixed with `probely_` for namespacing.
 | `probely_list_teams` | `page?` | List teams |
 | `probely_get_team` | `teamId` | Get team details |
 
-### Domains (read-only)
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `probely_get_domain` | `domainId` | Get domain details |
-
 ### Labels
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `probely_list_labels` | `page?` | List labels |
-| `probely_get_label` | `labelId` | Get label details |
 | `probely_create_label` | `name`, `color?` | Create a label |
-| `probely_update_label` | `labelId`, `name?`, `color?` | Update a label |
 
 ### Targets
 | Tool | Parameters | Description |
@@ -578,12 +559,6 @@ All tool names are prefixed with `probely_` for namespacing.
 | `probely_create_scan_report` | `scanId`, `report_type?`, `format?` | Create report (types: default/executive/owasp/pci/hipaa/iso27001) |
 | `probely_download_report` | `reportId` | Download report content |
 | `probely_get_report` | `reportId` | Get report metadata/status |
-
-### Integrations
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `probely_list_integrations` | — | List integrations |
-| `probely_get_integration` | `integrationId` | Get integration details |
 
 ### Scanning Agents
 | Tool | Parameters | Description |
