@@ -25,6 +25,7 @@ def test_init_sets_jwt_authorization_header():
 
     assert session.headers["Authorization"] == "JWT my-token"
     assert session.headers["Accept"] == "application/json"
+    assert session.headers["User-Agent"].startswith("snyk-apiweb-mcp/")
 
 
 # --- _url ---

@@ -5,6 +5,8 @@ import logging
 from typing import Any, Dict, Optional, Tuple
 
 import requests
+
+from snyk_apiweb import __version__
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -25,6 +27,7 @@ class ProbelyClient:
             {
                 "Authorization": f"JWT {self.api_key}",
                 "Accept": "application/json",
+                "User-Agent": f"snyk-apiweb-mcp/{__version__}",
             }
         )
 
