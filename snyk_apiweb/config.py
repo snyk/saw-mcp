@@ -32,8 +32,6 @@ def get_probely_base_url(cfg: Dict[str, Any]) -> str:
     probely_cfg = cfg.get("probely", {})
     
     base_url = saw_cfg.get("base_url") or probely_cfg.get("base_url", "https://api.probely.com")
-    if base_url.endswith("/"):
-        base_url = base_url[:-1]
     return base_url
 
 

@@ -7,7 +7,6 @@ import time as _time
 import base64 as _base64
 import re as _re
 from typing import Any, Callable, Dict, List, Optional
-from functools import wraps
 from fastmcp import FastMCP
 from .probely_client import ProbelyClient
 from .config import load_config, get_probely_api_key, get_probely_base_url, get_tool_filter, get_target_defaults, is_tool_enabled
@@ -475,23 +474,35 @@ def build_server() -> FastMCP:
         """Get details of a specific scanning agent."""
         return client.get_scanning_agent(agent_id=agentId)
 
+    def _fetch_json_or_url(url: Optional[str], json_body: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Fetch JSON/YAML from a URL, or return the provided object as-is."""
+        if json_body is not None:
+            return json_body
+        if url:
+            import requests as _requests
+            r = _requests.get(url, timeout=60)
+            r.raise_for_status()
+            content_type = r.headers.get("Content-Type", "")
+            if "yaml" in content_type or url.endswith((".yaml", ".yml")):
+                import yaml
+                return yaml.safe_load(r.text)
+            return r.json()
+        return None
+
     # API Target from Postman
     @register_tool("probely_create_api_target_from_postman")
     def probely_create_api_target_from_postman(name: str, target_url: str, postman_collection_url: Optional[str] = None,
                                                postman_collection_json: Optional[Dict[str, Any]] = None,
                                                desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
         """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collection_json."""
-        import requests
-        collection: Dict[str, Any] | None = postman_collection_json
-        if collection is None and postman_collection_url:
-            r = requests.get(postman_collection_url, timeout=60)
-            r.raise_for_status()
-            collection = r.json()
+        collection = _fetch_json_or_url(postman_collection_url, postman_collection_json)
         if not collection:
             return {"error": {"message": "Provide postman_collection_url or postman_collection_json"}}
-        return client.create_api_target_from_postman(name=name, target_url=target_url, postman_json=collection, desc=desc, label_names=labels,
-                                                        default_label=target_defaults.get("default_label"),
-                                                        name_prefix=target_defaults.get("name_prefix", ""))
+        return client.create_api_target(
+            name=name, target_url=target_url, schema_type="postman", schema=collection,
+            desc=desc, label_names=labels,
+            default_label=target_defaults.get("default_label"),
+            name_prefix=target_defaults.get("name_prefix", ""))
 
     # API Target from OpenAPI
     @register_tool("probely_create_api_target_from_openapi")
@@ -499,22 +510,13 @@ def build_server() -> FastMCP:
                                                openapi_schema_json: Optional[Dict[str, Any]] = None,
                                                desc: Optional[str] = None, labels: Optional[list[str]] = None) -> Dict[str, Any]:
         """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schema_json."""
-        import requests
-        schema: Dict[str, Any] | None = openapi_schema_json
-        if schema is None and openapi_schema_url:
-            r = requests.get(openapi_schema_url, timeout=60)
-            r.raise_for_status()
-            # Handle both JSON and YAML
-            content_type = r.headers.get("Content-Type", "")
-            if "yaml" in content_type or openapi_schema_url.endswith((".yaml", ".yml")):
-                import yaml
-                schema = yaml.safe_load(r.text)
-            else:
-                schema = r.json()
+        schema = _fetch_json_or_url(openapi_schema_url, openapi_schema_json)
         if not schema:
             return {"error": {"message": "Provide openapi_schema_url or openapi_schema_json"}}
-        return client.create_api_target_from_openapi(name=name, target_url=target_url, openapi_schema=schema, desc=desc, label_names=labels,
-                                                        default_label=target_defaults.get("default_label"),
-                                                        name_prefix=target_defaults.get("name_prefix", ""))
+        return client.create_api_target(
+            name=name, target_url=target_url, schema_type="openapi", schema=schema,
+            desc=desc, label_names=labels,
+            default_label=target_defaults.get("default_label"),
+            name_prefix=target_defaults.get("name_prefix", ""))
 
     return app

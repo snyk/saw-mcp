@@ -33,9 +33,6 @@ class ProbelyClient:
         headers: Optional[Dict[str, str]] = None,
     ) -> Tuple[int, Dict[str, Any]]:
         url = self._url(path)
-        req_headers = dict(self._session.headers)
-        if headers:
-            req_headers.update(headers)
         resp = self._session.request(
             method=method.upper(),
             url=url,
@@ -43,7 +40,7 @@ class ProbelyClient:
             json=json,
             data=data,
             files=files,
-            headers=req_headers,
+            headers=headers,
             timeout=self.timeout,
         )
         content_type = resp.headers.get("Content-Type", "")
@@ -197,12 +194,14 @@ class ProbelyClient:
     def get_target(self, target_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/targets/{target_id}/")[1]
 
-    def create_target(self, name: str, url: str, desc: Optional[str] = None,
-                      label_names: Optional[list[str]] = None,
-                      default_label: Optional[Dict[str, str]] = None,
-                      name_prefix: str = "",
-                      scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
-        """Create a new target. Both name and URL must be nested under 'site' per the Probely API.
+    def _build_create_target_payload(
+        self, name: str, url: str, desc: Optional[str] = None,
+        label_names: Optional[list[str]] = None,
+        default_label: Optional[Dict[str, str]] = None,
+        name_prefix: str = "",
+        scanning_agent_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build the base JSON payload shared by web and API target creation.
 
         ``label_names`` accepts a list of label name strings (e.g. ``["Production"]``).
         ``default_label`` from config (e.g. ``{"name": "Agentic"}``) is auto-merged.
@@ -219,7 +218,6 @@ class ProbelyClient:
         if desc:
             payload["site"]["desc"] = desc
 
-        # Build labels: config default + any user-specified, deduplicated by name
         seen: set[str] = set()
         labels: list[Dict[str, str]] = []
         for lbl in ([default_label] if default_label else []) + self.resolve_labels(label_names or []):
@@ -232,6 +230,35 @@ class ProbelyClient:
         if scanning_agent_id is not None:
             payload["scanning_agent"] = {"id": scanning_agent_id}
 
+        return payload
+
+    def create_target(self, name: str, url: str, desc: Optional[str] = None,
+                      label_names: Optional[list[str]] = None,
+                      default_label: Optional[Dict[str, str]] = None,
+                      name_prefix: str = "",
+                      scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
+        """Create a new web target."""
+        payload = self._build_create_target_payload(
+            name, url, desc, label_names, default_label, name_prefix, scanning_agent_id)
+        return self.request("POST", "/targets/", json=payload)[1]
+
+    def create_api_target(self, name: str, target_url: str,
+                          schema_type: str, schema: Dict[str, Any],
+                          desc: Optional[str] = None,
+                          label_names: Optional[list[str]] = None,
+                          default_label: Optional[Dict[str, str]] = None,
+                          name_prefix: str = "",
+                          scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
+        """Create a new API target with its schema included in the creation payload.
+
+        Args:
+            schema_type: "postman" or "openapi"
+            schema: The Postman collection or OpenAPI schema JSON content
+        """
+        payload = self._build_create_target_payload(
+            name, target_url, desc, label_names, default_label, name_prefix, scanning_agent_id)
+        schema_key = "collection" if schema_type == "postman" else "schema"
+        payload[schema_key] = schema
         return self.request("POST", "/targets/", json=payload)[1]
 
     def update_target(self, target_id: str, **fields: Any) -> Dict[str, Any]:
@@ -398,7 +425,7 @@ class ProbelyClient:
             try:
                 detectors = self.list_logout_detectors(target_id)
                 detector_list = detectors.get("results", [])
-            except:
+            except Exception:
                 detector_list = []
             
             if not detector_list:
@@ -443,14 +470,13 @@ class ProbelyClient:
         Returns the first CSS selector found in the login sequence (typically username field),
         or None if no login sequence exists.
         """
-        import json
         try:
             sequences = self.list_sequences(target_id)
             for seq in sequences.get("results", []):
                 if seq.get("type") == "login" and seq.get("enabled"):
                     content = seq.get("content", "")
                     if isinstance(content, str):
-                        steps = json.loads(content)
+                        steps = _json.loads(content)
                     else:
                         steps = content
                     
@@ -573,73 +599,6 @@ class ProbelyClient:
 
     def get_integration(self, integration_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/integrations/{integration_id}/")[1]
-
-    # API Target via Postman Collection (best-effort; endpoint may vary by Probely account)
-    def create_api_target_from_postman(self, name: str, target_url: str, postman_json: Dict[str, Any], desc: Optional[str] = None, label_names: Optional[list[str]] = None, default_label: Optional[Dict[str, str]] = None, name_prefix: str = "") -> Dict[str, Any]:
-        # Step 1: Create target
-        target = self.create_target(name=name, url=target_url, desc=desc, label_names=label_names, default_label=default_label, name_prefix=name_prefix)
-        target_id = target.get("id") or target.get("target_id") or target.get("uuid")
-        if not target_id:
-            return {"error": {"message": "Could not determine created target id", "target_response": target}}
-        # Step 2: Attempt to attach Postman collection to target (endpoint may differ)
-        # Try a few common patterns
-        candidates = [
-            f"/targets/{target_id}/apis/import/postman/",
-            f"/targets/{target_id}/apis/import/",
-            f"/targets/{target_id}/api/import/",
-        ]
-        last_resp: Dict[str, Any] | None = None
-        for path in candidates:
-            status, body = self.request(
-                method="POST",
-                path=path,
-                json={"collection": postman_json},
-                headers={"Content-Type": "application/json"},
-            )
-            last_resp = body
-            if 200 <= status < 300:
-                return {
-                    "target_id": target_id,
-                    "import": body,
-                }
-        return {
-            "target_id": target_id,
-            "import_error": last_resp or {"message": "No import endpoint succeeded"},
-        }
-
-    # API Target via OpenAPI Schema (best-effort; endpoint may vary by Probely account)
-    def create_api_target_from_openapi(self, name: str, target_url: str, openapi_schema: Dict[str, Any], desc: Optional[str] = None, label_names: Optional[list[str]] = None, default_label: Optional[Dict[str, str]] = None, name_prefix: str = "") -> Dict[str, Any]:
-        # Step 1: Create target
-        target = self.create_target(name=name, url=target_url, desc=desc, label_names=label_names, default_label=default_label, name_prefix=name_prefix)
-        target_id = target.get("id") or target.get("target_id") or target.get("uuid")
-        if not target_id:
-            return {"error": {"message": "Could not determine created target id", "target_response": target}}
-        # Step 2: Attempt to attach OpenAPI schema to target (endpoint may differ)
-        # Try a few common patterns
-        candidates = [
-            f"/targets/{target_id}/apis/import/openapi/",
-            f"/targets/{target_id}/apis/import/swagger/",
-            f"/targets/{target_id}/apis/import/",
-            f"/targets/{target_id}/api/import/openapi/",
-        ]
-        last_resp: Dict[str, Any] | None = None
-        for path in candidates:
-            status, body = self.request(
-                method="POST",
-                path=path,
-                json={"schema": openapi_schema},
-                headers={"Content-Type": "application/json"},
-            )
-            last_resp = body
-            if 200 <= status < 300:
-                return {
-                    "target_id": target_id,
-                    "import": body,
-                }
-        return {
-            "target_id": target_id,
-            "import_error": last_resp or {"message": "No import endpoint succeeded"},
-        }
 
     # Scanning Agents
     def list_scanning_agents(self, page: Optional[int] = None, length: Optional[int] = None,
