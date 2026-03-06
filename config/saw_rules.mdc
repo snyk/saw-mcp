@@ -53,7 +53,6 @@ When a new project is loaded or workspace is opened, check if it's an **applicat
 
 - Only start scans when the user explicitly requests it
 - Explain that scans should only be run against systems the user has permission to test
-- Recommend starting with a quick scan profile first to verify authentication works
 
 ## Vulnerability Remediation
 
