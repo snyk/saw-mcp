@@ -52,6 +52,14 @@ def test_load_config_returns_empty_dict_for_empty_file(tmp_path):
     assert result == {}
 
 
+def test_load_config_rejects_path_traversal_via_env(monkeypatch):
+    """Path traversal via env var is rejected."""
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/etc/passwd")
+
+    with pytest.raises(ValueError, match="resolves outside allowed directories"):
+        load_config()
+
+
 # --- get_probely_base_url ---
 
 

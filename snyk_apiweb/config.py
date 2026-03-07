@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 from typing import Any, Dict
 
 import yaml
@@ -15,6 +16,25 @@ DEFAULT_CONFIG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
 )
 
+# Allowed base directories for config paths (prevents path traversal)
+_ALLOWED_CONFIG_BASES = (
+    os.path.realpath(os.path.dirname(DEFAULT_CONFIG_PATH)),
+    os.path.realpath(os.getcwd()),
+    os.path.realpath(tempfile.gettempdir()),
+)
+
+
+def _resolve_and_validate_config_path(cfg_path: str) -> str:
+    """Resolve path to absolute and ensure it's within allowed directories."""
+    resolved = os.path.realpath(os.path.abspath(cfg_path))
+    for base in _ALLOWED_CONFIG_BASES:
+        if resolved == base or resolved.startswith(base + os.sep):
+            return resolved
+    raise ValueError(
+        f"Config path {cfg_path!r} resolves outside allowed directories. "
+        "Use a path under the project config dir or current working directory."
+    )
+
 
 def load_config(path: str | None = None) -> Dict[str, Any]:
     """Load configuration from YAML file."""
@@ -24,8 +44,11 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
         or os.environ.get(CONFIG_PATH_ENV_LEGACY)
         or DEFAULT_CONFIG_PATH
     )
-    logger.info("Loading config from %s", cfg_path)
-    with open(cfg_path, "r", encoding="utf-8") as f:
+    validated_path = _resolve_and_validate_config_path(cfg_path)
+    if not os.path.isfile(validated_path):
+        raise FileNotFoundError(f"Config file not found: {validated_path}")
+    logger.info("Loading config from %s", validated_path)
+    with open(validated_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return data
 
