@@ -33,12 +33,8 @@ saw:
 ```
 
 ## Cursor IDE integration
-1. Open Settings → Features → Model Context Protocol (MCP)
-2. Add a new MCP server:
-   - Name: `SAW` (or `Snyk API&Web`)
-   - Command: `./venv/bin/python`
-   - Args: `-m`, `snyk_apiweb.server`
-   - Env: `MCP_SAW_CONFIG_PATH=./config/config.yaml`
+1. Open Settings → Tools & MCP → New MCP Server”
+2. Add the JSON block below to the config and change it appropriately.
 3. Save and restart Cursor.
 
 ### Cursor mcp.json example
@@ -54,6 +50,7 @@ saw:
         "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcpserver/config/config.yaml"
       }
     }
+  }  
 }
 ```
 
@@ -160,3 +157,10 @@ If `enabled` is set, it takes precedence (whitelist mode). If neither is set, al
 - `probely_create_api_target_from_postman(name, target_url, postman_collection_url|postman_collection_json, ...)`
 - `probely_create_api_target_from_openapi(name, target_url, openapi_schema_url|openapi_schema_json, ...)`
 - `probely_request(method, path, params?, json?, data?)` for any endpoint
+
+## Testing
+After completing all steps, you can test it by prompting "Add target taintedport.com with credentials jane@example.com / password123". 
+
+You should expect the target to be created, a login sequence recorded and added to the settings, TOTP if provided, logout detection and extra hosts configured.
+
+You can also copy&paste a list of targets, credentials and optionally TOTPs. This should spawn subagents to add each target.
