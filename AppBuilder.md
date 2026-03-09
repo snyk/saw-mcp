@@ -48,7 +48,7 @@
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  AI IDE (Cursor / Devon / Windsurf / etc.)      │
+│  AI IDE (Cursor / Devin / Windsurf / etc.)      │
 │  ┌───────────────────────────────────────┐      │
 │  │  MCP Client                           │      │
 │  └───────────────┬───────────────────────┘      │
@@ -117,9 +117,8 @@ saw-mcpserver/
 │   └── settings.json                     # {"snyk.advanced.autoSelectOrganization": true}
 │
 ├── .gitignore
-├── INSTALL.md                            # Quick install instructions for .tgz package
+├── USER_GUIDE.md                         # User guide: usage, examples, tool reference
 ├── LICENSE                               # MIT
-├── PROJECT_SUMMARY.md                    # High-level project summary
 ├── README.md                             # Full documentation
 └── requirements.txt                      # Python dependencies
 ```
