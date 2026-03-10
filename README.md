@@ -1,3 +1,5 @@
+![SAW MCP Banner](./assets/saw-mcp-banner.webp)
+
 # Snyk API&Web (SAW) MCP Server
 
 An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools. AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) can create and configure scan targets, run scans, and manage findings through natural language.
@@ -19,7 +21,7 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 ### 2. Store Your API Key
 
-Store the API key in a `.env` file in the project root (gitignored) so it persists across sessions. 
+Store the API key in a `.env` file in the project root (gitignored) so it persists across sessions.
 
 Automate env setup:
 
@@ -75,6 +77,7 @@ pip install -r requirements.txt
 ```
 
 Edit `config/config.yaml` and set your Snyk API&Web API key:
+
 ```yaml
 saw:
   base_url: "https://api.probely.com"
