@@ -7,6 +7,8 @@ config/config.yaml
 .DS_Store
 *.tgz
 __pycache__
+.ruff_cache
+.pytest_cache
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .cursor/rules/snyk_rules.mdc
