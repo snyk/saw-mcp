@@ -1,6 +1,6 @@
 # Snyk API&Web (SAW) MCP Server
 
-An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools. AI assistants (Cursor, Devin, Windsurf, etc.) can create and configure scan targets, run scans, and manage findings through natural language.
+An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools. AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) can create and configure scan targets, run scans, and manage findings through natural language.
 
 **Main goal:** Agentic target onboarding — create targets and automatically configure authentication (login sequences, 2FA), logout detection, and extra hosts.
 
@@ -31,7 +31,7 @@ saw:
 ### From tarball
 
 ```bash
-tar -xzvf SnykAPIWeb.tgz
+tar -xzvf SnykAPIWeb-*.tgz
 cd SnykAPIWeb
 python3 -m venv venv
 source venv/bin/activate
@@ -94,4 +94,4 @@ ln /<basedir>/saw-mcpserver/config/skills/saw-api-target-configuration/SKILL.md 
 bash scripts/package.sh
 ```
 
-Creates `dist/SnykAPIWeb.tgz`.
+Creates `dist/SnykAPIWeb-<version>.tgz` (version from `snyk_apiweb/__init__.py`).

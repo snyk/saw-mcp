@@ -107,7 +107,7 @@ saw-mcpserver/
 ├── scripts/
 │   ├── dev.sh                            # Start in FastMCP dev mode (hot-reload)
 │   ├── inspector.sh                      # Start MCP Inspector (web UI for testing tools)
-│   └── package.sh                        # Build dist/SnykAPIWeb.tgz (redacts API key)
+│   └── package.sh                        # Build dist/SnykAPIWeb-<version>.tgz (redacts API key)
 │
 ├── .cursor/
 │   └── rules/
@@ -903,7 +903,7 @@ set -euo pipefail
 1. Creates a staging directory (`mktemp -d`) with cleanup trap.
 2. Copies project via `rsync`, excluding `venv`, `dist`, `node_modules`, `.git`, `__pycache__`, `distribution`.
 3. **Redacts the API key** in the staged `config/config.yaml` using `sed` (replaces any `api_key` value with `"CHANGEME"`).
-4. Creates `dist/SnykAPIWeb.tgz` from staging.
+4. Creates `dist/SnykAPIWeb-<version>.tgz` from staging (version from `__init__.py`).
 
 ---
 

@@ -3,11 +3,14 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$PROJECT_DIR/dist"
 
-rm -f "$DIST_DIR/SnykAPIWeb.tgz"
+VERSION=$(grep -E '^__version__\s*=' "$PROJECT_DIR/snyk_apiweb/__init__.py" | sed -E 's/.*"([^"]+)".*/\1/')
+TARBALL_NAME="SnykAPIWeb-${VERSION}.tgz"
+
+rm -f "$DIST_DIR/SnykAPIWeb-"*.tgz "$DIST_DIR/SnykAPIWeb.tgz"
 mkdir -p "$DIST_DIR"
 
 # Build into a staging dir to allow redaction of secrets (e.g., API key)
-TARBALL_PATH="$DIST_DIR/SnykAPIWeb.tgz"
+TARBALL_PATH="$DIST_DIR/$TARBALL_NAME"
 STAGE_DIR="$(mktemp -d)"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 

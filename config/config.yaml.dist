@@ -40,6 +40,12 @@ tools:
     # - probely_get_finding
     # - probely_list_findings
     # - probely_update_finding
+    # Credentials
+    # - probely_list_credentials
+    # - probely_get_credential
+    # - probely_create_credential
+    # - probely_update_credential
+    # - probely_delete_credential
     # Labels
     # - probely_create_label
     # Login Sequences

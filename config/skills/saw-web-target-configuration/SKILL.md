@@ -213,7 +213,9 @@ After recording, generate the login sequence JSON and use the MCP tools below.
 # Labels: If the user specified labels, pass ONLY those via labels=[...] (do NOT add "Agentic").
 #         If the user did NOT specify labels, omit the labels param entirely (the default is auto-applied from config).
 # Name: Use user-provided name > site <title> > FQDN. NEVER use a label as the name.
-probely_create_target(name=..., url, desc?, labels?)
+target = probely_create_target(name=..., url, desc?, labels?)
+# IMPORTANT: Use target["id"] (the top-level ID) as targetId for ALL subsequent calls.
+# Do NOT use target["site"]["id"] — that is a different internal ID and will cause 404 errors.
 
 # 2. If 2FA is needed, configure it BEFORE creating the sequence.
 # The tool auto-generates a TOTP code from the secret. Use the returned otp_code
@@ -228,6 +230,17 @@ result = probely_configure_2fa_totp(targetId, otp_secret="THE_SEED")
 # Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content.
 # For 2FA, hardcode the otp_code from step 2 in the OTP fill_value step (do NOT use custom fields for OTP).
 #
+# PASSWORD: Use credentials management — create a credential first, then link it
+# via its URI. Do NOT store the password inline in custom_field_mappings.
+cred = probely_create_credential(
+  name="<target_name> - <username> password",  # e.g. "MyApp - jane@example.com password"
+  value="actual_password_here",
+  is_sensitive=True
+)
+# cred["uri"] → e.g. "credentials://doXJZdwvj1vW" — use this as the "value" for [CUSTOM_PASSWORD]
+#
+# USERNAME: Use inline value (typically not sensitive).
+#
 # NOTE: custom_field_mappings is REQUIRED when content uses [CUSTOM_USERNAME] or
 # [CUSTOM_PASSWORD]. Omitting it causes a 400 error from the API.
 probely_create_sequence(
@@ -240,13 +253,13 @@ probely_create_sequence(
     {
       "name": "[CUSTOM_USERNAME]",
       "value": "actual_username_here",
-      "value_is_sensitive": False,  # Set to True if username is sensitive
+      "value_is_sensitive": False,
       "enabled": True
     },
     {
       "name": "[CUSTOM_PASSWORD]",
-      "value": "actual_password_here",
-      "value_is_sensitive": True,  # Always mark passwords as sensitive
+      "value": cred["uri"],       # Link credential via its URI (e.g. "credentials://xxxx")
+      "value_is_sensitive": True,
       "enabled": True
     }
   ]
@@ -393,10 +406,10 @@ The sequence format (based on the [Snyk API&Web Sequence Recorder](https://githu
 
 **IMPORTANT: Use Custom Fields for Credentials**
 
-**Always use custom field placeholders for username and password** instead of hardcoding them in the sequence. This allows credentials to be managed separately and updated without modifying the sequence.
+**Always use custom field placeholders for username and password** instead of hardcoding them in the sequence.
 
-- Use `[CUSTOM_USERNAME]` placeholder for the username field
-- Use `[CUSTOM_PASSWORD]` placeholder for the password field
+- Use `[CUSTOM_USERNAME]` placeholder for the username field — map to inline `value` in custom_field_mappings
+- Use `[CUSTOM_PASSWORD]` placeholder for the password field — **create a credential** via `probely_create_credential`, then pass its `uri` (e.g. `credentials://xxxx`) as the `value` in custom_field_mappings. Do NOT store the password inline.
 - **2FA OTP codes should remain hardcoded** (see 2FA section below)
 
 Example sequence with custom fields:

@@ -45,18 +45,20 @@ The AI creates a **subagent per target** and configures them in parallel, so mul
 | Findings | List, get, update, bulk update |
 | Authentication | Form login, sequence login, 2FA, logout detection |
 | Sequences | Create, list, get, update |
+| Credentials | List, get, create, update, delete |
 | Extra hosts | Create, list, get, update |
 | API targets | From OpenAPI, from Postman |
 | Reports | Create, download |
 | Other | Labels, teams, users, scanning agents, target settings |
 
-**46 tools total**
+**51 tools total**
 
 ### Key tools (selection)
 
 - `probely_list_targets(search?)`, `probely_create_target(name, url, ...)`, `probely_start_scan(targetId, profile?)`
 - `probely_list_findings(targetId, severity?, state?)`, `probely_update_finding(targetId, findingId, state)`
 - `probely_create_sequence(...)`, `probely_configure_sequence_login(targetId, enabled)`
+- `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials are linked to sequence custom fields for passwords
 - `probely_configure_form_login(...)`, `probely_configure_2fa(...)`
 - `probely_create_api_target_from_postman(...)`, `probely_create_api_target_from_openapi(...)`
 - `probely_request(method, path, ...)` for any endpoint

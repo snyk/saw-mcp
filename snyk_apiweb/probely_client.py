@@ -199,6 +199,67 @@ class ProbelyClient:
     def delete_domain(self, domain_id: str) -> Dict[str, Any]:
         return self.request("DELETE", f"/domains/{domain_id}/")[1]
 
+    # Credentials
+    def list_credentials(
+        self,
+        page: Optional[int] = None,
+        search: Optional[str] = None,
+        is_sensitive: Optional[bool] = None,
+        length: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """List credentials. Sensitive credential values are not returned."""
+        params: Dict[str, Any] = {}
+        if page is not None:
+            params["page"] = page
+        if search:
+            params["search"] = search
+        if is_sensitive is not None:
+            params["is_sensitive"] = is_sensitive
+        if length is not None:
+            params["length"] = length
+        return self.request(
+            "GET", "/credentials/", params=params or None
+        )[1]
+
+    def get_credential(self, credential_id: str) -> Dict[str, Any]:
+        """Get a credential by ID. Value is null if sensitive."""
+        return self.request("GET", f"/credentials/{credential_id}/")[1]
+
+    def create_credential(
+        self,
+        name: str,
+        value: str,
+        is_sensitive: bool = True,
+        description: Optional[str] = None,
+        team: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create a credential. Use is_sensitive=True for passwords."""
+        payload: Dict[str, Any] = {
+            "name": name,
+            "value": value,
+            "is_sensitive": is_sensitive,
+        }
+        if description:
+            payload["description"] = description
+        if team:
+            payload["team"] = team
+        return self.request("POST", "/credentials/", json=payload)[1]
+
+    def update_credential(
+        self, credential_id: str, **fields: Any
+    ) -> Dict[str, Any]:
+        """Update a credential (partial update)."""
+        return self.request(
+            "PATCH", f"/credentials/{credential_id}/", json=fields
+        )[1]
+
+    def delete_credential(self, credential_id: str) -> Dict[str, Any]:
+        """Delete a credential."""
+        status, body = self.request(
+            "DELETE", f"/credentials/{credential_id}/"
+        )
+        return body if status != 204 else {}
+
     # Labels
     def list_labels(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(

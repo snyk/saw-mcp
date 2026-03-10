@@ -149,6 +149,70 @@ def build_server() -> FastMCP:
     def probely_get_team(teamId: str) -> Dict[str, Any]:
         return client.get_team(team_id=teamId)
 
+    # Credentials
+    @register_tool("probely_list_credentials")
+    def probely_list_credentials(
+        page: Optional[int] = None,
+        search: Optional[str] = None,
+        is_sensitive: Optional[bool] = None,
+        length: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """List credentials. Sensitive values are not returned."""
+        return client.list_credentials(
+            page=page,
+            search=search,
+            is_sensitive=is_sensitive,
+            length=length,
+        )
+
+    @register_tool("probely_get_credential")
+    def probely_get_credential(credentialId: str) -> Dict[str, Any]:
+        """Get a credential by ID. Value is null if sensitive."""
+        return client.get_credential(credential_id=credentialId)
+
+    @register_tool("probely_create_credential")
+    def probely_create_credential(
+        name: str,
+        value: str,
+        is_sensitive: bool = True,
+        description: Optional[str] = None,
+        team: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create a credential for secure storage. Use is_sensitive=True for passwords.
+        Returns the credential with id and uri. Use the uri (e.g. "credentials://xxxx") as the value in custom_field_mappings to link it to a sequence."""
+        return client.create_credential(
+            name=name,
+            value=value,
+            is_sensitive=is_sensitive,
+            description=description,
+            team=team,
+        )
+
+    @register_tool("probely_update_credential")
+    def probely_update_credential(
+        credentialId: str,
+        name: Optional[str] = None,
+        value: Optional[str] = None,
+        is_sensitive: Optional[bool] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a credential (partial update)."""
+        fields: Dict[str, Any] = {}
+        if name is not None:
+            fields["name"] = name
+        if value is not None:
+            fields["value"] = value
+        if is_sensitive is not None:
+            fields["is_sensitive"] = is_sensitive
+        if description is not None:
+            fields["description"] = description
+        return client.update_credential(credential_id=credentialId, **fields)
+
+    @register_tool("probely_delete_credential")
+    def probely_delete_credential(credentialId: str) -> Dict[str, Any]:
+        """Delete a credential."""
+        return client.delete_credential(credential_id=credentialId)
+
     # Labels
     @register_tool("probely_create_label")
     def probely_create_label(
@@ -178,6 +242,10 @@ def build_server() -> FastMCP:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign a scanning agent for internal/private targets.
+
+        IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
+        ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
+        parameter for all subsequent tool calls (sequences, scans, logout detection, etc.).
         """
         return client.create_target(
             name=name,
@@ -246,10 +314,14 @@ def build_server() -> FastMCP:
         enabled: bool = True,
         custom_field_mappings: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content.
+        """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials.
 
-        custom_field_mappings should be a JSON array or JSON array string, e.g.:
-        [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
+        For the password field, prefer linking a credential (created via probely_create_credential).
+        Pass the credential's URI as the value:
+        - With credential: [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
+        - With inline value (fallback): [{"name": "[CUSTOM_PASSWORD]", "value": "secret", "value_is_sensitive": true, "enabled": true}]
+
+        For username: [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
         """
         mappings = _parse_list_of_dicts(custom_field_mappings)
         return client.create_sequence(
