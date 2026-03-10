@@ -60,6 +60,28 @@ def test_load_config_rejects_path_traversal_via_env(monkeypatch):
         load_config()
 
 
+def test_load_config_env_only_returns_empty_when_no_config_file(monkeypatch):
+    """When MCP_SAW_API_KEY is set and config file does not exist, return {}."""
+    monkeypatch.setenv("MCP_SAW_API_KEY", "env-key")
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+
+    result = load_config()
+
+    assert result == {}
+
+
+def test_load_config_env_only_still_loads_when_config_exists(tmp_config, monkeypatch):
+    """When MCP_SAW_API_KEY is set but config file exists, load it for target_defaults etc."""
+    path = tmp_config({"target_defaults": {"label": "Agentic"}})
+    monkeypatch.setenv("MCP_SAW_API_KEY", "env-key")
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", path)
+
+    result = load_config()
+
+    assert result["target_defaults"]["label"] == "Agentic"
+
+
 # --- get_probely_base_url ---
 
 
@@ -85,7 +107,24 @@ def test_get_base_url_defaults_when_no_section():
 # --- get_probely_api_key ---
 
 
-def test_get_api_key_prefers_saw_section():
+def test_get_api_key_prefers_env_var_over_config(monkeypatch):
+    """MCP_SAW_API_KEY env var takes precedence over config (12-factor)."""
+    monkeypatch.setenv("MCP_SAW_API_KEY", "env-key")
+    cfg = {"saw": {"api_key": "config-key"}}
+
+    assert get_probely_api_key(cfg) == "env-key"
+
+
+def test_get_api_key_from_env_when_config_empty(monkeypatch):
+    """MCP_SAW_API_KEY allows running without config file."""
+    monkeypatch.setenv("MCP_SAW_API_KEY", "env-only-key")
+
+    assert get_probely_api_key({}) == "env-only-key"
+
+
+def test_get_api_key_prefers_saw_section(monkeypatch):
+    """Config is used when env var is not set."""
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
     cfg = {
         "saw": {"api_key": "saw-key"},
         "probely": {"api_key": "probely-key"},
@@ -94,25 +133,29 @@ def test_get_api_key_prefers_saw_section():
     assert get_probely_api_key(cfg) == "saw-key"
 
 
-def test_get_api_key_falls_back_to_probely_section():
+def test_get_api_key_falls_back_to_probely_section(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
     cfg = {"probely": {"api_key": "probely-key"}}
 
     assert get_probely_api_key(cfg) == "probely-key"
 
 
-def test_get_api_key_raises_when_missing():
+def test_get_api_key_raises_when_missing(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
     with pytest.raises(RuntimeError):
         get_probely_api_key({})
 
 
-def test_get_api_key_raises_for_saw_placeholder():
+def test_get_api_key_raises_for_saw_placeholder(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
     cfg = {"saw": {"api_key": "REPLACE_WITH_YOUR_SAW_API_KEY"}}
 
     with pytest.raises(RuntimeError):
         get_probely_api_key(cfg)
 
 
-def test_get_api_key_raises_for_probely_placeholder():
+def test_get_api_key_raises_for_probely_placeholder(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
     cfg = {"probely": {"api_key": "REPLACE_WITH_YOUR_PROBELY_API_KEY"}}
 
     with pytest.raises(RuntimeError):
