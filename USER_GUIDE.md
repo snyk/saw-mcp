@@ -4,6 +4,8 @@
 
 The Snyk API&Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API&Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
 
+> **Naming note:** Snyk API&Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
+
 ## Main value
 
 **Agentic target onboarding.** The server is built so the AI can create and fully configure scan targets automatically. Instead of manually setting up targets in the Snyk UI, you describe what you want and the AI handles:

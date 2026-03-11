@@ -17,7 +17,7 @@ if [ "$#" -eq 1 ]; then
   echo "Warning: passing keys as arguments exposes them in shell history."
   echo "Prefer: ./scripts/setup-env.sh  (interactive prompt)"
 elif [ -t 0 ] && [ "$#" -eq 0 ]; then
-  printf "Paste your API key (from https://plus.probely.app/api-keys): "
+  printf "Paste your API key (from https://plus.probely.app/api-keys — Snyk API&Web console): "
   read -rs API_KEY
   echo
 else
