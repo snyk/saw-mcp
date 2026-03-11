@@ -74,10 +74,8 @@ The server picks up your API key from `.env` (step 3) automatically. No key in t
 
 Ask your AI assistant to:
 
-- "Help me configure a new API target"
-- "List the most recent findings of target X"
-- "Start a scan on target X"
-- "Show me the findings for target Y"
+- "Configure a Snyk API&Web API target from this OpenAPI schema / Swagger document / Postman collection."
+- "Configure a Snyk API&Web web target for this authenticated application."
 
 ## Installation from Tarball
 

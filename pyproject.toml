@@ -33,6 +33,7 @@ dev = ["pytest>=8.0.0", "ruff>=0.8.0"]
 
 [tool.setuptools.packages.find]
 include = ["snyk_apiweb*"]
+exclude = ["config*", "tests*", "scripts*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
