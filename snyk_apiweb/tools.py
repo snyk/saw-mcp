@@ -8,9 +8,11 @@ import logging
 import re
 import struct
 import time
+from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
 from fastmcp import Context, FastMCP
+from pydantic import Field
 
 from .config import (
     get_probely_api_key,
@@ -149,6 +151,210 @@ def build_server() -> FastMCP:
             return func
 
         return decorator
+        
+    @app.prompt(
+        name="saw_web_target_configuration",
+        description=(
+            "Help configure a Snyk API&Web web target with authentication, "
+            "login sequence setup, logout detection, extra hosts, and "
+            "optional TOTP."
+        ),
+        tags={"saw", "prompts", "web-target"},
+    )
+    def saw_web_target_configuration(
+        url: str = Field(
+            description=(
+                "Base URL of the web application, for example "
+                "`https://app.example.com`."
+            )
+        ),
+        username: str = Field(
+            description="Username or email used to authenticate."
+        ),
+        password: str = Field(description="Password used to authenticate."),
+        name: str = Field(
+            default="auto",
+            description=(
+                "Target name to use. If `auto`, derive it from the user "
+                "input, then the page title, then the FQDN."
+            ),
+        ),
+        labels: str = Field(
+            default="default",
+            description=(
+                "JSON string array of labels, or `default` to omit the "
+                "`labels` parameter."
+            ),
+        ),
+        totp_seed: str = Field(
+            default="none",
+            description="TOTP seed for 2FA, or `none` if 2FA is not required.",
+        ),
+    ) -> str:
+        """Help configure a web target."""
+        return (
+            dedent(
+                """
+            Configure a Snyk API&Web web target for an authenticated web
+            application.
+
+            Target details:
+            - URL: `{url}`
+            - Name: `{name}`
+            - Labels: `{labels}`
+            - Username: `{username}`
+            - Password: `{password}`
+            - 2FA TOTP seed: `{totp_seed}`
+
+            Requirements:
+            - First, read the skill file at `/Users/andrerodrigues/git/saw-mcpserver/config/skills/saw-web-target-configuration/SKILL.md` and follow it exactly.
+            - Use a login sequence when Playwright is available. Do not use form login unless Playwright is unavailable.
+            - Derive the target name in this order if needed: user-provided name, then site `<title>`, then FQDN.
+            - If labels are `default`, do not pass a `labels` parameter.
+            - Create a new target; do not search for or reuse an existing one.
+            - Detect and configure any required extra hosts.
+            - Configure logout detection explicitly with `check_session_url`, `logout_detector_type`, and `logout_detector_value`.
+            - If 2FA is enabled, configure TOTP before creating the login sequence.
+            - Store the password using credentials management and link it in `custom_field_mappings`.
+
+            Return:
+            - Target ID
+            - Final target name
+            - URL
+            - Login sequence status
+            - Logout detection status
+            - Extra hosts added
+            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+
+            At the end, summarize the configured target in a table.
+            """
+            )
+            .strip()
+            .format(
+                url=url,
+                name=name,
+                labels=labels,
+                username=username,
+                password=password,
+                totp_seed=totp_seed,
+            )
+        )
+
+    @app.prompt(
+        name="saw_api_target_configuration",
+        description=(
+            "Help configure a Snyk API&Web API target from an OpenAPI "
+            "schema, Swagger document, Postman collection, or generated "
+            "schema."
+        ),
+        tags={"saw", "prompts", "api-target"},
+    )
+    def saw_api_target_configuration(
+        base_url: str = Field(
+            description=(
+                "Base URL of the API target, for example "
+                "`https://api.example.com`."
+            )
+        ),
+        source_type: str = Field(
+            description="One of `openapi`, `postman`, or `generate`."
+        ),
+        name: str = Field(
+            default="auto",
+            description=(
+                "Target name to use. If `auto`, derive it from user input, "
+                "then schema title or collection name, then the domain."
+            ),
+        ),
+        labels: str = Field(
+            default="default",
+            description=(
+                "JSON string array of labels, or `default` to omit the "
+                "`labels` parameter."
+            ),
+        ),
+        openapi_schema_url: str = Field(
+            default="none",
+            description="URL of the OpenAPI or Swagger schema, or `none`.",
+        ),
+        openapi_schema_content: str = Field(
+            default="none",
+            description="File path or inline JSON/YAML schema content, or `none`.",
+        ),
+        postman_collection_url: str = Field(
+            default="none",
+            description="URL of the Postman collection, or `none`.",
+        ),
+        postman_collection_content: str = Field(
+            default="none",
+            description="File path or inline JSON collection content, or `none`.",
+        ),
+        authentication: str = Field(
+            default="none",
+            description=(
+                "One of `none`, `apiKey`, `bearer`, `oauth`, or `basic`."
+            ),
+        ),
+        authentication_details: str = Field(
+            default="none",
+            description="Authentication headers, token, credentials, or `none`.",
+        ),
+    ) -> str:
+        """Help configure an API target."""
+        return (
+            dedent(
+                """
+            Configure a Snyk API&Web API target for an API described by an
+            OpenAPI/Swagger schema or a Postman collection.
+
+            Target details:
+            - Base URL: `{base_url}`
+            - Name: `{name}`
+            - Labels: `{labels}`
+            - Schema source type: `{source_type}`
+            - OpenAPI schema URL: `{openapi_schema_url}`
+            - OpenAPI schema file/content: `{openapi_schema_content}`
+            - Postman collection URL: `{postman_collection_url}`
+            - Postman collection file/content: `{postman_collection_content}`
+            - Authentication: `{authentication}`
+            - Authentication details: `{authentication_details}`
+
+            Requirements:
+            - First, read the skill file at `/Users/andrerodrigues/git/saw-mcpserver/config/skills/saw-api-target-configuration/SKILL.md` and follow it exactly.
+            - Derive the target name in this order if needed: user-provided name, then schema title or Postman collection name, then the domain from the base URL.
+            - If labels are `default`, do not pass a `labels` parameter.
+            - Create a new target; do not search for or reuse an existing one.
+            - If the source type is `openapi`, validate the schema before uploading it and fix any violations first.
+            - If neither an OpenAPI schema nor a Postman collection is available and the source type is `generate`, generate a basic OpenAPI 3.0 schema from the codebase before creating the target.
+            - Use the OpenAPI target creation flow for OpenAPI/Swagger input and the Postman target creation flow for Postman input.
+            - If authentication is required, configure it after target creation using the workflow in the skill.
+
+            Return:
+            - Target ID
+            - Final target name
+            - Base URL
+            - Source type used
+            - Authentication status
+            - Extra hosts added
+            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+
+            At the end, summarize the configured target in a table.
+            """
+            )
+            .strip()
+            .format(
+                base_url=base_url,
+                name=name,
+                labels=labels,
+                source_type=source_type,
+                openapi_schema_url=openapi_schema_url,
+                openapi_schema_content=openapi_schema_content,
+                postman_collection_url=postman_collection_url,
+                postman_collection_content=postman_collection_content,
+                authentication=authentication,
+                authentication_details=authentication_details,
+            )
+        )
 
     # Generic request tool to cover all API functionality
     @register_tool("probelyrequest")

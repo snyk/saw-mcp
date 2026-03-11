@@ -1,4 +1,4 @@
-![SAW MCP Banner](./assets/saw-mcp-banner.webp)
+![SAW MCP Banner](./assets/Snyk_API_and_Web_Banner.webp)
 
 # Snyk API&Web (SAW) MCP Server
 
@@ -74,10 +74,10 @@ The server picks up your API key from `.env` (step 3) automatically. No key in t
 
 Ask your AI assistant to:
 
-- "Help me configure a new API target"
-- "List the most recent findings of target X"
-- "Start a scan on target X"
-- "Show me the findings for target Y"
+- "Configure a Snyk API&Web API target from this OpenAPI schema / Swagger document / Postman collection."
+- "Configure a Snyk API&Web web target for this authenticated application."
+
+See **[prompts.md](prompts.md)** for a full catalog of example prompts — from simple one-liners to complex multi-target workflows.
 
 ## Installation from Tarball
 

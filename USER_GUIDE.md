@@ -28,6 +28,8 @@ The AI will:
 
 The target is ready for scanning.
 
+> **More examples:** See **[prompts.md](prompts.md)** for a full catalog of prompts covering targets, scans, findings, credentials, reports, and multi-step workflows.
+
 ## Multiple targets in parallel
 
 You can onboard several targets at once. For example:
