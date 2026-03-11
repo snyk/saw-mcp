@@ -71,7 +71,9 @@ def test_load_config_env_only_returns_empty_when_no_config_file(monkeypatch):
     assert result == {}
 
 
-def test_load_config_env_only_still_loads_when_config_exists(tmp_config, monkeypatch):
+def test_load_config_env_only_still_loads_when_config_exists(
+    tmp_config, monkeypatch
+):
     """When MCP_SAW_API_KEY is set but config file exists, load it for target_defaults etc."""
     path = tmp_config({"target_defaults": {"label": "Agentic"}})
     monkeypatch.setenv("MCP_SAW_API_KEY", "env-key")
