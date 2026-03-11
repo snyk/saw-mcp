@@ -15,15 +15,23 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 - Python 3.10+
 - Snyk API&Web API key
 
-## Quick start
+## Quick Start
 
-### 1. Get Your API Token
+### 1. Get Your API Key
 
 Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and create an API key with **global (account) scope** and **admin** role.
 
-### 2. Store Your API Key
+### 2. Install
 
-Store the API key in a `.env` file in the project root (gitignored) so it persists across sessions.
+```bash
+git clone https://github.com/snyk/saw-mcpserver.git
+cd saw-mcpserver
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+### 3. Store Your API Key
 
 Run the setup script (prompts securely, no key in shell history):
 
@@ -33,11 +41,13 @@ Run the setup script (prompts securely, no key in shell history):
 
 Or pipe from a secret manager: `op read 'op://vault/item/key' | ./scripts/setup-env.sh`
 
-The server loads `.env` automatically at startup, so the key is available for both terminal and IDE use.
+This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup — no env var needed in your IDE config.
 
-### 3. Configure Your IDE
+> **Config precedence:** environment variable → `.env` file → `config/config.yaml`
 
-Add to your Claude Desktop or Cursor MCP configuration:
+### 4. Configure Your IDE
+
+Add to your Cursor or Claude Desktop MCP configuration (replace `/<basedir>/saw-mcpserver` with the absolute path to this repo):
 
 ```json
 {
@@ -53,13 +63,14 @@ Add to your Claude Desktop or Cursor MCP configuration:
 }
 ```
 
-Replace `/<basedir>/saw-mcpserver` with the absolute path to your `saw-mcpserver` directory. The server loads your API key from `.env` (step 2) automatically.
+The server picks up your API key from `.env` (step 3) automatically. No key in the config block needed.
 
-Optional: To pass the key via env instead, add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block. To override the base URL (e.g. for staging), add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
+**Alternatives:**
+- Pass the key directly: add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
+- Override the base URL (e.g. staging): add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
+- Use a config file: set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcpserver/config/config.yaml"` instead.
 
-**Config file alternative:** Use `MCP_SAW_CONFIG_PATH` instead to point to a `config.yaml` file. See [IDE integration](#ide-integration) for details.
-
-### 4. Start Using
+### 5. Start Using
 
 Ask your AI assistant to:
 
@@ -68,51 +79,51 @@ Ask your AI assistant to:
 - "Start a scan on target X"
 - "Show me the findings for target Y"
 
-## Setup (config file)
-
-### From source
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-Edit `config/config.yaml` and set your Snyk API&Web API key:
-
-```yaml
-saw:
-  base_url: "https://api.probely.com"
-  api_key: "YOUR_SAW_API_KEY"
-```
-
-### From tarball
+## Installation from Tarball
 
 ```bash
 tar -xzvf SnykAPIWeb-*.tgz
 cd SnykAPIWeb
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
-Then edit `config/config.yaml` with your API key.
+Then follow steps 3–4 above to store your API key and configure your IDE.
 
-## Run the server
+## Run the Server (standalone)
 
 ```bash
 ./venv/bin/python -m snyk_apiweb.server
 ```
 
-## IDE integration
+## IDE Integration
 
 ### Cursor
 
 1. Open Settings → Tools & MCP → New MCP Server
-2. Add the JSON block below (adjust paths)
+2. Paste the block below (use absolute paths)
 3. Save and restart Cursor
 
-**Option A: Env var (no config file)**
+**Option A: `.env` file (recommended)**
+
+Run `./scripts/setup-env.sh` once, then use this config — no key in the JSON:
+
+```json
+{
+  "mcpServers": {
+    "SAW": {
+      "command": "/<basedir>/saw-mcpserver/venv/bin/python",
+      "args": ["-m", "snyk_apiweb.server"],
+      "env": {
+        "PYTHONPATH": "/<basedir>/saw-mcpserver"
+      }
+    }
+  }
+}
+```
+
+**Option B: Env var in config**
 
 ```json
 {
@@ -129,7 +140,7 @@ Then edit `config/config.yaml` with your API key.
 }
 ```
 
-**Option B: Config file**
+**Option C: Config file**
 
 ```json
 {
@@ -146,9 +157,9 @@ Then edit `config/config.yaml` with your API key.
 }
 ```
 
-### Devin and other IDEs
+### Devin and Other IDEs
 
-Use the same command and args. Set `MCP_SAW_API_KEY` (env-only) or `MCP_SAW_CONFIG_PATH` to your `config.yaml`. Optionally set `MCP_SAW_BASE_URL` to override the API endpoint. Use absolute paths if your IDE does not resolve relative paths.
+Use the same command and args. Set `MCP_SAW_API_KEY` or `MCP_SAW_CONFIG_PATH` as appropriate. Optionally set `MCP_SAW_BASE_URL` to override the API endpoint. Always use absolute paths.
 
 ## Skills and Rules
 
