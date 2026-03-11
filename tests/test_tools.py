@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import patch
 
 import pytest
 
-from snyk_apiweb.tools import _generate_totp, _parse_list_of_dicts
+from snyk_apiweb.tools import (
+    _generate_totp,
+    _parse_list_of_dicts,
+    build_server,
+)
 
 # --- _parse_list_of_dicts ---
 
@@ -120,3 +125,15 @@ def test_generate_totp_remaining_seconds(mock_time):
     result = _generate_totp("JBSWY3DPEHPK3PXP", period=30)
 
     assert result["remaining_seconds"] == 10
+
+
+def test_build_server_registers_prompts(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+
+    app = build_server()
+    prompts = asyncio.run(app.list_prompts())
+    prompt_names = {prompt.name for prompt in prompts}
+
+    assert "saw_web_target_configuration" in prompt_names
+    assert "saw_api_target_configuration" in prompt_names

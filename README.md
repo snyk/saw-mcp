@@ -63,10 +63,8 @@ Optional: To pass the key via env instead, add `"MCP_SAW_API_KEY": "your-api-key
 
 Ask your AI assistant to:
 
-- "Help me configure a new API target"
-- "List the most recent findings of target X"
-- "Start a scan on target X"
-- "Show me the findings for target Y"
+- "Configure a Snyk API&Web API target from this OpenAPI schema / Swagger document / Postman collection."
+- "Configure a Snyk API&Web web target for this authenticated application."
 
 ## Setup (config file)
 
