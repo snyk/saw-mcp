@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from snyk_apiweb.config import (
@@ -56,7 +54,9 @@ def test_load_config_rejects_path_traversal_via_env(monkeypatch):
     """Path traversal via env var is rejected."""
     monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/etc/passwd")
 
-    with pytest.raises(ValueError, match="resolves outside allowed directories"):
+    with pytest.raises(
+        ValueError, match="resolves outside allowed directories"
+    ):
         load_config()
 
 

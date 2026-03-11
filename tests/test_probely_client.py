@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import patch
 
 from snyk_apiweb.probely_client import ProbelyClient
 
@@ -133,7 +131,7 @@ def test_build_payload_merges_labels_with_deduplication(client):
         default_label={"name": "Agentic"},
     )
 
-    label_names = [l["name"] for l in payload["labels"]]
+    label_names = [item["name"] for item in payload["labels"]]
     assert label_names == ["Agentic", "Prod"]
 
 

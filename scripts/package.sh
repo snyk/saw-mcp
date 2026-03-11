@@ -22,13 +22,20 @@ rsync -a \
   --exclude '.git' \
   --exclude '__pycache__' \
   --exclude 'distribution' \
+  --exclude '.env' \
+  --exclude '.ruff_cache' \
+  --exclude '.pytest_cache' \
   "$PROJECT_DIR/" "$STAGE_DIR/SnykAPIWeb/"
 
 # Redact API key in config/config.yaml inside the staging copy
 CONFIG_FILE="$STAGE_DIR/SnykAPIWeb/config/config.yaml"
 if [ -f "$CONFIG_FILE" ]; then
   # Replace any api_key value with CHANGEME while preserving indentation
-  LC_ALL=C sed -i '' -E 's/^([[:space:]]*api_key:[[:space:]]*).*/\1"CHANGEME"/' "$CONFIG_FILE"
+  # Portable: GNU sed uses -i, BSD sed uses -i ''
+  case "$(uname -s)" in
+    Darwin) LC_ALL=C sed -i '' -E 's/^([[:space:]]*api_key:[[:space:]]*).*/\1"CHANGEME"/' "$CONFIG_FILE" ;;
+    *)      LC_ALL=C sed -i -E 's/^([[:space:]]*api_key:[[:space:]]*).*/\1"CHANGEME"/' "$CONFIG_FILE" ;;
+  esac
 fi
 
 # Create tarball from staging directory

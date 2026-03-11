@@ -5,14 +5,14 @@ import logging
 from typing import Any, Dict, Optional, Tuple
 
 import requests
-
-from snyk_apiweb import __version__
 from tenacity import (
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
 )
+
+from snyk_apiweb import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -217,9 +217,7 @@ class ProbelyClient:
             params["is_sensitive"] = is_sensitive
         if length is not None:
             params["length"] = length
-        return self.request(
-            "GET", "/credentials/", params=params or None
-        )[1]
+        return self.request("GET", "/credentials/", params=params or None)[1]
 
     def get_credential(self, credential_id: str) -> Dict[str, Any]:
         """Get a credential by ID. Value is null if sensitive."""
@@ -255,9 +253,7 @@ class ProbelyClient:
 
     def delete_credential(self, credential_id: str) -> Dict[str, Any]:
         """Delete a credential."""
-        status, body = self.request(
-            "DELETE", f"/credentials/{credential_id}/"
-        )
+        status, body = self.request("DELETE", f"/credentials/{credential_id}/")
         return body if status != 204 else {}
 
     # Labels
