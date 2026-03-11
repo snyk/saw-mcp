@@ -1,4 +1,4 @@
-![SAW MCP Banner](./assets/saw-mcp-banner.webp)
+![SAW MCP Banner](./assets/Snyk_API_and_Web_Banner.webp)
 
 # Snyk API&Web (SAW) MCP Server
 
