@@ -47,6 +47,23 @@ When a new project is loaded or workspace is opened, check if it's an **applicat
 
 **Skip this for non-app projects** (libraries, CLI tools, documentation, etc.).
 
+## Destructive Tools: Elicitation-Based Confirmation
+
+**Destructive tools use FastMCP Elicitation to enforce user confirmation.**
+
+The following tools automatically pause and show a confirmation prompt in the user's UI before executing. The user must explicitly choose "yes" or "no"—the LLM cannot bypass this.
+
+**Destructive tools (with elicitation):**
+- `probely_delete_target` – deletes a target
+- `probely_delete_credential` – deletes a credential
+- `probely_delete_sequence` – deletes a login sequence
+- `probely_delete_extra_host` – deletes an extra host
+- `probely_stop_scan` / `probely_cancel_scan` – stops or cancels a scan
+- `probely_bulk_update_findings` – bulk updates finding states
+- `probelyrequest` with `method=DELETE` – raw DELETE requests
+
+These tools are annotated with `destructive_hint: true`, which may trigger additional safety warnings in MCP clients. Elicitation requires client support; if unsupported, the tool will raise an error.
+
 ## NEVER Start Scans Automatically
 
 **IMPORTANT: NEVER start a scan automatically.** Scans are intrusive and could potentially affect the target system.

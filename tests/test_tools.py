@@ -4,7 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from snyk_apiweb.tools import _generate_totp, _parse_list_of_dicts
+from snyk_apiweb.tools import (
+    _generate_totp,
+    _parse_list_of_dicts,
+)
 
 # --- _parse_list_of_dicts ---
 
