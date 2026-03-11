@@ -163,8 +163,9 @@ def build_server() -> FastMCP:
         ),
     ) -> str:
         """Help configure a web target."""
-        return dedent(
-            """
+        return (
+            dedent(
+                """
             Configure a Snyk API&Web web target for an authenticated web
             application.
 
@@ -198,13 +199,16 @@ def build_server() -> FastMCP:
 
             At the end, summarize the configured target in a table.
             """
-        ).strip().format(
-            url=url,
-            name=name,
-            labels=labels,
-            username=username,
-            password=password,
-            totp_seed=totp_seed,
+            )
+            .strip()
+            .format(
+                url=url,
+                name=name,
+                labels=labels,
+                username=username,
+                password=password,
+                totp_seed=totp_seed,
+            )
         )
 
     @app.prompt(
@@ -268,8 +272,9 @@ def build_server() -> FastMCP:
         ),
     ) -> str:
         """Help configure an API target."""
-        return dedent(
-            """
+        return (
+            dedent(
+                """
             Configure a Snyk API&Web API target for an API described by an
             OpenAPI/Swagger schema or a Postman collection.
 
@@ -306,17 +311,20 @@ def build_server() -> FastMCP:
 
             At the end, summarize the configured target in a table.
             """
-        ).strip().format(
-            base_url=base_url,
-            name=name,
-            labels=labels,
-            source_type=source_type,
-            openapi_schema_url=openapi_schema_url,
-            openapi_schema_content=openapi_schema_content,
-            postman_collection_url=postman_collection_url,
-            postman_collection_content=postman_collection_content,
-            authentication=authentication,
-            authentication_details=authentication_details,
+            )
+            .strip()
+            .format(
+                base_url=base_url,
+                name=name,
+                labels=labels,
+                source_type=source_type,
+                openapi_schema_url=openapi_schema_url,
+                openapi_schema_content=openapi_schema_content,
+                postman_collection_url=postman_collection_url,
+                postman_collection_content=postman_collection_content,
+                authentication=authentication,
+                authentication_details=authentication_details,
+            )
         )
 
     # Generic request tool to cover all API functionality
