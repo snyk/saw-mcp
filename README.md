@@ -77,6 +77,8 @@ Ask your AI assistant to:
 - "Configure a Snyk API&Web API target from this OpenAPI schema / Swagger document / Postman collection."
 - "Configure a Snyk API&Web web target for this authenticated application."
 
+See **[prompts.md](prompts.md)** for a full catalog of example prompts — from simple one-liners to complex multi-target workflows.
+
 ## Installation from Tarball
 
 ```bash
