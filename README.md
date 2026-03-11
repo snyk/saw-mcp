@@ -23,13 +23,13 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 Store the API key in a `.env` file in the project root (gitignored) so it persists across sessions.
 
-Automate env setup:
+Run the setup script (prompts securely, no key in shell history):
 
 ```bash
-./scripts/setup-env.sh YOUR_API_KEY
+./scripts/setup-env.sh
 ```
 
-Or manually: `echo 'MCP_SAW_API_KEY=your-key' > .env`
+Or pipe from a secret manager: `op read 'op://vault/item/key' | ./scripts/setup-env.sh`
 
 The server loads `.env` automatically at startup, so the key is available for both terminal and IDE use.
 
@@ -53,7 +53,7 @@ Add to your Claude Desktop or Cursor MCP configuration:
 
 Replace `/<basedir>/saw-mcpserver` with the absolute path to your `saw-mcpserver` directory. The server loads your API key from `.env` (step 2) automatically.
 
-Optional: To pass the key via env instead, add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
+Optional: To pass the key via env instead, add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block. To override the base URL (e.g. for staging), add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
 
 **Config file alternative:** Use `MCP_SAW_CONFIG_PATH` instead to point to a `config.yaml` file. See [IDE integration](#ide-integration) for details.
 
@@ -146,7 +146,7 @@ Then edit `config/config.yaml` with your API key.
 
 ### Devin and other IDEs
 
-Use the same command and args. Set `MCP_SAW_API_KEY` (env-only) or `MCP_SAW_CONFIG_PATH` to your `config.yaml`. Use absolute paths if your IDE does not resolve relative paths.
+Use the same command and args. Set `MCP_SAW_API_KEY` (env-only) or `MCP_SAW_CONFIG_PATH` to your `config.yaml`. Optionally set `MCP_SAW_BASE_URL` to override the API endpoint. Use absolute paths if your IDE does not resolve relative paths.
 
 ## Skills and Rules
 

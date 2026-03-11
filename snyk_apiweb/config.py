@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 # Load .env from project root so MCP_SAW_API_KEY persists across sessions
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(_project_root, ".env"))
+load_dotenv(os.path.join(_project_root, ".env"), override=False)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 CONFIG_PATH_ENV = "MCP_SAW_CONFIG_PATH"
 CONFIG_PATH_ENV_LEGACY = "MCP_PROBELY_CONFIG_PATH"
 API_KEY_ENV = "MCP_SAW_API_KEY"
+BASE_URL_ENV = "MCP_SAW_BASE_URL"
 DEFAULT_CONFIG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
 )
@@ -80,11 +81,15 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
 
 
 def get_probely_base_url(cfg: Dict[str, Any]) -> str:
-    """Get the Snyk API&Web base URL from config.
+    """Get the Snyk API&Web base URL from env or config.
 
+    Precedence: MCP_SAW_BASE_URL env var → saw.base_url → probely.base_url → default.
     Supports both 'saw' (new) and 'probely' (legacy) config sections.
     """
-    # Try new 'saw' section first, fall back to legacy 'probely' section
+    env_url = os.environ.get(BASE_URL_ENV, "").strip()
+    if env_url:
+        return env_url
+
     saw_cfg = cfg.get("saw", {})
     probely_cfg = cfg.get("probely", {})
 
@@ -97,21 +102,30 @@ def get_probely_base_url(cfg: Dict[str, Any]) -> str:
 def get_probely_api_key(cfg: Dict[str, Any]) -> str:
     """Get the Snyk API&Web API key from env or config.
 
+    Precedence: MCP_SAW_API_KEY env var → saw.api_key → probely.api_key.
     Supports both 'saw' (new) and 'probely' (legacy) config sections.
     """
-    key = os.environ.get(API_KEY_ENV)
-    if key:
-        return key
-    saw_cfg = cfg.get("saw", {})
-    probely_cfg = cfg.get("probely", {})
-    key = saw_cfg.get("api_key") or probely_cfg.get("api_key")
+    key = (os.environ.get(API_KEY_ENV) or "").strip()
+    if not key:
+        saw_cfg = cfg.get("saw", {})
+        probely_cfg = cfg.get("probely", {})
+        key = (
+            saw_cfg.get("api_key") or probely_cfg.get("api_key") or ""
+        ).strip()
     if not key or key in (
         "REPLACE_WITH_YOUR_SAW_API_KEY",
         "REPLACE_WITH_YOUR_PROBELY_API_KEY",
+        "CHANGEME",
     ):
         raise RuntimeError(
             f"Snyk API&Web API key not set. Set {API_KEY_ENV} or update "
             "config/config.yaml 'saw.api_key' / 'probely.api_key'."
+        )
+    if len(key) < 20:
+        logger.warning(
+            "API key looks unusually short (%d chars). "
+            "Make sure you copied the full key, not the key ID.",
+            len(key),
         )
     return key
 
