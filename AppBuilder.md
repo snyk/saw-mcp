@@ -68,7 +68,7 @@
 │                  │                               │
 │  ┌───────────────┴───────────────────────┐      │
 │  │  Config loader  (config.py)           │      │
-│  │  YAML → base_url, api_key, filters    │      │
+│  │  env/.env/YAML → base_url, api_key     │      │
 │  └───────────────────────────────────────┘      │
 └─────────────────────────────────────────────────┘
                    │  HTTPS
@@ -94,8 +94,10 @@ saw-mcpserver/
 │   ├── server.py                         # Entry point: main() → build_server().run()
 │   └── tools.py                          # All MCP tool definitions + build_server()
 │
+├── .env                                  # Runtime API key (gitignored — loaded by python-dotenv)
+├── .env.example                          # Template for .env (committed)
 ├── config/                               # Configuration
-│   ├── config.yaml                       # Runtime config (gitignored — contains real API key)
+│   ├── config.yaml                       # Runtime config (gitignored — optional when using .env)
 │   ├── config.yaml.dist                  # Template config (committed — API key = "CHANGEME")
 │   ├── saw_rules.mdc                     # Cursor rules file (hard-linked into projects)
 │   └── skills/                           # Agent skills
@@ -107,6 +109,7 @@ saw-mcpserver/
 ├── scripts/
 │   ├── dev.sh                            # Start in FastMCP dev mode (hot-reload)
 │   ├── inspector.sh                      # Start MCP Inspector (web UI for testing tools)
+│   ├── setup-env.sh                       # Store API key in .env (interactive prompt, piped stdin, or argument)
 │   └── package.sh                        # Build dist/SnykAPIWeb-<version>.tgz (redacts API key)
 │
 ├── .cursor/
@@ -130,6 +133,7 @@ saw-mcpserver/
 **`requirements.txt`:**
 
 ```
+python-dotenv>=1.0.0
 fastmcp>=2.0.0
 requests>=2.32.3
 pydantic>=2.8.2
@@ -140,6 +144,7 @@ tenacity>=8.5.0
 
 | Package | Purpose |
 |---------|---------|
+| `python-dotenv` | Load `.env` from project root so `MCP_SAW_API_KEY` persists across sessions |
 | `fastmcp` | MCP server framework (tool registration, STDIO transport, JSON-RPC) |
 | `requests` | HTTP client for Probely API calls |
 | `pydantic` | Schema validation (used internally by FastMCP for tool parameter schemas) |
@@ -179,7 +184,24 @@ tools:
     - probely_request
 ```
 
-### 5.2 Config Resolution
+### 5.2 API Key Resolution
+
+The API key is resolved in this priority (12-factor):
+1. Environment variable `MCP_SAW_API_KEY` (env, `mcp.json` env block, or `.env` via python-dotenv)
+2. Config file: `saw.api_key` or `probely.api_key`
+
+When `MCP_SAW_API_KEY` is set, the config file is optional. The server loads `.env` from the project root at startup via `load_dotenv(override=False)` — real env vars always take precedence over `.env`.
+
+All key values are stripped of leading/trailing whitespace. Placeholder values `"REPLACE_WITH_YOUR_SAW_API_KEY"`, `"REPLACE_WITH_YOUR_PROBELY_API_KEY"`, and `"CHANGEME"` are rejected. Keys shorter than 20 characters produce a warning (likely a key ID, not the actual key).
+
+### 5.2.1 Base URL Resolution
+
+The base URL is resolved in this priority:
+1. Environment variable `MCP_SAW_BASE_URL` (for staging/QA environments)
+2. Config file: `saw.base_url` or `probely.base_url`
+3. Default: `https://api.probely.com`
+
+### 5.3 Config Path Resolution
 
 The config path is resolved in this priority:
 1. Explicit `path` argument to `load_config()`
@@ -187,17 +209,19 @@ The config path is resolved in this priority:
 3. Environment variable `MCP_PROBELY_CONFIG_PATH` (legacy)
 4. Default: `<project_root>/config/config.yaml`
 
-### 5.3 Legacy Support
+When `MCP_SAW_API_KEY` is set and the config file does not exist, `load_config()` returns `{}` (env-only mode).
 
-The config module supports both `saw` and `probely` YAML section names. The `saw` section takes priority; `probely` is the fallback. API key values `"REPLACE_WITH_YOUR_SAW_API_KEY"` and `"REPLACE_WITH_YOUR_PROBELY_API_KEY"` are treated as unset and raise a `RuntimeError`.
+### 5.4 Legacy Support
 
-### 5.4 Config Helpers (all in `config.py`)
+The config module supports both `saw` and `probely` YAML section names. The `saw` section takes priority; `probely` is the fallback.
+
+### 5.5 Config Helpers (all in `config.py`)
 
 | Function | Returns | Description |
 |----------|---------|-------------|
 | `load_config(path?)` | `Dict[str, Any]` | Load and parse the YAML config file |
-| `get_probely_base_url(cfg)` | `str` | Extract base URL, strip trailing slash |
-| `get_probely_api_key(cfg)` | `str` | Extract API key, raise if placeholder |
+| `get_probely_base_url(cfg)` | `str` | Extract base URL from `MCP_SAW_BASE_URL` env var or config |
+| `get_probely_api_key(cfg)` | `str` | Extract API key from env or config; strips whitespace, rejects placeholders, warns on short keys |
 | `get_target_defaults(cfg)` | `Dict` with `default_label` and `name_prefix` | Target creation defaults |
 | `get_tool_filter(cfg)` | `Dict` with `enabled_tools` and `disabled_tools` | Tool whitelist/blacklist |
 | `is_tool_enabled(name, filter)` | `bool` | Check if a tool passes the filter |
@@ -217,7 +241,11 @@ __all__ = ["config", "probely_client", "tools", "server"]
 ### 6.2 Config Loader (`config.py`)
 
 Implements the configuration system described in Section 5. Key design decisions:
-- Uses `os.path.dirname(__file__)` twice to locate the project root for the default config path.
+- Calls `load_dotenv(os.path.join(_project_root, ".env"), override=False)` at module load so `MCP_SAW_API_KEY` can live in `.env` (gitignored, persists across sessions). Real env vars always take precedence.
+- `get_probely_api_key()` checks `os.environ.get(API_KEY_ENV)` first; env overrides config (12-factor). Strips whitespace, rejects placeholder values (`CHANGEME`, `REPLACE_WITH_YOUR_*`), warns on keys shorter than 20 chars.
+- `get_probely_base_url()` checks `MCP_SAW_BASE_URL` env var first, then config, then defaults to `https://api.probely.com`. Enables staging/QA use without a config file.
+- When `MCP_SAW_API_KEY` is set and the config file is absent, `load_config()` returns `{}` (no config file needed).
+- Uses `os.path.dirname(__file__)` twice to locate the project root for the default config path and `.env` location.
 - Both `saw.*` and `probely.*` config sections are supported for backward compatibility.
 - Tool filtering supports whitelist (precedence) and blacklist modes.
 - `get_target_defaults()` returns `default_label` as `{"name": "..."}` (ready for the Probely API which resolves labels by name).
@@ -881,7 +909,25 @@ fastmcp dev snyk_apiweb/server.py
 
 Starts FastMCP in dev mode with hot-reload for development.
 
-### 12.2 MCP Inspector (`scripts/inspector.sh`)
+### 12.2 Setup Env (`scripts/setup-env.sh`)
+
+```bash
+#!/usr/bin/env bash
+# Store API key in .env for persistent use across terminal sessions and Cursor.
+# Usage:
+#   ./scripts/setup-env.sh              # interactive prompt (recommended)
+#   op read ... | ./scripts/setup-env.sh  # pipe from 1Password / secret manager
+#   ./scripts/setup-env.sh YOUR_KEY     # argument (exposes key in shell history)
+```
+
+Three input modes:
+1. **Interactive prompt** (default, recommended): reads key with `read -rs` (silent, no echo).
+2. **Piped stdin**: supports `op read ... | ./scripts/setup-env.sh` for secret manager integration.
+3. **Argument** (backward compat): accepts key as `$1` but warns about shell history exposure.
+
+Creates `.env` with `MCP_SAW_API_KEY=...` in the project root. Sets `chmod 600` on the file to restrict permissions to owner-only. Rejects empty keys.
+
+### 12.3 MCP Inspector (`scripts/inspector.sh`)
 
 ```bash
 #!/usr/bin/env bash
@@ -893,7 +939,7 @@ npx @modelcontextprotocol/inspector python -m snyk_apiweb.server
 
 Opens a web UI for interactive tool browsing and testing. Requires Node.js/npx.
 
-### 12.3 Packaging (`scripts/package.sh`)
+### 12.4 Packaging (`scripts/package.sh`)
 
 ```bash
 #!/usr/bin/env bash
@@ -911,6 +957,24 @@ set -euo pipefail
 
 ### Cursor MCP Configuration (`mcp.json`)
 
+**Option A: env-only (recommended)** — Store API key in `.env` via `./scripts/setup-env.sh` (interactive prompt). The server loads it automatically.
+
+```json
+{
+  "mcpServers": {
+    "SAW": {
+      "command": "/<basedir>/saw-mcpserver/venv/bin/python",
+      "args": ["-m", "snyk_apiweb.server"],
+      "env": {
+        "PYTHONPATH": "/<basedir>/saw-mcpserver"
+      }
+    }
+  }
+}
+```
+
+**Option B: Config file**
+
 ```json
 {
   "mcpServers": {
@@ -925,6 +989,8 @@ set -euo pipefail
   }
 }
 ```
+
+**Option C: Explicit env key** — Add `"MCP_SAW_API_KEY": "your-key"` to the `env` block to override `.env` or config. Optionally add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"` to override the API endpoint (e.g. for staging/QA).
 
 ### Installing Skills (hard links, not copies)
 
@@ -948,12 +1014,15 @@ Hard links ensure a single source of truth. Updates via `git pull` propagate aut
 
 ## 14. Security Practices
 
-1. **API key storage:** Only in `config/config.yaml` (never in IDE-global config, never hardcoded).
-2. **Config file:** Gitignored (`config/config.yaml`). Only the template (`config.yaml.dist`) is committed.
-3. **File permissions:** Recommend `chmod 600 config/config.yaml`.
-4. **Packaging:** The `package.sh` script redacts the API key before creating the tarball.
-5. **Auth header:** `Authorization: JWT {api_key}` — no Bearer prefix, uses JWT format.
-6. **HTTPS:** All API calls use HTTPS via the Probely base URL.
+1. **API key storage:** In `.env` (recommended, gitignored), `config/config.yaml` (gitignored), or `mcp.json` env block. Never hardcoded.
+2. **`.env`:** Gitignored. Loaded by python-dotenv at startup with `override=False` (real env vars take precedence). Use `./scripts/setup-env.sh` (interactive prompt, no key in shell history). The script sets `chmod 600` on `.env` automatically.
+3. **Setup script security:** `setup-env.sh` reads the key via silent `read -rs` prompt (recommended), piped stdin (for secret managers like 1Password), or argument (warns about shell history). Empty keys are rejected.
+4. **Config file:** Gitignored (`config/config.yaml`). Only the template (`config.yaml.dist`) is committed.
+5. **File permissions:** `.env` is created with `chmod 600` by the setup script. Recommend the same for `config/config.yaml`.
+6. **Key validation:** Placeholder values (`CHANGEME`, `REPLACE_WITH_YOUR_*`) are rejected at startup. Keys shorter than 20 characters produce a warning.
+7. **Packaging:** The `package.sh` script redacts the API key before creating the tarball.
+8. **Auth header:** `Authorization: JWT {api_key}` — no Bearer prefix, uses JWT format.
+9. **HTTPS:** All API calls use HTTPS via the Probely base URL.
 
 ---
 
@@ -974,7 +1043,7 @@ __pycache__
 .cursor/rules/snyk_rules.mdc
 ```
 
-Note: `config/config.yaml` (runtime, with real API key) is gitignored. `config/config.yaml.dist` (template) is committed.
+Note: `config/config.yaml` (runtime, with real API key) and `.env` are gitignored. `config/config.yaml.dist` and `.env.example` (templates) are committed.
 
 ---
 
