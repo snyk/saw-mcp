@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snyk-apiweb-mcp"
-version = "0.9.1"
+version = "0.9.2"
 description = "MCP server for Snyk API&Web (Probely) — create targets, run scans, manage findings"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{name = "Snyk"}]
+authors = [{ name = "Snyk" }]
 keywords = ["mcp", "snyk", "probely", "security", "dast"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -43,7 +43,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
-ignore = ["E501"]  # Line too long; tighten later
+ignore = ["E501"]        # Line too long; tighten later
 
 [tool.ruff.format]
 quote-style = "double"
