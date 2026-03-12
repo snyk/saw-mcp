@@ -14,6 +14,11 @@ from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
 from fastmcp import Context, FastMCP
+from mcp.types import (
+    ClientCapabilities,
+    ElicitationCapability,
+    FormElicitationCapability,
+)
 from pydantic import Field
 
 from .config import (
@@ -134,15 +139,19 @@ def _generate_totp(
 
 
 async def _require_confirmation(ctx: Context, message: str) -> bool:
-    """Return True if user accepted, False otherwise. Follows MCP human-in-the-loop best practice."""
+    """Return True if user accepted, False otherwise. Skips elicitation for clients that don't support it."""
+    if not ctx.session.check_client_capability(
+        ClientCapabilities(
+            elicitation=ElicitationCapability(form=FormElicitationCapability())
+        )
+    ):
+        return True
+
     confirmation = await ctx.elicit(
         message=message,
-        response_type=["yes", "no"],
+        response_type=["Confirm", "Cancel"],
     )
-    return (
-        confirmation.action == "accept"
-        and (confirmation.data or "").lower() == "yes"
-    )
+    return confirmation.action == "accept" and confirmation.data == "Confirm"
 
 
 def build_server() -> FastMCP:
