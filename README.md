@@ -10,6 +10,8 @@ Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, Windsurf, and any M
 
 See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 
+> **This repository is closed to public contributions.** We appreciate community interest, but we do not accept pull requests, issues, or other contributions from external contributors at this time. If you have found a security issue, please see [SECURITY.md](SECURITY.md).
+
 ## Requirements
 
 - Python 3.10+
