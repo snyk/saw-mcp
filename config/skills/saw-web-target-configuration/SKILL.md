@@ -32,6 +32,29 @@ Return a summary with: target ID, name, URL, login sequence status, logout detec
 
 Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
 
+## Credentials Management — ALWAYS Use for Sensitive Values
+
+**NEVER pass sensitive values inline.** Always store them via `probely_create_credential` first and use the returned `uri` (e.g. `credentials://xxxx`) wherever the API accepts a value.
+
+This applies to:
+- **Custom headers** with sensitive values (API keys, Bearer tokens, auth tokens)
+- **Custom cookies** with sensitive values (session tokens, secrets)
+- **TOTP seeds** — store the seed via credential manager, pass the credential URI as `otp_secret`
+- **Form login passwords** — pass the credential URI as the `password` parameter
+- **Login sequence passwords** — already required via `custom_field_mappings` (see below)
+
+**Pattern:**
+```
+cred = probely_create_credential(
+  name="<target_name> - <description>",   # e.g. "MyApp - API key" or "MyApp - TOTP seed"
+  value="the_actual_secret_value",
+  is_sensitive=True
+)
+# cred["uri"] → "credentials://xxxx" — use this wherever the secret is needed
+```
+
+Non-sensitive values (usernames, non-secret header names, feature flags) can be passed inline.
+
 ## Web Application Onboarding Workflow
 
 When the user wants to scan a **web application with authentication**, follow this workflow:
@@ -217,18 +240,29 @@ target = probely_create_target(name=..., url, desc?, labels?)
 # IMPORTANT: Use target["id"] (the top-level ID) as targetId for ALL subsequent calls.
 # Do NOT use target["site"]["id"] — that is a different internal ID and will cause 404 errors.
 
-# 2. If 2FA is needed, configure it BEFORE creating the sequence.
-# The tool auto-generates a TOTP code from the secret. Use the returned otp_code
-# in the sequence's fill_value step for the OTP input.
-result = probely_configure_2fa_totp(targetId, otp_secret="THE_SEED")
+# 2. If the app requires custom HTTP headers or cookies for every request
+#    (e.g., API keys, feature flags, session overrides), set them now.
+#    For SENSITIVE values, store via credential manager first:
+# header_cred = probely_create_credential(name="<target_name> - X-Api-Key", value="secret-key", is_sensitive=True)
+# probely_update_target(targetId,
+#   headers=[{"name": "X-Api-Key", "value": header_cred["uri"]}],
+#   cookies=[{"name": "env", "value": "staging"}]  # non-sensitive → inline is fine
+# )
+
+# 3. If 2FA is needed, configure it BEFORE creating the sequence.
+#    Store the TOTP seed via credential manager, then pass the credential URI as otp_secret.
+#    The tool auto-generates a TOTP code from the secret. Use the returned otp_code
+#    in the sequence's fill_value step for the OTP input.
+totp_cred = probely_create_credential(name="<target_name> - TOTP seed", value="THE_SEED", is_sensitive=True)
+result = probely_configure_2fa_totp(targetId, otp_secret=totp_cred["uri"])
 # result["otp_code"] → e.g. "829182" — use this in the sequence
 #
 # Build the COMPLETE sequence JSON (including the OTP fill step with the
 # otp_code above) and pass it all to a single probely_create_sequence call.
 
-# 3. Create the login sequence with custom field mappings for credentials
+# 4. Create the login sequence with custom field mappings for credentials
 # Use [CUSTOM_USERNAME] and [CUSTOM_PASSWORD] placeholders in the sequence content.
-# For 2FA, hardcode the otp_code from step 2 in the OTP fill_value step (do NOT use custom fields for OTP).
+# For 2FA, hardcode the otp_code from step 3 in the OTP fill_value step (do NOT use custom fields for OTP).
 #
 # PASSWORD: Use credentials management — create a credential first, then link it
 # via its URI. Do NOT store the password inline in custom_field_mappings.
@@ -265,14 +299,14 @@ probely_create_sequence(
   ]
 )
 
-# 4. Enable sequence login on the target
+# 5. Enable sequence login on the target
 probely_configure_sequence_login(targetId, enabled=True)
 
-# 5. Configure logout detection - see "Configuring Logout Detection" section below for details
+# 6. Configure logout detection - see "Configuring Logout Detection" section below for details
 # logout_condition defaults to 'any' (OR). Use 'all' (AND) when some detectors match even when logged in.
 probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=..., logout_condition=...)
 
-# 6. If external API hosts were detected on the target URL or during the login flow, add them as extra hosts
+# 7. If external API hosts were detected on the target URL or during the login flow, add them as extra hosts
 probely_create_extra_host(targetId, hostname="api.example.com", ip_address="")
 ```
 
@@ -404,13 +438,13 @@ probely_configure_logout_detection(
 
 The sequence format (based on the [Snyk API&Web Sequence Recorder](https://github.com/Probely/sequence-recorder)):
 
-**IMPORTANT: Use Custom Fields for Credentials**
+**IMPORTANT: Use Custom Fields and Credentials Manager**
 
-**Always use custom field placeholders for username and password** instead of hardcoding them in the sequence.
+**Always use custom field placeholders for username and password** instead of hardcoding them in the sequence. **All sensitive values MUST go through the credentials manager.**
 
-- Use `[CUSTOM_USERNAME]` placeholder for the username field — map to inline `value` in custom_field_mappings
-- Use `[CUSTOM_PASSWORD]` placeholder for the password field — **create a credential** via `probely_create_credential`, then pass its `uri` (e.g. `credentials://xxxx`) as the `value` in custom_field_mappings. Do NOT store the password inline.
-- **2FA OTP codes should remain hardcoded** (see 2FA section below)
+- Use `[CUSTOM_USERNAME]` placeholder for the username field — map to inline `value` in custom_field_mappings (not sensitive)
+- Use `[CUSTOM_PASSWORD]` placeholder for the password field — **create a credential** via `probely_create_credential`, then pass its `uri` (e.g. `credentials://xxxx`) as the `value` in custom_field_mappings. **NEVER** store the password inline.
+- **2FA OTP codes should remain hardcoded** in the sequence (the seed is already stored via credential manager in step 3)
 
 Example sequence with custom fields:
 
@@ -495,16 +529,24 @@ Probely will automatically convert `fill_value` entries matching the configured 
 
 ### Step 3: Using Form Login (Playwright NOT Available)
 
-**If Playwright MCP server is NOT available**, use form-based login:
+**If Playwright MCP server is NOT available**, use form-based login.
+
+Store the password via credential manager first:
 
 ```
+pwd_cred = probely_create_credential(
+  name="<target_name> - <username> password",
+  value="secretpass",
+  is_sensitive=True
+)
+
 probely_configure_form_login(
   targetId,
   login_url="https://app.example.com/login",
   username_field="email",
   password_field="password",
   username="user@example.com",
-  password="secretpass",
+  password=pwd_cred["uri"],        # credential URI — NEVER pass password inline
   check_pattern="Welcome"
 )
 ```

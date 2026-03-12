@@ -9,6 +9,27 @@ Configure API targets for Snyk API&Web (SAW/Probely) security scanning. For web 
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
+## Credentials Management — ALWAYS Use for Sensitive Values
+
+**NEVER pass sensitive values inline.** Always store them via `probely_create_credential` first and use the returned `uri` (e.g. `credentials://xxxx`) wherever the API accepts a value.
+
+This applies to:
+- **Custom headers** with sensitive values (API keys, Bearer tokens, auth tokens)
+- **Custom cookies** with sensitive values (session tokens, secrets)
+- **Basic Auth credentials** — store the password via credential manager
+
+**Pattern:**
+```
+cred = probely_create_credential(
+  name="<target_name> - <description>",   # e.g. "MyAPI - Bearer token"
+  value="the_actual_secret_value",
+  is_sensitive=True
+)
+# cred["uri"] → "credentials://xxxx" — use this wherever the secret is needed
+```
+
+Non-sensitive values (non-secret header names, environment labels) can be passed inline.
+
 ## API Onboarding Workflow
 
 When the user wants to scan an **API**, follow this workflow:
@@ -55,5 +76,26 @@ probely_create_api_target_from_openapi(
 
 If the API requires authentication:
 - Ask user for auth type (API key, Bearer token, OAuth, Basic Auth)
-- Use `probely_update_target_settings` to configure authentication headers
+- **Store all sensitive values via credential manager first**, then use the credential URI in the header/cookie value
+- Use `probely_update_target` with the `headers` and/or `cookies` parameters
+
+**Examples:**
+
+```
+# Bearer token
+token_cred = probely_create_credential(name="<target_name> - Bearer token", value="eyJhb...", is_sensitive=True)
+probely_update_target(targetId, headers=[{"name": "Authorization", "value": token_cred["uri"]}])
+
+# API key header
+key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
+probely_update_target(targetId, headers=[{"name": "X-Api-Key", "value": key_cred["uri"]}])
+
+# Basic Auth (store the password, pass username inline)
+pwd_cred = probely_create_credential(name="<target_name> - Basic Auth password", value="secret", is_sensitive=True)
+probely_update_target(targetId, headers=[{"name": "Authorization", "value": pwd_cred["uri"]}])
+
+# Custom cookies with sensitive values
+cookie_cred = probely_create_credential(name="<target_name> - session cookie", value="secret-token", is_sensitive=True)
+probely_update_target(targetId, cookies=[{"name": "session", "value": cookie_cred["uri"]}])
+```
 

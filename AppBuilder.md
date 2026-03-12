@@ -520,7 +520,7 @@ All tool names are prefixed with `probely_` for namespacing.
 | `probely_list_targets` | `page?`, `search?` | List/search targets |
 | `probely_get_target` | `targetId` | Get target details |
 | `probely_create_target` | `name`, `url`, `desc?`, `labels?`, `scanning_agent_id?` | Create a web target. Labels are name strings; default label auto-merged from config |
-| `probely_update_target` | `targetId`, `name?`, `url?`, `desc?`, `labels?`, `scanning_agent_id?` | Update a target |
+| `probely_update_target` | `targetId`, `name?`, `url?`, `desc?`, `labels?`, `scanning_agent_id?`, `headers?`, `cookies?` | Update a target. Use `headers`/`cookies` to set custom HTTP headers/cookies sent with every scan request. Each entry: `{"name": "...", "value": "..."}` |
 | `probely_delete_target` | `targetId` | Delete a target |
 
 ### Login Sequences
@@ -824,7 +824,7 @@ description: Configure Snyk API&Web API targets from OpenAPI/Swagger schemas or 
 1. **Target name:** User-provided > schema title/collection name > domain-derived.
 2. **Step 1:** Obtain API schema (OpenAPI/Swagger URL or file, Postman collection, or offer to generate from codebase).
 3. **Step 2:** Create target via `probely_create_api_target_from_postman()` or `probely_create_api_target_from_openapi()`. Validate OpenAPI schemas before uploading.
-4. **Step 3:** Configure API authentication if needed (API key, Bearer, OAuth, Basic Auth) via `probely_update_target_settings`.
+4. **Step 3:** Configure API authentication if needed (API key, Bearer, OAuth, Basic Auth) via `probely_update_target` using the `headers` parameter.
 5. **Summary table** with SAW link.
 
 ### 10.3 Snyk Code Scanning Skill (related, not part of SAW server)

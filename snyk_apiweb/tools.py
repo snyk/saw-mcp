@@ -471,10 +471,23 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
         scanning_agent_id: Optional[str] = None,
+        headers: Optional[List[Dict[str, str]]] = Field(
+            default=None,
+            description='Custom HTTP headers sent with every scan request. '
+            'Each entry: {"name": "<header-name>", "value": "<header-value>"}. '
+            'Replaces all existing custom headers.',
+        ),
+        cookies: Optional[List[Dict[str, str]]] = Field(
+            default=None,
+            description='Custom cookies sent with every scan request. '
+            'Each entry: {"name": "<cookie-name>", "value": "<cookie-value>"}. '
+            'Replaces all existing custom cookies.',
+        ),
     ) -> Dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign or change the scanning agent. Pass "" to remove it.
+        Use headers/cookies to set custom HTTP headers/cookies included in every scan request.
         """
         fields: Dict[str, Any] = {}
         site_fields: Dict[str, Any] = {}
@@ -484,6 +497,10 @@ def build_server() -> FastMCP:
             site_fields["url"] = url
         if desc is not None:
             site_fields["desc"] = desc
+        if headers is not None:
+            site_fields["headers"] = headers
+        if cookies is not None:
+            site_fields["cookies"] = cookies
         if site_fields:
             fields["site"] = site_fields
         if labels is not None:
