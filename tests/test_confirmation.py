@@ -18,7 +18,6 @@ from mcp.types import (
 
 from snyk_apiweb.tools import _require_confirmation
 
-
 # --- Helpers ---
 
 
@@ -119,6 +118,7 @@ class TestRegisterToolWithConfirmation:
         monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
         monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
         from snyk_apiweb.tools import build_server
+
         return build_server()
 
     def test_confirmation_tool_is_registered(self, app):
@@ -135,26 +135,41 @@ class TestRegisterToolWithConfirmation:
     def test_non_confirmation_tool_has_no_title(self, app):
         tools = asyncio.run(app.list_tools())
         tool = next(t for t in tools if t.name == "probely_list_targets")
-        assert tool.annotations is None or getattr(tool.annotations, "title", None) is None
+        assert (
+            tool.annotations is None
+            or getattr(tool.annotations, "title", None) is None
+        )
 
     @patch("snyk_apiweb.tools._require_confirmation", new_callable=AsyncMock)
-    def test_cancelled_confirmation_returns_cancelled_response(self, mock_confirm, app):
+    def test_cancelled_confirmation_returns_cancelled_response(
+        self, mock_confirm, app
+    ):
         mock_confirm.return_value = False
 
         result = asyncio.run(
-            app.call_tool("probely_update_target", {"targetId": "abc123", "name": "Test"})
+            app.call_tool(
+                "probely_update_target", {"targetId": "abc123", "name": "Test"}
+            )
         )
 
         assert any("cancelled" in str(item).lower() for item in result)
         mock_confirm.assert_awaited_once()
 
     @patch("snyk_apiweb.tools._require_confirmation", new_callable=AsyncMock)
-    def test_accepted_confirmation_calls_underlying_function(self, mock_confirm, app):
+    def test_accepted_confirmation_calls_underlying_function(
+        self, mock_confirm, app
+    ):
         mock_confirm.return_value = True
 
-        with patch("snyk_apiweb.probely_client.ProbelyClient.update_target", return_value={"id": "abc123"}) as mock_api:
-            result = asyncio.run(
-                app.call_tool("probely_update_target", {"targetId": "abc123", "name": "Hello"})
+        with patch(
+            "snyk_apiweb.probely_client.ProbelyClient.update_target",
+            return_value={"id": "abc123"},
+        ) as mock_api:
+            asyncio.run(
+                app.call_tool(
+                    "probely_update_target",
+                    {"targetId": "abc123", "name": "Hello"},
+                )
             )
             mock_api.assert_called_once()
 
@@ -163,7 +178,10 @@ class TestRegisterToolWithConfirmation:
         mock_confirm.return_value = False
 
         asyncio.run(
-            app.call_tool("probely_update_target", {"targetId": "abc123", "name": "Hello"})
+            app.call_tool(
+                "probely_update_target",
+                {"targetId": "abc123", "name": "Hello"},
+            )
         )
 
         confirm_msg = mock_confirm.call_args[0][1]
