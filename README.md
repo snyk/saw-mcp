@@ -2,11 +2,11 @@
 
 # Snyk API&Web (SAW) MCP Server
 
-An MCP server (FastMCP 2.0) that exposes the Snyk API&Web API as MCP tools. AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) can create and configure scan targets, run scans, and manage findings through natural language.
+Connect your AI coding assistant to Snyk API&Web (SAW) so it can onboard scan targets, configure authentication, run DAST scans, and triage findings — all through natural language.
+
+Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
 
 > **Naming note:** Snyk API&Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
-
-**Main goal:** Agentic target onboarding — create targets and automatically configure authentication (login sequences, 2FA), logout detection, and extra hosts.
 
 See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 
