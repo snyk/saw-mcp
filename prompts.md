@@ -105,7 +105,6 @@ Configure form login on target BtJpAVjqZjXP:
 - Password field: input[name="password"]
 - Username: admin@example.com
 - Password: secret123
-- Check pattern: Dashboard
 ```
 
 ### Record a login sequence (browser available)
