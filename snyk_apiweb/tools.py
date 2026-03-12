@@ -134,17 +134,20 @@ def _generate_totp(
 
 
 async def _require_confirmation(ctx: Context, message: str) -> bool:
-    """Return True if user accepted, False otherwise. Follows MCP human-in-the-loop best practice."""
+    """Return True if user accepted, False otherwise. Skips elicitation for clients that don't support it."""
     try:
-        confirmation = await ctx.elicit(
-            message=message,
-            response_type=["Confirm", "Cancel"],
-        )
+        from mcp.types import ClientCapabilities, ElicitationCapability, FormElicitationCapability
+        if not ctx.session.check_client_capability(
+            ClientCapabilities(elicitation=ElicitationCapability(form=FormElicitationCapability()))
+        ):
+            return True
     except Exception:
-        # Client doesn't support elicitation (e.g. CLI MCP Clients).
-        # Fall through — these clients handle confirmation at the transport level.
         return True
 
+    confirmation = await ctx.elicit(
+        message=message,
+        response_type=["Confirm", "Cancel"],
+    )
     return confirmation.action == "accept" and confirmation.data == "Confirm"
 
 
