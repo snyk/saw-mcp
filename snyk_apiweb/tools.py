@@ -11,7 +11,7 @@ import time
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from .config import (
@@ -101,6 +101,24 @@ def _generate_totp(
     }
 
 
+async def _require_confirmation(ctx: Context, message: str) -> bool:
+    """Return True if user accepted, False otherwise. Follows MCP human-in-the-loop best practice."""
+    confirmation = await ctx.elicit(
+        message=message,
+        response_type=["yes", "no"],
+    )
+    return confirmation.action == "accept" and confirmation.data == "yes"
+
+
+def _get_target_context(
+    client: ProbelyClient, target_id: str
+) -> tuple[str, str]:
+    """Return (target_name, target_url) for use in confirmation messages."""
+    target = client.get_target(target_id=target_id)
+    site = target.get("site", {})
+    return site.get("name", target_id), site.get("url", target_id)
+
+
 def build_server() -> FastMCP:
     cfg = load_config()
     base_url = get_probely_base_url(cfg)
@@ -120,6 +138,19 @@ def build_server() -> FastMCP:
             if is_tool_enabled(name, tool_filter):
                 return app.tool(name=name)(func)
             return func  # Return undecorated function (not registered)
+
+        return decorator
+
+    def register_tool_destructive(name: str, title: str) -> Callable:
+        """Decorator for destructive tools: adds destructive_hint and requires elicitation."""
+
+        def decorator(func: Callable) -> Callable:
+            if is_tool_enabled(name, tool_filter):
+                return app.tool(
+                    name=name,
+                    annotations={"destructive_hint": True, "title": title},
+                )(func)
+            return func
 
         return decorator
 
@@ -329,14 +360,26 @@ def build_server() -> FastMCP:
 
     # Generic request tool to cover all API functionality
     @register_tool("probelyrequest")
-    def probelyrequest(
+    async def probelyrequest(
+        ctx: Context,
         method: str,
         path: str,
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Make a raw request to Probely API (path relative to base)."""
+        """Make a raw request to Probely API (path relative to base).
+        When method is DELETE, this tool will automatically ask the user for confirmation.
+        """
+        if method.upper() == "DELETE":
+            if not await _require_confirmation(
+                ctx,
+                f"⚠️ Are you sure you want to delete the resource at path '{path}'?",
+            ):
+                return {
+                    "cancelled": True,
+                    "message": "Operation cancelled by the user.",
+                }
         return client.raw(
             method=method, path=path, params=params, json=json, data=data
         )
@@ -414,9 +457,24 @@ def build_server() -> FastMCP:
             fields["description"] = description
         return client.update_credential(credential_id=credentialId, **fields)
 
-    @register_tool("probely_delete_credential")
-    def probely_delete_credential(credentialId: str) -> Dict[str, Any]:
-        """Delete a credential."""
+    @register_tool_destructive(
+        "probely_delete_credential", "Delete Credential"
+    )
+    async def probely_delete_credential(
+        ctx: Context, credentialId: str
+    ) -> Dict[str, Any]:
+        """Delete a credential. This tool will automatically ask the user for confirmation."""
+        cred = client.get_credential(credential_id=credentialId)
+        cred_name = cred.get("name", credentialId)
+        cred_uri = cred.get("uri", credentialId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to delete credential '{cred_name}' (URI: {cred_uri})?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.delete_credential(credential_id=credentialId)
 
     # Labels
@@ -511,8 +569,22 @@ def build_server() -> FastMCP:
             )
         return client.update_target(target_id=targetId, **fields)
 
-    @register_tool("probely_delete_target")
-    def probely_delete_target(targetId: str) -> Dict[str, Any]:
+    @register_tool_destructive(
+        "probely_delete_target", "Delete Probely Target"
+    )
+    async def probely_delete_target(
+        ctx: Context, targetId: str
+    ) -> Dict[str, Any]:
+        """Delete a target. This tool will automatically ask the user for confirmation."""
+        target_name, target_url = _get_target_context(client, targetId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to delete target '{target_name}' (URL: {target_url})?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.delete_target(target_id=targetId)
 
     # Login Sequences
@@ -584,11 +656,24 @@ def build_server() -> FastMCP:
             target_id=targetId, sequence_id=sequenceId, **fields
         )
 
-    @register_tool("probely_delete_sequence")
-    def probely_delete_sequence(
-        targetId: str, sequenceId: str
+    @register_tool_destructive(
+        "probely_delete_sequence", "Delete Login Sequence"
+    )
+    async def probely_delete_sequence(
+        ctx: Context, targetId: str, sequenceId: str
     ) -> Dict[str, Any]:
-        """Delete a login sequence."""
+        """Delete a login sequence. This tool will automatically ask the user for confirmation."""
+        seq = client.get_sequence(target_id=targetId, sequence_id=sequenceId)
+        seq_name = seq.get("name", sequenceId)
+        target_name, target_url = _get_target_context(client, targetId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to delete login sequence '{seq_name}' for target '{target_name}' (URL: {target_url})?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.delete_sequence(
             target_id=targetId, sequence_id=sequenceId
         )
@@ -768,10 +853,26 @@ def build_server() -> FastMCP:
             target_id=targetId, extra_host_id=extraHostId, **fields
         )
 
-    @register_tool("probely_delete_extra_host")
-    def probely_delete_extra_host(
-        targetId: str, extraHostId: str
+    @register_tool_destructive(
+        "probely_delete_extra_host", "Delete Extra Host"
+    )
+    async def probely_delete_extra_host(
+        ctx: Context, targetId: str, extraHostId: str
     ) -> Dict[str, Any]:
+        """Delete an extra host. This tool will automatically ask the user for confirmation."""
+        host = client.get_extra_host(
+            target_id=targetId, extra_host_id=extraHostId
+        )
+        hostname = host.get("hostname", extraHostId)
+        target_name, target_url = _get_target_context(client, targetId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to delete extra host '{hostname}' for target '{target_name}' (URL: {target_url})?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.delete_extra_host(
             target_id=targetId, extra_host_id=extraHostId
         )
@@ -793,12 +894,36 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         return client.start_scan(target_id=targetId, profile=profile)
 
-    @register_tool("probely_stop_scan")
-    def probely_stop_scan(targetId: str, scanId: str) -> Dict[str, Any]:
+    @register_tool_destructive("probely_stop_scan", "Stop Scan")
+    async def probely_stop_scan(
+        ctx: Context, targetId: str, scanId: str
+    ) -> Dict[str, Any]:
+        """Stop a running scan. This tool will automatically ask the user for confirmation."""
+        target_name, target_url = _get_target_context(client, targetId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to stop scan {scanId} for target '{target_name}' (URL: {target_url})?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.stop_scan(target_id=targetId, scan_id=scanId)
 
-    @register_tool("probely_cancel_scan")
-    def probely_cancel_scan(targetId: str, scanId: str) -> Dict[str, Any]:
+    @register_tool_destructive("probely_cancel_scan", "Cancel Scan")
+    async def probely_cancel_scan(
+        ctx: Context, targetId: str, scanId: str
+    ) -> Dict[str, Any]:
+        """Cancel a scan. This tool will automatically ask the user for confirmation."""
+        target_name, target_url = _get_target_context(client, targetId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to cancel scan {scanId} for target '{target_name}' (URL: {target_url})?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.cancel_scan(target_id=targetId, scan_id=scanId)
 
     # Findings
@@ -825,10 +950,27 @@ def build_server() -> FastMCP:
             target_id=targetId, finding_id=findingId, state=state
         )
 
-    @register_tool("probely_bulk_update_findings")
-    def probely_bulk_update_findings(
-        targetId: str, findingIds: list[str], state: Optional[str] = None
+    @register_tool_destructive(
+        "probely_bulk_update_findings", "Bulk Update Findings"
+    )
+    async def probely_bulk_update_findings(
+        ctx: Context,
+        targetId: str,
+        findingIds: list[str],
+        state: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Bulk update finding states (e.g. fixed, false_positive, accepted_risk).
+        This tool will automatically ask the user for confirmation."""
+        state_str = state or "changed"
+        target_name, target_url = _get_target_context(client, targetId)
+        if not await _require_confirmation(
+            ctx,
+            f"⚠️ Are you sure you want to bulk update {len(findingIds)} finding(s) for target '{target_name}' (URL: {target_url}) to state '{state_str}'?",
+        ):
+            return {
+                "cancelled": True,
+                "message": "Operation cancelled by the user.",
+            }
         return client.bulk_update_findings(
             target_id=targetId, finding_ids=findingIds, state=state
         )
