@@ -54,7 +54,7 @@ class ProbelyClient:
         headers: Optional[Dict[str, str]] = None,
     ) -> Tuple[int, Dict[str, Any]]:
         url = self._url(path)
-        logger.debug("%s %s", method.upper(), url)
+        logger.debug("%s %s %s", method.upper(), url, str(json))
         resp = self._session.request(
             method=method.upper(),
             url=url,
