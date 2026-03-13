@@ -364,6 +364,7 @@ class ProbelyClient:
             name_prefix,
             scanning_agent_id,
         )
+        payload["type"] = "single"
         return self.request("POST", "/targets/", json=payload)[1]
 
     def create_api_target(
@@ -393,6 +394,7 @@ class ProbelyClient:
             name_prefix,
             scanning_agent_id,
         )
+        payload["type"] = "api"
         schema_key = "collection" if schema_type == "postman" else "schema"
         payload[schema_key] = schema
         return self.request("POST", "/targets/", json=payload)[1]
