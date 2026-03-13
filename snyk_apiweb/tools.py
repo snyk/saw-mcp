@@ -149,21 +149,13 @@ async def _require_confirmation(ctx: Context, message: str) -> bool:
             response_type=["Confirm", "Cancel"],
         )
     except Exception:
-        logger.debug(
-            "Elicitation raised an exception, auto-approving "
-            "(tool annotations handle confirmation)"
-        )
+        # Client doesn't support elicitation (e.g. CLI) → auto-approve
         return True
 
     if confirmation.action == "accept":
         return confirmation.data == "Confirm"
 
     # decline/cancel = client-level rejection, not a user action → auto-approve
-    logger.debug(
-        "Elicitation returned action='%s' (client-level, not user-initiated), "
-        "auto-approving",
-        confirmation.action,
-    )
     return True
 
 
