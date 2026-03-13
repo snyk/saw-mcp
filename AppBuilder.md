@@ -86,7 +86,7 @@
 ## 3. File Tree
 
 ```
-saw-mcpserver/
+saw-mcp-server/
 ├── snyk_apiweb/                          # Python package (the server)
 │   ├── __init__.py                       # Exports: config, probely_client, tools, server
 │   ├── config.py                         # YAML config loader + helpers
@@ -963,10 +963,10 @@ set -euo pipefail
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcpserver/venv/bin/python",
+      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcpserver"
+        "PYTHONPATH": "/<basedir>/saw-mcp-server"
       }
     }
   }
@@ -979,11 +979,11 @@ set -euo pipefail
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcpserver/venv/bin/python",
+      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcpserver",
-        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcpserver/config/config.yaml"
+        "PYTHONPATH": "/<basedir>/saw-mcp-server",
+        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp-server/config/config.yaml"
       }
     }
   }
@@ -997,15 +997,15 @@ set -euo pipefail
 ```bash
 mkdir -p ~/.cursor/skills/saw-web-target-configuration
 mkdir -p ~/.cursor/skills/saw-api-target-configuration
-ln /<basedir>/saw-mcpserver/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
-ln /<basedir>/saw-mcpserver/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
+ln /<basedir>/saw-mcp-server/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
+ln /<basedir>/saw-mcp-server/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
 ```
 
 ### Installing Rules (hard links, per project)
 
 ```bash
 mkdir -p .cursor/rules
-ln /<basedir>/saw-mcpserver/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
+ln /<basedir>/saw-mcp-server/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
 ```
 
 Hard links ensure a single source of truth. Updates via `git pull` propagate automatically.
