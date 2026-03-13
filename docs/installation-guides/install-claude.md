@@ -29,3 +29,4 @@ The server picks up your API key from `.env` automatically. No key in the config
 - **Pass the key directly:** add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
 - **Override the base URL** (e.g. staging): add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
 - **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"` instead.
+- **Set log level:** add `"MCP_SAW_LOG_LEVEL": "DEBUG"` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO).
