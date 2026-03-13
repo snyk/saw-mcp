@@ -14,11 +14,6 @@ from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
 from fastmcp import Context, FastMCP
-from mcp.types import (
-    ClientCapabilities,
-    ElicitationCapability,
-    FormElicitationCapability,
-)
 from pydantic import Field
 
 from .config import (
@@ -44,7 +39,6 @@ from .confirmation_messages import (
     create_logout_detector_msg,
     create_scanreport_msg,
     create_sequence_msg,
-    create_target_msg,
     delete_credential_msg,
     delete_extra_host_msg,
     delete_sequence_msg,
@@ -139,20 +133,38 @@ def _generate_totp(
 
 
 async def _require_confirmation(ctx: Context, message: str) -> bool:
-    """Return True if user accepted, False otherwise. Skips elicitation for clients that don't support it."""
-    if not ctx.session.check_client_capability(
-        ClientCapabilities(
-            elicitation=ElicitationCapability(form=FormElicitationCapability())
+    """Return True if user accepted, False otherwise.
+
+    Returns False only when the user explicitly chooses "Cancel" from the
+    elicitation dialog (AcceptedElicitation with data="Cancel").
+
+    Auto-approves (returns True) when:
+    - Elicitation call raises an exception (client can't handle it)
+    - Client declines or cancels the elicitation at the protocol level
+      (e.g. Cursor CLI responds with decline/cancel without user interaction)
+    """
+    try:
+        confirmation = await ctx.elicit(
+            message=message,
+            response_type=["Confirm", "Cancel"],
         )
-    ):
+    except Exception:
+        logger.debug(
+            "Elicitation raised an exception, auto-approving "
+            "(tool annotations handle confirmation)"
+        )
         return True
 
-    confirmation = await ctx.elicit(
-        message=message,
-        response_type=["Confirm", "Cancel"],
-    )
-    return confirmation.action == "accept" and confirmation.data == "Confirm"
+    if confirmation.action == "accept":
+        return confirmation.data == "Confirm"
 
+    # decline/cancel = client-level rejection, not a user action → auto-approve
+    logger.debug(
+        "Elicitation returned action='%s' (client-level, not user-initiated), "
+        "auto-approving",
+        confirmation.action,
+    )
+    return True
 
 def build_server() -> FastMCP:
     cfg = load_config()

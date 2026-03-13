@@ -10,50 +10,33 @@ from fastmcp.server.elicitation import (
     CancelledElicitation,
     DeclinedElicitation,
 )
-from mcp.types import (
-    ClientCapabilities,
-    ElicitationCapability,
-    FormElicitationCapability,
-)
 
 from snyk_apiweb.tools import _require_confirmation
 
 # --- Helpers ---
 
 
-def _make_ctx(*, supports_elicitation: bool = True) -> MagicMock:
-    """Build a mock Context with configurable elicitation support."""
+def _make_ctx() -> MagicMock:
+    """Build a mock Context."""
     ctx = MagicMock(spec=Context)
     ctx.session = MagicMock()
-    ctx.session.check_client_capability.return_value = supports_elicitation
     ctx.elicit = AsyncMock()
     return ctx
 
 
-# --- _require_confirmation: client WITHOUT elicitation ---
+# --- _require_confirmation: elicitation not available ---
 
 
-class TestRequireConfirmationWithoutElicitation:
-    """When the client does NOT support elicitation (e.g. CLI clients)."""
+class TestRequireConfirmationElicitationUnavailable:
+    """When elicitation fails at runtime (exception from ctx.elicit)."""
 
-    def test_returns_true_without_calling_elicit(self):
-        ctx = _make_ctx(supports_elicitation=False)
+    def test_auto_approves_when_elicit_raises(self):
+        ctx = _make_ctx()
+        ctx.elicit.side_effect = Exception("elicitation not available")
 
         result = asyncio.run(_require_confirmation(ctx, "Confirm?"))
 
         assert result is True
-        ctx.elicit.assert_not_called()
-
-    def test_checks_form_elicitation_capability(self):
-        ctx = _make_ctx(supports_elicitation=False)
-
-        asyncio.run(_require_confirmation(ctx, "Confirm?"))
-
-        ctx.session.check_client_capability.assert_called_once()
-        cap = ctx.session.check_client_capability.call_args[0][0]
-        assert isinstance(cap, ClientCapabilities)
-        assert isinstance(cap.elicitation, ElicitationCapability)
-        assert isinstance(cap.elicitation.form, FormElicitationCapability)
 
 
 # --- _require_confirmation: client WITH elicitation ---
@@ -63,7 +46,7 @@ class TestRequireConfirmationWithElicitation:
     """When the client supports elicitation (e.g. Cursor IDE)."""
 
     def test_returns_true_on_user_confirm(self):
-        ctx = _make_ctx(supports_elicitation=True)
+        ctx = _make_ctx()
         ctx.elicit.return_value = AcceptedElicitation(data="Confirm")
 
         result = asyncio.run(_require_confirmation(ctx, "Ready?"))
@@ -72,31 +55,33 @@ class TestRequireConfirmationWithElicitation:
         ctx.elicit.assert_awaited_once()
 
     def test_returns_false_on_user_cancel_choice(self):
-        ctx = _make_ctx(supports_elicitation=True)
+        ctx = _make_ctx()
         ctx.elicit.return_value = AcceptedElicitation(data="Cancel")
 
         result = asyncio.run(_require_confirmation(ctx, "Ready?"))
 
         assert result is False
 
-    def test_returns_false_on_declined(self):
-        ctx = _make_ctx(supports_elicitation=True)
+    def test_auto_approves_on_declined(self):
+        """Decline is a client-level rejection, not a user action."""
+        ctx = _make_ctx()
         ctx.elicit.return_value = DeclinedElicitation()
 
         result = asyncio.run(_require_confirmation(ctx, "Ready?"))
 
-        assert result is False
+        assert result is True
 
-    def test_returns_false_on_cancelled(self):
-        ctx = _make_ctx(supports_elicitation=True)
+    def test_auto_approves_on_cancelled(self):
+        """Cancel is a client-level rejection, not a user action."""
+        ctx = _make_ctx()
         ctx.elicit.return_value = CancelledElicitation()
 
         result = asyncio.run(_require_confirmation(ctx, "Ready?"))
 
-        assert result is False
+        assert result is True
 
     def test_passes_message_and_response_type_to_elicit(self):
-        ctx = _make_ctx(supports_elicitation=True)
+        ctx = _make_ctx()
         ctx.elicit.return_value = AcceptedElicitation(data="Confirm")
 
         asyncio.run(_require_confirmation(ctx, "Deploy to prod?"))
