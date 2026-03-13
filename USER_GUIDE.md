@@ -89,6 +89,12 @@ tools:
 
 If `enabled` is set, it takes precedence. If neither is set, all tools are available.
 
+## Confirmation prompts
+
+All tools that create, update, or delete resources require explicit user confirmation before executing. When the AI calls one of these tools, a confirmation prompt appears in the IDE with a context-specific message (e.g. target name and URL) — the user must choose "Yes" or "No" before the action proceeds. The AI cannot bypass this.
+
+This covers every write operation: creating targets/credentials/sequences, updating configurations, starting/stopping scans, managing findings, and deleting resources. Read-only operations (list, get) do not require confirmation.
+
 ## Security best practices
 
 - **API key** — Store only in `config/config.yaml` (field `saw.api_key` or `probely.api_key`). Do not put it in `~/.cursor/mcp.json`.

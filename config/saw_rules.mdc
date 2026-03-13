@@ -47,22 +47,45 @@ When a new project is loaded or workspace is opened, check if it's an **applicat
 
 **Skip this for non-app projects** (libraries, CLI tools, documentation, etc.).
 
-## Destructive Tools: Elicitation-Based Confirmation
+## Tools Requiring Confirmation
 
-**Destructive tools use FastMCP Elicitation to enforce user confirmation.**
+**These tools use FastMCP Elicitation to enforce user confirmation before executing.**
 
-The following tools automatically pause and show a confirmation prompt in the user's UI before executing. The user must explicitly choose "yes" or "no"—the LLM cannot bypass this.
+The following tools automatically pause and show a confirmation prompt in the user's UI. The user must explicitly choose "yes" or "no" — the LLM cannot bypass this.
 
-**Destructive tools (with elicitation):**
-- `probely_delete_target` – deletes a target
-- `probely_delete_credential` – deletes a credential
-- `probely_delete_sequence` – deletes a login sequence
-- `probely_delete_extra_host` – deletes an extra host
-- `probely_stop_scan` / `probely_cancel_scan` – stops or cancels a scan
-- `probely_bulk_update_findings` – bulk updates finding states
-- `probelyrequest` with `method=DELETE` – raw DELETE requests
+All tools that create, update, or delete resources require confirmation:
 
-These tools are annotated with `destructive_hint: true`, which may trigger additional safety warnings in MCP clients. Elicitation requires client support; if unsupported, the tool will raise an error.
+**Create:**
+- `probely_create_target` / `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`
+- `probely_create_credential`
+- `probely_create_label`
+- `probely_create_sequence`
+- `probely_create_extra_host`
+- `probely_create_logout_detector`
+- `probely_create_scanreport`
+- `probely_start_scan`
+
+**Update / Configure:**
+- `probely_update_target` / `probely_update_target_settings`
+- `probely_update_credential`
+- `probely_update_sequence`
+- `probely_update_extra_host`
+- `probely_update_finding` / `probely_bulk_update_findings`
+- `probely_configure_form_login` / `probely_configure_sequence_login`
+- `probely_configure_2fa_totp` / `probely_disable_2fa`
+- `probely_configure_logout_detection`
+
+**Delete / Stop:**
+- `probely_delete_target` / `probely_delete_credential` / `probely_delete_sequence` / `probely_delete_extra_host`
+- `probely_stop_scan` / `probely_cancel_scan`
+
+### Implementation
+
+Tools requiring confirmation are registered with the `register_tool_with_confirmation` decorator (in `tools.py`), which handles both FastMCP metadata (`title`, `requires_confirmation` annotations) and the confirmation prompt automatically.
+
+Confirmation messages are defined in `snyk_apiweb/confirmation_messages.py`. Each message function takes the `ProbelyClient` and the relevant IDs, looks up human-readable context (target name, URL, credential name, etc.), and returns the prompt string. The decorator wires them via `message_func`.
+
+Elicitation requires client support; if unsupported, the tool will raise an error.
 
 ## NEVER Start Scans Automatically
 
