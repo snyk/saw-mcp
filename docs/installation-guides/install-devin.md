@@ -2,7 +2,7 @@
 
 Use the same command and args as the other installation guides. Set the appropriate environment variables for your IDE.
 
-Replace `/<basedir>/saw-mcp-server` with the absolute path to this repo.
+Replace `/<basedir>/saw-mcp` with the absolute path to this repo.
 
 ## Configuration
 
@@ -10,10 +10,10 @@ Replace `/<basedir>/saw-mcp-server` with the absolute path to this repo.
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server"
+        "PYTHONPATH": "/<basedir>/saw-mcp"
       }
     }
   }
