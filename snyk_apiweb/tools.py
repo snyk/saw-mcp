@@ -286,7 +286,7 @@ def build_server() -> FastMCP:
             - 2FA TOTP seed: `{totp_seed}`
 
             Requirements:
-            - First, read the skill file at `/Users/andrerodrigues/git/saw-mcp-server/config/skills/saw-web-target-configuration/SKILL.md` and follow it exactly.
+            - First, read the skill file at `/Users/andrerodrigues/git/saw-mcp/config/skills/saw-web-target-configuration/SKILL.md` and follow it exactly.
             - Use a login sequence when Playwright is available. Do not use form login unless Playwright is unavailable.
             - Derive the target name in this order if needed: user-provided name, then site `<title>`, then FQDN.
             - If labels are `default`, do not pass a `labels` parameter.
@@ -399,7 +399,7 @@ def build_server() -> FastMCP:
             - Authentication details: `{authentication_details}`
 
             Requirements:
-            - First, read the skill file at `/Users/andrerodrigues/git/saw-mcp-server/config/skills/saw-api-target-configuration/SKILL.md` and follow it exactly.
+            - First, read the skill file at `/Users/andrerodrigues/git/saw-mcp/config/skills/saw-api-target-configuration/SKILL.md` and follow it exactly.
             - Derive the target name in this order if needed: user-provided name, then schema title or Postman collection name, then the domain from the base URL.
             - If labels are `default`, do not pass a `labels` parameter.
             - Create a new target; do not search for or reuse an existing one.
