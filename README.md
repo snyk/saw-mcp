@@ -28,7 +28,7 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 ```bash
 git clone https://github.com/snyk/saw-mcp.git
 cd saw-mcp
-python3 -m venv venv
+python -m venv venv
 source venv/bin/activate
 pip install -e .
 ```
