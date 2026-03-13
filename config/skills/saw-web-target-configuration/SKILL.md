@@ -106,6 +106,7 @@ Ask the user for (or derive):
    - Replace the actual username value with `[CUSTOM_USERNAME]` placeholder
    - Replace the actual password value with `[CUSTOM_PASSWORD]` placeholder
    - **Keep 2FA OTP codes hardcoded** (do NOT replace with custom fields)
+10. **Make sure you enabled authentication with login sequence** - After creating the login sequence, you MUST call `probely_configure_sequence_login(targetId, enabled=True)` to activate sequence-based authentication on the target. Creating the sequence alone is not enough — the target won't use it unless sequence login is explicitly enabled.
 
 **CRITICAL: Inspect Form Elements Before Creating Selectors**
 
