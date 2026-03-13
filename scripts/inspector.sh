@@ -13,4 +13,4 @@ echo "Starting MCP Inspector..."
 echo "A browser window should open with the inspector UI."
 echo ""
 
-npx @modelcontextprotocol/inspector python -m snyk_apiweb.server
+npx @modelcontextprotocol/inspector python3 -m snyk_apiweb.server

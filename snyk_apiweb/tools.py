@@ -140,8 +140,6 @@ async def _require_confirmation(ctx: Context, message: str) -> bool:
 
     Auto-approves (returns True) when:
     - Elicitation call raises an exception (client can't handle it)
-    - Client declines or cancels the elicitation at the protocol level
-      (e.g. Cursor CLI responds with decline/cancel without user interaction)
     """
     try:
         confirmation = await ctx.elicit(
@@ -155,8 +153,6 @@ async def _require_confirmation(ctx: Context, message: str) -> bool:
     if confirmation.action == "accept":
         return confirmation.data == "Confirm"
 
-    # decline/cancel = client-level rejection, not a user action → auto-approve
-    return True
 
 
 def build_server() -> FastMCP:
