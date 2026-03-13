@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -10,8 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    log_level = os.getenv("MCP_SAW_LOG_LEVEL", "INFO").upper()
+    numeric_level = getattr(logging, log_level, logging.INFO)
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=numeric_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             RotatingFileHandler(

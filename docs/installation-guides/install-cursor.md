@@ -58,6 +58,13 @@ Run `./scripts/setup-env.sh` once, then use this config — no key in the JSON:
 }
 ```
 
+## Optional Environment Variables
+
+You can add these to the `env` block in any of the options above:
+
+- **`MCP_SAW_BASE_URL`**: Override API base URL (e.g. `"https://plus.probely.app/"`)
+- **`MCP_SAW_LOG_LEVEL`**: Set logging level (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO)
+
 ## Skills and Rules
 
 The server ships with **project rules** and **agent skills** that teach the AI how to use the tools. Link them so Cursor can find them:
