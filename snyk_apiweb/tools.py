@@ -565,19 +565,10 @@ def build_server() -> FastMCP:
     def probely_get_target(targetId: str) -> Dict[str, Any]:
         return client.get_target(target_id=targetId)
 
-    @register_tool_with_confirmation(
-        "probely_create_target",
-        "Create Target",
-        message_func=lambda ctx, **kw: create_target_msg(client, **kw),
+    @register_tool(
+        "probely_create_target"
     )
-    async def probely_create_target(
-        ctx: Context,
-        name: str,
-        url: str,
-        desc: Optional[str] = None,
-        labels: Optional[list[str]] = None,
-        scanning_agent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    async def probely_create_target(self, name: str, url: str, desc: Optional[str] = None, labels: Optional[list[str]] = None, scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign a scanning agent for internal/private targets.
