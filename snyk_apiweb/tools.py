@@ -166,6 +166,7 @@ async def _require_confirmation(ctx: Context, message: str) -> bool:
     )
     return True
 
+
 def build_server() -> FastMCP:
     cfg = load_config()
     base_url = get_probely_base_url(cfg)
@@ -577,10 +578,14 @@ def build_server() -> FastMCP:
     def probely_get_target(targetId: str) -> Dict[str, Any]:
         return client.get_target(target_id=targetId)
 
-    @register_tool(
-        "probely_create_target"
-    )
-    def probely_create_target(name: str, url: str, desc: Optional[str] = None, labels: Optional[list[str]] = None, scanning_agent_id: Optional[str] = None) -> Dict[str, Any]:
+    @register_tool("probely_create_target")
+    def probely_create_target(
+        name: str,
+        url: str,
+        desc: Optional[str] = None,
+        labels: Optional[list[str]] = None,
+        scanning_agent_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign a scanning agent for internal/private targets.
