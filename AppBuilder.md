@@ -211,6 +211,14 @@ The config path is resolved in this priority:
 
 When `MCP_SAW_API_KEY` is set and the config file does not exist, `load_config()` returns `{}` (env-only mode).
 
+### 5.3.1 Log Level Configuration
+
+The logging level is configured via:
+1. Environment variable `MCP_SAW_LOG_LEVEL` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+2. Default: INFO
+
+This controls the verbosity of the server logs (both console output and the rotating log file at `~/saw-mcp.log`).
+
 ### 5.4 Legacy Support
 
 The config module supports both `saw` and `probely` YAML section names. The `saw` section takes priority; `probely` is the fallback.
@@ -990,7 +998,7 @@ set -euo pipefail
 }
 ```
 
-**Option C: Explicit env key** — Add `"MCP_SAW_API_KEY": "your-key"` to the `env` block to override `.env` or config. Optionally add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"` to override the API endpoint (e.g. for staging/QA).
+**Option C: Explicit env key** — Add `"MCP_SAW_API_KEY": "your-key"` to the `env` block to override `.env` or config. Optionally add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"` to override the API endpoint (e.g. for staging/QA) or `"MCP_SAW_LOG_LEVEL": "DEBUG"` to control logging verbosity.
 
 ### Installing Skills (hard links, not copies)
 

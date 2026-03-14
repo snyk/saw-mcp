@@ -28,7 +28,7 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 ```bash
 git clone https://github.com/snyk/saw-mcp.git
 cd saw-mcp
-python3 -m venv venv
+python -m venv venv
 source venv/bin/activate
 pip install -e .
 ```
@@ -75,6 +75,7 @@ For host-specific setup see the [Installation Guides](docs/installation-guides/)
 - **Pass the key directly:** add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
 - **Override the base URL** (e.g. staging): add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
 - **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"` instead.
+- **Set log level:** add `"MCP_SAW_LOG_LEVEL": "DEBUG"` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO).
 
 </details>
 
