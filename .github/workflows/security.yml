@@ -50,9 +50,25 @@ jobs:
 
   secrets-scan:
     name: Secret Detection
+    # Reusable workflow from snyk-prodsec; will pass once repo moves to snyk org.
+    # Falls back to standalone Gitleaks in the meantime.
     uses: probely/snyk-prodsec/.github/workflows/secrets-scanning.yml@main
+    continue-on-error: true
     with:
       channel: probely-alerts
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_SECRET }}
       GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  secrets-scan-fallback:
+    name: Secret Detection (fallback)
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
