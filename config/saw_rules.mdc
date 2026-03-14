@@ -79,13 +79,12 @@ All tools that create, update, or delete resources require confirmation:
 - `probely_delete_target` / `probely_delete_credential` / `probely_delete_sequence` / `probely_delete_extra_host`
 - `probely_stop_scan` / `probely_cancel_scan`
 
-### Implementation
+## NEVER Delete Targets Automatically
 
-Tools requiring confirmation are registered with the `register_tool_with_confirmation` decorator (in `tools.py`), which handles both FastMCP metadata (`title`, `requires_confirmation` annotations) and the confirmation prompt automatically.
+**IMPORTANT: NEVER delete targets automatically.** Target deletion is a destructive action that must always be explicitly requested by the user.
 
-Confirmation messages are defined in `snyk_apiweb/confirmation_messages.py`. Each message function takes the `ProbelyClient` and the relevant IDs, looks up human-readable context (target name, URL, credential name, etc.), and returns the prompt string. The decorator wires them via `message_func`.
-
-Elicitation requires client support; if unsupported, the tool will raise an error.
+- Only delete targets when the user explicitly requests it
+- Explain that target deletion should only be run against systems the user has permission to test
 
 ## NEVER Start Scans Automatically
 

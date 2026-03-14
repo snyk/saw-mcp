@@ -26,9 +26,9 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 ### 2. Install
 
 ```bash
-git clone https://github.com/snyk/saw-mcp-server.git
-cd saw-mcp-server
-python3 -m venv venv
+git clone https://github.com/snyk/saw-mcp.git
+cd saw-mcp
+python -m venv venv
 source venv/bin/activate
 pip install -e .
 ```
@@ -49,16 +49,16 @@ This writes a `.env` file in the project root (gitignored). The server loads it 
 
 ### 4. Configure Your IDE
 
-Add to your MCP client configuration (replace `/<basedir>/saw-mcp-server` with the absolute path to this repo):
+Add to your MCP client configuration (replace `/<basedir>/saw-mcp` with the absolute path to this repo):
 
 ```json
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server"
+        "PYTHONPATH": "/<basedir>/saw-mcp"
       }
     }
   }
@@ -74,7 +74,8 @@ For host-specific setup see the [Installation Guides](docs/installation-guides/)
 
 - **Pass the key directly:** add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
 - **Override the base URL** (e.g. staging): add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
-- **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp-server/config/config.yaml"` instead.
+- **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"` instead.
+- **Set log level:** add `"MCP_SAW_LOG_LEVEL": "DEBUG"` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO).
 
 </details>
 
