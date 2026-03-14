@@ -86,7 +86,7 @@
 ## 3. File Tree
 
 ```
-saw-mcp-server/
+saw-mcp/
 ├── snyk_apiweb/                          # Python package (the server)
 │   ├── __init__.py                       # Exports: config, probely_client, tools, server
 │   ├── config.py                         # YAML config loader + helpers
@@ -210,6 +210,14 @@ The config path is resolved in this priority:
 4. Default: `<project_root>/config/config.yaml`
 
 When `MCP_SAW_API_KEY` is set and the config file does not exist, `load_config()` returns `{}` (env-only mode).
+
+### 5.3.1 Log Level Configuration
+
+The logging level is configured via:
+1. Environment variable `MCP_SAW_LOG_LEVEL` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+2. Default: INFO
+
+This controls the verbosity of the server logs (both console output and the rotating log file at `~/saw-mcp.log`).
 
 ### 5.4 Legacy Support
 
@@ -963,10 +971,10 @@ set -euo pipefail
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server"
+        "PYTHONPATH": "/<basedir>/saw-mcp"
       }
     }
   }
@@ -979,33 +987,33 @@ set -euo pipefail
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server",
-        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp-server/config/config.yaml"
+        "PYTHONPATH": "/<basedir>/saw-mcp",
+        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"
       }
     }
   }
 }
 ```
 
-**Option C: Explicit env key** — Add `"MCP_SAW_API_KEY": "your-key"` to the `env` block to override `.env` or config. Optionally add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"` to override the API endpoint (e.g. for staging/QA).
+**Option C: Explicit env key** — Add `"MCP_SAW_API_KEY": "your-key"` to the `env` block to override `.env` or config. Optionally add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"` to override the API endpoint (e.g. for staging/QA) or `"MCP_SAW_LOG_LEVEL": "DEBUG"` to control logging verbosity.
 
 ### Installing Skills (hard links, not copies)
 
 ```bash
 mkdir -p ~/.cursor/skills/saw-web-target-configuration
 mkdir -p ~/.cursor/skills/saw-api-target-configuration
-ln /<basedir>/saw-mcp-server/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
-ln /<basedir>/saw-mcp-server/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
+ln /<basedir>/saw-mcp/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
+ln /<basedir>/saw-mcp/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
 ```
 
 ### Installing Rules (hard links, per project)
 
 ```bash
 mkdir -p .cursor/rules
-ln /<basedir>/saw-mcp-server/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
+ln /<basedir>/saw-mcp/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
 ```
 
 Hard links ensure a single source of truth. Updates via `git pull` propagate automatically.

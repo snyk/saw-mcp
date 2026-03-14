@@ -4,7 +4,7 @@
 2. Paste one of the configuration blocks below (use absolute paths)
 3. Save and restart Cursor
 
-Replace `/<basedir>/saw-mcp-server` with the absolute path to this repo.
+Replace `/<basedir>/saw-mcp` with the absolute path to this repo.
 
 ## Option A: `.env` file (recommended)
 
@@ -14,10 +14,10 @@ Run `./scripts/setup-env.sh` once, then use this config — no key in the JSON:
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server"
+        "PYTHONPATH": "/<basedir>/saw-mcp"
       }
     }
   }
@@ -30,10 +30,10 @@ Run `./scripts/setup-env.sh` once, then use this config — no key in the JSON:
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server",
+        "PYTHONPATH": "/<basedir>/saw-mcp",
         "MCP_SAW_API_KEY": "your-api-key"
       }
     }
@@ -47,16 +47,23 @@ Run `./scripts/setup-env.sh` once, then use this config — no key in the JSON:
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp-server/venv/bin/python",
+      "command": "/<basedir>/saw-mcp/venv/bin/python",
       "args": ["-m", "snyk_apiweb.server"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp-server",
-        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp-server/config/config.yaml"
+        "PYTHONPATH": "/<basedir>/saw-mcp",
+        "MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"
       }
     }
   }
 }
 ```
+
+## Optional Environment Variables
+
+You can add these to the `env` block in any of the options above:
+
+- **`MCP_SAW_BASE_URL`**: Override API base URL (e.g. `"https://plus.probely.app/"`)
+- **`MCP_SAW_LOG_LEVEL`**: Set logging level (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO)
 
 ## Skills and Rules
 
@@ -65,10 +72,10 @@ The server ships with **project rules** and **agent skills** that teach the AI h
 ```bash
 # Project rules (per project)
 mkdir -p .cursor/rules
-ln /<basedir>/saw-mcp-server/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
+ln /<basedir>/saw-mcp/config/saw_rules.mdc .cursor/rules/saw_rules.mdc
 
 # Agent skills (global)
 mkdir -p ~/.cursor/skills/saw-web-target-configuration ~/.cursor/skills/saw-api-target-configuration
-ln /<basedir>/saw-mcp-server/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
-ln /<basedir>/saw-mcp-server/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
+ln /<basedir>/saw-mcp/config/skills/saw-web-target-configuration/SKILL.md ~/.cursor/skills/saw-web-target-configuration/SKILL.md
+ln /<basedir>/saw-mcp/config/skills/saw-api-target-configuration/SKILL.md ~/.cursor/skills/saw-api-target-configuration/SKILL.md
 ```
