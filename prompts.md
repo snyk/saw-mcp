@@ -43,7 +43,7 @@ Add an internal target https://10.0.1.50:8443 named "Internal Admin Panel" using
 ## Parallel Multi-Target Onboarding
 
 ```
-Add these targets in parallel:
+Add these targets:
 - app1.example.com (user1@example.com / pass1)
 - app2.example.com (user2@example.com / pass2)
 - app3.example.com (user3@example.com / pass3, TOTP seed JBSWY3DPEHPK3PXP)
