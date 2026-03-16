@@ -447,8 +447,8 @@ def build_server() -> FastMCP:
     def probely_get_target(targetId: str) -> Dict[str, Any]:
         return client.get_target(target_id=targetId)
 
-    @register_tool("probely_create_target")
-    def probely_create_target(
+    @register_tool("probely_create_web_target")
+    def probely_create_web_target(
         name: str,
         url: str,
         desc: Optional[str] = None,
@@ -463,7 +463,7 @@ def build_server() -> FastMCP:
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
         parameter for all subsequent tool calls (sequences, scans, logout detection, etc.).
         """
-        return client.create_target(
+        return client.create_web_target(
             name=name,
             url=url,
             desc=desc,

@@ -353,7 +353,7 @@ class ProbelyClient:
 
         return payload
 
-    def create_target(
+    def create_web_target(
         self,
         name: str,
         url: str,

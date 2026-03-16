@@ -59,7 +59,7 @@ The AI creates a **subagent per target** and configures them in parallel, so mul
 
 ### Key tools (selection)
 
-- `probely_list_targets(search?)`, `probely_create_target(name, url, ...)`, `probely_start_scan(targetId, profile?)`
+- `probely_list_targets(search?)`, `probely_create_web_target(name, url, ...)`, `probely_start_scan(targetId, profile?)`
 - `probely_list_findings(targetId, severity?, state?)`, `probely_update_finding(targetId, findingId, state)`
 - `probely_create_sequence(...)`, `probely_configure_sequence_login(targetId, enabled)`
 - `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials can be linked to sequence custom fields for passwords when the user opts in; the system does not apply credentials management by default
@@ -76,7 +76,7 @@ You can enable or disable specific tools in `config/config.yaml`:
 tools:
   enabled:
     - probely_list_targets
-    - probely_create_target
+    - probely_create_web_target
     - probely_start_scan
     - probely_list_findings
 

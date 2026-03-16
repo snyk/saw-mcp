@@ -176,7 +176,7 @@ def test_create_target_sends_post(client, mock_response):
     )
     client._session.request.return_value = resp
 
-    result = client.create_target(name="Web App", url="https://web.test")
+    result = client.create_web_target(name="Web App", url="https://web.test")
 
     assert result == {"id": "t1"}
     req_call = client._session.request.call_args

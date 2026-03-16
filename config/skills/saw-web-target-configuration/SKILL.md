@@ -65,7 +65,7 @@ Ask the user for (or derive):
 #### Configuration Tool Calls
 
 ```python
-target = probely_create_target(name=..., url=..., desc=..., labels=...) # Use target["id"] as targetId
+target = probely_create_web_target(name=..., url=..., desc=..., labels=...) # Use target["id"] as targetId
 
 # Build the sequence JSON and pass it to probely_create_sequence
 probely_create_sequence(targetId, name="Login Sequence", content="...", sequence_type="login", enabled=True, custom_field_mappings=[...])
