@@ -372,7 +372,8 @@ class ProbelyClient:
         name: str,
         target_url: str,
         schema_type: str,
-        schema: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
+        api_schema_url: Optional[str] = None,
         desc: Optional[str] = None,
         label_names: Optional[list[str]] = None,
         default_label: Optional[Dict[str, str]] = None,
@@ -383,7 +384,8 @@ class ProbelyClient:
 
         Args:
             schema_type: "postman" or "openapi"
-            schema: The Postman collection or OpenAPI schema JSON content
+            schema: Optional inline Postman collection or OpenAPI schema JSON (omit when using api_schema_url).
+            api_schema_url: For openapi: URL of the schema (sets api_scan_settings.api_schema_url).
         """
         payload = self._build_create_target_payload(
             name,
@@ -395,8 +397,18 @@ class ProbelyClient:
             scanning_agent_id,
         )
         payload["type"] = "api"
-        schema_key = "collection" if schema_type == "postman" else "schema"
-        payload[schema_key] = schema
+
+        api_scan_settings: Dict[str, Any] = {
+            "api_schema_type": "openapi" if schema_type == "openapi" else "postman",
+        }
+        if schema_type == "openapi" and api_schema_url:
+            api_scan_settings["api_schema_url"] = api_schema_url
+        payload["site"]["api_scan_settings"] = api_scan_settings
+
+        if schema is not None and not api_schema_url:
+            schema_key = "collection" if schema_type == "postman" else "schema"
+            payload[schema_key] = schema
+
         return self.request("POST", "/targets/", json=payload)[1]
 
     def update_target(self, target_id: str, **fields: Any) -> Dict[str, Any]:

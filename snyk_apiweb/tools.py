@@ -967,13 +967,27 @@ def build_server() -> FastMCP:
         labels: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson."""
-        schema = _fetchjson_or_url(openapi_schema_url, openapi_schemajson)
-        if not schema:
+        if not openapi_schema_url and not openapi_schemajson:
             return {
                 "error": {
                     "message": "Provide openapi_schema_url or openapi_schemajson"
                 }
             }
+        if openapi_schema_url:
+            return client.create_api_target(
+                name=name,
+                target_url=target_url,
+                schema_type="openapi",
+                schema=None,
+                api_schema_url=openapi_schema_url,
+                desc=desc,
+                label_names=labels,
+                default_label=target_defaults.get("default_label"),
+                name_prefix=target_defaults.get("name_prefix", ""),
+            )
+        schema = _fetchjson_or_url(None, openapi_schemajson)
+        if not schema:
+            return {"error": {"message": "Could not use openapi_schemajson"}}
         return client.create_api_target(
             name=name,
             target_url=target_url,
