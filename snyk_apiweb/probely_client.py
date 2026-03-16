@@ -428,7 +428,9 @@ class ProbelyClient:
             "skip_redirect_check": True,
         }
 
-        return self.request("POST", "/targets/", json=payload, params=params)[1]
+        return self.request("POST", "/targets/", json=payload, params=params)[
+            1
+        ]
 
     def update_target(self, target_id: str, **fields: Any) -> Dict[str, Any]:
         return self.request("PATCH", f"/targets/{target_id}/", json=fields)[1]
