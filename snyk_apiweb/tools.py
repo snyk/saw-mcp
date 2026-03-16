@@ -306,6 +306,7 @@ def build_server() -> FastMCP:
             - If labels are `default`, do not pass a `labels` parameter.
             - Create a new target; do not search for or reuse an existing one.
             - If the source type is `openapi`, validate the schema before uploading it and fix any violations first.
+            - When the user provides an OpenAPI schema URL, do not fetch the schema JSON from that URL; pass it as `openapi_schema_url` only.
             - If neither an OpenAPI schema nor a Postman collection is available and the source type is `generate`, generate a basic OpenAPI 3.0 schema from the codebase before creating the target.
             - Use the OpenAPI target creation flow for OpenAPI/Swagger input and the Postman target creation flow for Postman input.
             - If authentication is required, configure it after target creation using the workflow in the skill.
@@ -976,7 +977,7 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
-        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson."""
+        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url."""
         if not openapi_schema_url and not openapi_schemajson:
             return {
                 "error": {
