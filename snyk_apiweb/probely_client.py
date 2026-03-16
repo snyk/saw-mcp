@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 from typing import Any, Dict, Optional, Tuple
@@ -15,6 +16,11 @@ from tenacity import (
 from snyk_apiweb import __version__
 
 logger = logging.getLogger(__name__)
+
+# Context variable to track which MCP tool triggered the API request
+current_tool_name: contextvars.ContextVar[Optional[str]] = (
+    contextvars.ContextVar("current_tool_name", default=None)
+)
 
 
 class ProbelyClient:
@@ -54,7 +60,10 @@ class ProbelyClient:
         headers: Optional[Dict[str, str]] = None,
     ) -> Tuple[int, Dict[str, Any]]:
         url = self._url(path)
-        logger.debug("%s %s %s", method.upper(), url, str(json))
+        tool_name = current_tool_name.get() or ""
+        logger.debug(
+            "[%s] %s %s %s", tool_name, method.upper(), url, str(json)
+        )
         resp = self._session.request(
             method=method.upper(),
             url=url,

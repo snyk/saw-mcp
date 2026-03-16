@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import hmac
 import json
@@ -22,7 +23,7 @@ from .config import (
     is_tool_enabled,
     load_config,
 )
-from .probely_client import ProbelyClient
+from .probely_client import ProbelyClient, current_tool_name
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +119,16 @@ def build_server() -> FastMCP:
 
         def decorator(func: Callable) -> Callable:
             if is_tool_enabled(name, tool_filter):
-                return app.tool(name=name)(func)
+                # Wrap the function to set the tool name context before calling
+                @functools.wraps(func)
+                def wrapper(*args: Any, **kwargs: Any) -> Any:
+                    token = current_tool_name.set(name)
+                    try:
+                        return func(*args, **kwargs)
+                    finally:
+                        current_tool_name.reset(token)
+
+                return app.tool(name=name)(wrapper)
             return func  # Return undecorated function (not registered)
 
         return decorator
