@@ -235,7 +235,9 @@ def test_create_api_target_openapi_uses_schema_key(client, mock_response):
     assert "collection" not in sent
 
 
-def test_create_api_target_openapi_with_url_uses_api_scan_settings(client, mock_response):
+def test_create_api_target_openapi_with_url_uses_api_scan_settings(
+    client, mock_response
+):
     resp = mock_response(
         status_code=201,
         json_data={"id": "t3"},

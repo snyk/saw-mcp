@@ -399,7 +399,9 @@ class ProbelyClient:
         payload["type"] = "api"
 
         api_scan_settings: Dict[str, Any] = {
-            "api_schema_type": "openapi" if schema_type == "openapi" else "postman",
+            "api_schema_type": "openapi"
+            if schema_type == "openapi"
+            else "postman",
         }
         if schema_type == "openapi" and api_schema_url:
             api_scan_settings["api_schema_url"] = api_schema_url
