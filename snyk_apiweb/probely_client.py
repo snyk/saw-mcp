@@ -420,7 +420,15 @@ class ProbelyClient:
             schema_key = "collection" if schema_type == "postman" else "schema"
             payload[schema_key] = schema
 
-        return self.request("POST", "/targets/", json=payload)[1]
+        params = {
+            "check_fullpath": False,
+            "duplicate_check": True,
+            "skip_fullpath_warning": True,
+            "skip_reachability_check": True,
+            "skip_redirect_check": True,
+        }
+
+        return self.request("POST", "/targets/", json=payload, params=params)[1]
 
     def update_target(self, target_id: str, **fields: Any) -> Dict[str, Any]:
         return self.request("PATCH", f"/targets/{target_id}/", json=fields)[1]
