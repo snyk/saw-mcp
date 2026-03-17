@@ -66,8 +66,7 @@ workflows:
           name: Scan repository for secrets
           context:
             - snyk-bot-slack
-          # TODO: add your team's Slack channel once one is set up
-          channel: emerging-technologies-probely-alerts
+          channel: saw-mcp-alerts
           filters:
             branches:
               ignore:
