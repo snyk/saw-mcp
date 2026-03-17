@@ -175,7 +175,7 @@ tools:
   # Whitelist mode (takes precedence):
   # enabled:
   #   - probely_list_targets
-  #   - probely_create_target
+  #   - probely_create_web_target
 
   # Blacklist mode:
   disabled:
@@ -527,7 +527,7 @@ All tool names are prefixed with `probely_` for namespacing.
 |------|-----------|-------------|
 | `probely_list_targets` | `page?`, `search?` | List/search targets |
 | `probely_get_target` | `targetId` | Get target details |
-| `probely_create_target` | `name`, `url`, `desc?`, `labels?`, `scanning_agent_id?` | Create a web target. Labels are name strings; default label auto-merged from config |
+| `probely_create_web_target` | `name`, `url`, `desc?`, `labels?`, `scanning_agent_id?` | Create a web target. Labels are name strings; default label auto-merged from config |
 | `probely_update_target` | `targetId`, `name?`, `url?`, `desc?`, `labels?`, `scanning_agent_id?`, `headers?`, `cookies?` | Update a target. Use `headers`/`cookies` to set custom HTTP headers/cookies sent with every scan request. Each entry: `{"name": "...", "value": "..."}` |
 | `probely_delete_target` | `targetId` | Delete a target |
 
@@ -797,7 +797,7 @@ description: Configure Snyk API&Web web application targets with authentication,
    - Generate sequence JSON with `[CUSTOM_USERNAME]`/`[CUSTOM_PASSWORD]` placeholders.
 
 4. **Tool Call Order:**
-   1. `probely_create_target(name, url, desc?, labels?)`
+   1. `probely_create_web_target(name, url, desc?, labels?)`
    2. `probely_configure_2fa_totp(targetId, otp_secret)` (if 2FA needed, BEFORE sequence)
    3. `probely_create_sequence(targetId, name, content, custom_field_mappings=[...])`
    4. `probely_configure_sequence_login(targetId, enabled=True)`

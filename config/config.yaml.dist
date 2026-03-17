@@ -74,7 +74,7 @@ tools:
     # Targets
     # - probely_create_api_target_from_openapi
     # - probely_create_api_target_from_postman
-    # - probely_create_target
+    # - probely_create_web_target
     # - probely_get_target
     # - probely_get_target_settings
     # - probely_list_targets
