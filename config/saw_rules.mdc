@@ -56,7 +56,7 @@ The following tools automatically pause and show a confirmation prompt in the us
 All tools that create, update, or delete resources require confirmation:
 
 **Create:**
-- `probely_create_target` / `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`
+- `probely_create_web_target` / `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`
 - `probely_create_credential`
 - `probely_create_label`
 - `probely_create_sequence`
