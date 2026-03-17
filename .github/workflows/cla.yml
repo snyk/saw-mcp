@@ -28,4 +28,4 @@ jobs:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://gist.github.com/snyksec/201fc2fd188b4a68973998ec30b57686#file-snyk-oss-contributor-agreement-md"
           branch: "cla-signatures"
-          allowlist: "bot*,dependabot[bot],github-actions[bot]"
+          allowlist: "bot*,dependabot[bot],github-actions[bot],olsigjeci"
