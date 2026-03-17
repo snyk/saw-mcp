@@ -2,13 +2,13 @@
 
 The sequence format (based on the [Snyk API&Web Sequence Recorder](https://github.com/Probely/sequence-recorder)):
 
-**IMPORTANT: Use Custom Fields; Credentials Manager Is Optional**
+**IMPORTANT: Use Custom Fields; Use Credentials Manager by Default**
 
-**Always use custom field placeholders for username and password** instead of hardcoding them in the sequence. **Do not apply the credentials manager by default** — prompt the user to choose whether to use it for the password.
+**Always use custom field placeholders for username and password** instead of hardcoding them in the sequence. **Use the credentials manager by default** for the password. If the user explicitly declines, inline values in custom_field_mappings are allowed.
 
 - Use `[CUSTOM_USERNAME]` placeholder for the username field — map to inline `value` in custom_field_mappings (not sensitive)
-- Use `[CUSTOM_PASSWORD]` placeholder for the password field. **If the user opted in to credentials management**, create a credential via `probely_create_credential` and pass its `uri` (e.g. `credentials://xxxx`) as the `value` in custom_field_mappings. **If not**, the user may provide the password to use inline in custom_field_mappings.
-- **2FA OTP codes should remain hardcoded** in the sequence (when the user opts in to credentials for 2FA, store the TOTP seed via credential manager in step 3)
+- Use `[CUSTOM_PASSWORD]` placeholder for the password field. Create a credential via `probely_create_credential` with `is_sensitive=True` and pass its `uri` (e.g. `credentials://xxxx`) as the `value` in custom_field_mappings. When **multiple targets share the same credential** and it already exists as sensitive, prompt the user to deobfuscate it to allow reuse.
+- **2FA OTP codes should remain hardcoded** in the sequence (store the TOTP seed via credential manager in step 3)
 
 Example sequence with custom fields:
 

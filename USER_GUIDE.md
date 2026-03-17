@@ -30,13 +30,13 @@ The target is ready for scanning.
 
 > **More examples:** See **[prompts.md](prompts.md)** for a full catalog of prompts covering targets, scans, findings, credentials, reports, and multi-step workflows.
 
-## Multiple targets in parallel
+## Multiple targets
 
 You can onboard several targets at once. For example:
 
 *"Add these targets: app1.example.com (user1@example.com / pass1), app2.example.com (user2@example.com / pass2 / TOTP seed 34566424343)"*
 
-The AI creates a **subagent per target** and configures them in parallel, so multiple targets are onboarded at the same time.
+The AI creates a **subagent per target** and configures them sequentially (one at a time), since Playwright uses a single browser instance that cannot be shared across parallel sessions.
 
 ## What's available
 
@@ -62,7 +62,7 @@ The AI creates a **subagent per target** and configures them in parallel, so mul
 - `probely_list_targets(search?)`, `probely_create_web_target(name, url, ...)`, `probely_start_scan(targetId, profile?)`
 - `probely_list_findings(targetId, severity?, state?)`, `probely_update_finding(targetId, findingId, state)`
 - `probely_create_sequence(...)`, `probely_configure_sequence_login(targetId, enabled)`
-- `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials can be linked to sequence custom fields for passwords when the user opts in; the system does not apply credentials management by default
+- `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials are used by default for sensitive values (passwords, tokens, secrets) and linked to sequence custom fields for passwords
 - `probely_configure_form_login(...)`, `probely_configure_2fa(...)`
 - `probely_create_api_target_from_postman(...)`, `probely_create_api_target_from_openapi(...)`
 - `probely_request(method, path, ...)` for any endpoint

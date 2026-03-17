@@ -40,7 +40,7 @@ Add an internal target https://10.0.1.50:8443 named "Internal Admin Panel" using
 
 ---
 
-## Parallel Multi-Target Onboarding
+## Multi-Target Onboarding
 
 ```
 Add these targets:
@@ -57,7 +57,7 @@ Onboard these three apps, all labeled "Sprint-42":
 ```
 
 ```
-Add these targets in parallel with custom names:
+Add these targets with custom names:
 - "Checkout Flow" at https://checkout.shop.io (buyer@shop.io / shopPass1)
 - "Merchant Dashboard" at https://merchant.shop.io (merchant@shop.io / merchPass2)
 ```

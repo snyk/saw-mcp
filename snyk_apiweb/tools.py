@@ -196,7 +196,7 @@ def build_server() -> FastMCP:
             - Detect and configure any required extra hosts.
             - Configure logout detection explicitly with `check_session_url`, `logout_detector_type`, and `logout_detector_value`.
             - If 2FA is enabled, configure TOTP before creating the login sequence.
-            - If the user opts in to credentials management, store the password via probely_create_credential and link it in `custom_field_mappings`; otherwise inline values are allowed. Do not apply credentials management by default—prompt the user to choose.
+            - Use credentials management by default: store the password via probely_create_credential and link it in `custom_field_mappings`. If the user explicitly declines, inline values are allowed. When multiple targets share the same credential and it already exists and is_sensitive=True, prompt the user to deobfuscate it in order to allow reuse.
 
             Return:
             - Target ID
@@ -550,11 +550,11 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials.
 
-        Do not apply credentials management by default. When the user has opted in to credentials management, link a credential (created via probely_create_credential) for the password; otherwise inline values are allowed.
-        - With credential (when user opted in): [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
-        - With inline value: [{"name": "[CUSTOM_PASSWORD]", "value": "secret", "value_is_sensitive": true, "enabled": true}]
+        Use credentials management by default: link a credential (created via probely_create_credential) for the password. If the user explicitly declines, inline values are allowed.
+        - Password credential: [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
+        - When multiple targets share the same credential and it already exists and is_sensitive=True, prompt the user to deobfuscate it in order to allow reuse.
 
-        For username: [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
+        For username: [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": true, "enabled": true}]
         """
         mappings = _parse_list_of_dicts(custom_field_mappings)
         return client.create_sequence(
@@ -575,7 +575,7 @@ def build_server() -> FastMCP:
         enabled: Optional[bool] = None,
         custom_field_mappings: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content. Do not apply credentials management by default—use credential URIs only when the user has opted in.
+        """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content. Use credential URIs for sensitive values by default.
 
         custom_field_mappings should be a JSON array string, e.g.:
         [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
