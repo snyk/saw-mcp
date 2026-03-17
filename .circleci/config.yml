@@ -1,0 +1,103 @@
+version: 2.1
+
+orbs:
+  prodsec: snyk/prodsec-orb@1
+  python: circleci/python@2
+
+parameters:
+  monitor-context:
+    description: CircleCI context used by Snyk scan jobs. Set to your team's context in CircleCI org settings.
+    type: string
+    # TODO: replace with your team's CircleCI context (check https://app.circleci.com/settings/organization/github/snyk/contexts)
+    default: emerging-technologies-solutions-probely-context
+
+defaults: &defaults
+  resource_class: small
+  docker:
+    - image: cimg/python:3.12
+
+commands:
+  install-deps:
+    parameters:
+      extras:
+        type: string
+        default: ".[dev]"
+    steps:
+      - run:
+          name: Install dependencies
+          command: pip install setuptools wheel && pip install -e "<< parameters.extras >>"
+
+jobs:
+  test:
+    <<: *defaults
+    steps:
+      - checkout
+      - install-deps
+      - run:
+          name: Run tests
+          command: pytest tests/ -v
+
+  lint:
+    <<: *defaults
+    steps:
+      - checkout
+      - install-deps
+      - run:
+          name: Check linting
+          command: ruff check .
+      - run:
+          name: Check formatting
+          command: ruff format --check .
+
+  security-scans:
+    <<: *defaults
+    steps:
+      - checkout
+      - install-deps:
+          extras: "."
+      - prodsec/security_scans:
+          mode: auto
+          open-source-additional-arguments: --exclude=venv,tests
+
+workflows:
+  CI:
+    jobs:
+      - prodsec/secrets-scan:
+          name: Scan repository for secrets
+          context:
+            - snyk-bot-slack
+          channel: saw-mcp-alerts
+          filters:
+            branches:
+              ignore:
+                - main
+
+      - test:
+          name: Test
+          requires:
+            - Scan repository for secrets
+          filters:
+            branches:
+              ignore:
+                - main
+
+      - lint:
+          name: Lint
+          requires:
+            - Scan repository for secrets
+          filters:
+            branches:
+              ignore:
+                - main
+
+  Deploy:
+    jobs:
+      - security-scans:
+          name: Security Scans
+          context:
+            - << pipeline.parameters.monitor-context >>
+            - snyk-bot-slack
+          filters:
+            branches:
+              only:
+                - main
