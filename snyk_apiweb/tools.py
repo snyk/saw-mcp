@@ -306,6 +306,7 @@ def build_server() -> FastMCP:
             - If labels are `default`, do not pass a `labels` parameter.
             - Create a new target; do not search for or reuse an existing one.
             - If the source type is `openapi`, validate the schema before uploading it and fix any violations first.
+            - When the user provides an OpenAPI schema URL, do not fetch the schema JSON from that URL; pass it as `openapi_schema_url` only.
             - If neither an OpenAPI schema nor a Postman collection is available and the source type is `generate`, generate a basic OpenAPI 3.0 schema from the codebase before creating the target.
             - Use the OpenAPI target creation flow for OpenAPI/Swagger input and the Postman target creation flow for Postman input.
             - If authentication is required, configure it after target creation using the workflow in the skill.
@@ -446,8 +447,8 @@ def build_server() -> FastMCP:
     def probely_get_target(targetId: str) -> Dict[str, Any]:
         return client.get_target(target_id=targetId)
 
-    @register_tool("probely_create_target")
-    def probely_create_target(
+    @register_tool("probely_create_web_target")
+    def probely_create_web_target(
         name: str,
         url: str,
         desc: Optional[str] = None,
@@ -462,7 +463,7 @@ def build_server() -> FastMCP:
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
         parameter for all subsequent tool calls (sequences, scans, logout detection, etc.).
         """
-        return client.create_target(
+        return client.create_web_target(
             name=name,
             url=url,
             desc=desc,
@@ -976,14 +977,28 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
-        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson."""
-        schema = _fetchjson_or_url(openapi_schema_url, openapi_schemajson)
-        if not schema:
+        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url."""
+        if not openapi_schema_url and not openapi_schemajson:
             return {
                 "error": {
                     "message": "Provide openapi_schema_url or openapi_schemajson"
                 }
             }
+        if openapi_schema_url:
+            return client.create_api_target(
+                name=name,
+                target_url=target_url,
+                schema_type="openapi",
+                schema=None,
+                api_schema_url=openapi_schema_url,
+                desc=desc,
+                label_names=labels,
+                default_label=target_defaults.get("default_label"),
+                name_prefix=target_defaults.get("name_prefix", ""),
+            )
+        schema = _fetchjson_or_url(None, openapi_schemajson)
+        if not schema:
+            return {"error": {"message": "Could not use openapi_schemajson"}}
         return client.create_api_target(
             name=name,
             target_url=target_url,
