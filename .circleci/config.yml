@@ -5,7 +5,7 @@ orbs:
   python: circleci/python@2
 
 parameters:
-  monitor-context:
+  snyk-scan-context:
     description: CircleCI context used by Snyk scan jobs. Set to your team's context in CircleCI org settings.
     type: string
     # TODO: replace with your team's CircleCI context (check https://app.circleci.com/settings/organization/github/snyk/contexts)
@@ -60,44 +60,28 @@ jobs:
           open-source-additional-arguments: --exclude=venv,tests
 
 workflows:
-  CI:
+  version: 2
+  CICD:
     jobs:
       - prodsec/secrets-scan:
           name: Scan repository for secrets
           context:
             - snyk-bot-slack
           channel: saw-mcp-alerts
-          filters:
-            branches:
-              ignore:
-                - main
+          trusted-branch: main
 
       - test:
           name: Test
           requires:
             - Scan repository for secrets
-          filters:
-            branches:
-              ignore:
-                - main
 
       - lint:
           name: Lint
           requires:
             - Scan repository for secrets
-          filters:
-            branches:
-              ignore:
-                - main
 
-  Deploy:
-    jobs:
       - security-scans:
           name: Security Scans
           context:
-            - << pipeline.parameters.monitor-context >>
+            - << pipeline.parameters.snyk-scan-context >>
             - snyk-bot-slack
-          filters:
-            branches:
-              only:
-                - main
