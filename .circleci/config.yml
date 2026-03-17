@@ -90,14 +90,8 @@ workflows:
               ignore:
                 - main
 
-  Deploy:
-    jobs:
       - security-scans:
           name: Security Scans
           context:
             - << pipeline.parameters.monitor-context >>
             - snyk-bot-slack
-          filters:
-            branches:
-              only:
-                - main
