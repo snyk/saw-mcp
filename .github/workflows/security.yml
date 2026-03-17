@@ -47,17 +47,3 @@ jobs:
         with:
           command: code test
           args: --severity-threshold=high
-
-  secrets-scan:
-    name: Secret Detection
-    # Secrets scanning is handled by the snyk/prodsec-orb in CircleCI.
-    # This job is kept as a lightweight GitHub-native fallback.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
