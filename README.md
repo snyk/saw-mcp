@@ -25,7 +25,7 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 > **Important**
 >
-> Use a **custom role, limited-scope API key** for the Snyk API and Web MCP Server.
+> Use a **custom role, limited-scope API key** for the Snyk API & Web MCP Server.
 > Create the key only with the permissions required for the intended actions.
 > Do not use a highly privileged or global API key, as this can affect your entire account and its resources.
 

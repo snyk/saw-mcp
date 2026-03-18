@@ -3,7 +3,7 @@ name: saw-web-target-configuration
 description: Configure Snyk API & Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
 ---
 
-# Snyk API & Web Web Target Configuration Skill
+# Web Target Configuration Skill (Snyk API & Web)
 
 Configure web application targets for Snyk API & Web security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
 

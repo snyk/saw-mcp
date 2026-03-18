@@ -110,7 +110,7 @@ def build_server() -> FastMCP:
     tool_filter = get_tool_filter(cfg)
     target_defaults = get_target_defaults(cfg)
 
-    server_name = cfg.get("server", {}).get("name", "Snyk APIWeb")
+    server_name = cfg.get("server", {}).get("name", "Snyk API & Web")
     logger.info("Building MCP server '%s' (%s)", server_name, base_url)
     app = FastMCP(server_name)
 

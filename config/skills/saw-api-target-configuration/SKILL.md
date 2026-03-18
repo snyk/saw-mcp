@@ -3,7 +3,7 @@ name: saw-api-target-configuration
 description: Configure Snyk API & Web API targets from OpenAPI/Swagger schemas or Postman collections. Use when creating API targets for security scanning.
 ---
 
-# Snyk API & Web API Target Configuration Skill
+# API Target Configuration Skill (Snyk API & Web)
 
 Configure API targets for Snyk API & Web security scanning. For web application targets with authentication, use the `saw-web-target-configuration` skill instead.
 
