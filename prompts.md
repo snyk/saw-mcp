@@ -1,4 +1,4 @@
-# Snyk API&Web MCP Server — Example Prompts
+# Snyk API & Web MCP Server — Example Prompts
 
 A collection of ready-to-use prompts, from quick one-liners to detailed multi-target configurations.
 
@@ -89,7 +89,7 @@ Add an API target named "Payments API" from the Postman collection in ./postman/
 ### Generated from codebase
 
 ```
-Scan this project for API endpoints, generate an OpenAPI schema, and create a SAW API target for https://api.myapp.com
+Scan this project for API endpoints, generate an OpenAPI schema, and create a Snyk API & Web API target for https://api.myapp.com
 ```
 
 ---
@@ -474,5 +474,5 @@ For each target labeled "PCI-DSS":
 
 ```
 Look at this project's codebase, figure out the deployed URL and any API endpoints,
-then create the appropriate SAW targets and configure them for scanning.
+then create the appropriate Snyk API & Web targets and configure them for scanning.
 ```
