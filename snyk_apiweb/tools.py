@@ -136,7 +136,7 @@ def build_server() -> FastMCP:
     @app.prompt(
         name="saw_web_target_configuration",
         description=(
-            "Help configure a Snyk API&Web web target with authentication, "
+            "Help configure a Snyk API & Web web target with authentication, "
             "login sequence setup, logout detection, extra hosts, and "
             "optional TOTP."
         ),
@@ -176,7 +176,7 @@ def build_server() -> FastMCP:
         return (
             dedent(
                 """
-            Configure a Snyk API&Web web target for an authenticated web
+            Configure a Snyk API & Web web target for an authenticated web
             application.
 
             Target details:
@@ -224,7 +224,7 @@ def build_server() -> FastMCP:
     @app.prompt(
         name="saw_api_target_configuration",
         description=(
-            "Help configure a Snyk API&Web API target from an OpenAPI "
+            "Help configure a Snyk API & Web API target from an OpenAPI "
             "schema, Swagger document, Postman collection, or generated "
             "schema."
         ),
@@ -285,7 +285,7 @@ def build_server() -> FastMCP:
         return (
             dedent(
                 """
-            Configure a Snyk API&Web API target for an API described by an
+            Configure a Snyk API & Web API target for an API described by an
             OpenAPI/Swagger schema or a Postman collection.
 
             Target details:

@@ -1,17 +1,17 @@
 ---
-description: Snyk API&Web (SAW) behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
+description: Snyk API & Web (SAW) behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
 alwaysApply: true
 ---
 
-# Snyk API&Web (SAW) Project Rules
+# Snyk API & Web (SAW) Project Rules
 
 These rules define behavioral constraints and proactive behaviors for projects using SAW.
 
 ## CRITICAL: Always Use the SAW MCP Server
 
-**For ANY task involving Snyk API&Web, SAW, or Probely, you MUST use the SAW MCP Server tools.**
+**For ANY task involving Snyk API & Web, SAW, or Probely, you MUST use the SAW MCP Server tools.**
 
-- Do NOT attempt to call the Snyk API&Web REST API directly via HTTP requests
+- Do NOT attempt to call the Snyk API & Web REST API directly via HTTP requests
 - Do NOT write code that makes API calls to api.probely.com
 - ALWAYS use the `probely_*` MCP tools provided by the SAW MCP server
 - The SAW MCP server handles authentication, retries, and error handling for you
@@ -28,7 +28,7 @@ The MCP tools handle formatting (e.g., pretty-printing login sequences). Bypassi
 ### Trigger Keywords
 
 Use SAW MCP tools when the user mentions any of:
-- "Snyk API&Web" / "Snyk APIWeb" / "Snyk API Web"
+- "Snyk API & Web" / "Snyk APIWeb" / "Snyk API Web"
 - "SAW" (when referring to security scanning)
 - "Probely" (legacy name)
 - "DAST" / "Dynamic Application Security Testing"
