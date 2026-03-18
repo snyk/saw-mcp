@@ -1,6 +1,6 @@
 # Installation Guides
 
-Per-host setup instructions for the Snyk API & Web (SAW) MCP Server.
+Per-host setup instructions for the Snyk API & Web MCP Server.
 
 | Host | Guide |
 |------|-------|

@@ -3,11 +3,11 @@ name: saw-web-target-configuration
 description: Configure Snyk API & Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
 ---
 
-# SAW Web Target Configuration Skill
+# Snyk API & Web Web Target Configuration Skill
 
-Configure web application targets for Snyk API & Web (SAW/Probely) security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
+Configure web application targets for Snyk API & Web security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
 
-When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
+When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on Snyk API & Web. Use the Snyk API & Web app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
 ## Multiple Targets — MUST Use Subagents in Parallel
 
@@ -25,7 +25,7 @@ Configure a Snyk API & Web web target:
 - 2FA TOTP seed: <seed or "none">
 
 First, read the skill file at <ABSOLUTE_PATH_TO_THIS_SKILL_FILE> and follow the full workflow.
-Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, SAW link (https://plus.probely.app/targets/{targetId}).
+Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, Snyk API & Web link (https://plus.probely.app/targets/{targetId}).
 ```
 
 Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.

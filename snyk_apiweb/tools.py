@@ -205,7 +205,7 @@ def build_server() -> FastMCP:
             - Login sequence status
             - Logout detection status
             - Extra hosts added
-            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+            - Snyk API & Web link in this format: `https://plus.probely.app/targets/{{targetId}}`
 
             At the end, summarize the configured target in a table.
             """
@@ -318,7 +318,7 @@ def build_server() -> FastMCP:
             - Source type used
             - Authentication status
             - Extra hosts added
-            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+            - Snyk API & Web link in this format: `https://plus.probely.app/targets/{{targetId}}`
 
             At the end, summarize the configured target in a table.
             """
