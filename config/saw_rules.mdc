@@ -1,9 +1,9 @@
 ---
-description: Snyk API & Web (SAW) behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
+description: Snyk API & Web behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
 alwaysApply: true
 ---
 
-# Snyk API & Web (SAW) Project Rules
+# Snyk API & Web Project Rules
 
 These rules define behavioral constraints and proactive behaviors for projects using SAW.
 

@@ -1,4 +1,4 @@
-# Snyk API & Web (SAW) MCP Server Configuration
+# Snyk API & Web MCP Server Configuration
 saw:
   base_url: "https://api.probely.com"
   api_key: "CHANGEME"
