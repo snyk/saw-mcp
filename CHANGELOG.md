@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.4] - 2026-03-19
+
+### Changed
+
+- Credential management is now the default behaviour: passwords are stored via `probely_create_credential` and linked in `custom_field_mappings` unless the user explicitly declines (#36).
+- Login sequence and update-sequence tools now use credential URIs for sensitive values by default (#36).
+- When multiple targets share a credential that is already marked `is_sensitive=True`, the user is prompted to deobfuscate it to allow reuse (#36).
+- Username `value_is_sensitive` flag set to `true` in login sequences (#36).
+- Global documentation refresh across README, USER_GUIDE, AppBuilder, prompts, skills, and installation guides (#39).
+- `.env.example` and `config.yaml.dist` updated to reflect current configuration options (#39).
+
 ## [0.9.3] - 2026-03-17
 
 ### Added
