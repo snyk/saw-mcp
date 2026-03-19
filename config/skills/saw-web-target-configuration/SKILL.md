@@ -9,9 +9,9 @@ Configure web application targets for Snyk API & Web security scanning with auth
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on Snyk API & Web. Use the Snyk API & Web app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
-## Multiple Targets — MUST Use Subagents in Parallel
+## Multiple Targets — MUST Use Subagents in Sequence
 
-**When the user provides more than one target, you MUST launch ALL subagents in a single message.**
+**When the user provides more than one target, you MUST launch subagents one at a time, waiting for each to finish before launching the next.** Playwright uses a single browser instance; parallel subagents would conflict.
 
 Each subagent prompt should be short — just the target details and an instruction to read the skill file:
 
@@ -28,11 +28,34 @@ First, read the skill file at <ABSOLUTE_PATH_TO_THIS_SKILL_FILE> and follow the 
 Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, Snyk API & Web link (https://plus.probely.app/targets/{targetId}).
 ```
 
-Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
+Launch **one** Task tool call at a time. Wait for it to complete before launching the next. After all finish, compile summaries into one table.
 
-## Credentials Management — Optional; Do Not Apply by Default
+## Credentials Management — Recommended (Used by Default)
 
-Credentials management is **supported** but must **not** be applied automatically. **Prompt the user** to choose whether to use the credential manager for sensitive values. Only when the user opts in should you store values via `probely_create_credential` and use the returned `uri` (e.g. `credentials://xxxx`) in the API.
+Use the credential manager for sensitive values (passwords, TOTP seeds, etc.) by default. Store values via `probely_create_credential` with `is_sensitive=True` and use the returned `uri` (e.g. `credentials://xxxx`) in the API. If the user explicitly declines, inline values are allowed.
+
+### Shared Credentials Across Multiple Targets
+
+When configuring multiple targets that use **the same credentials**, the credential may already exist in the credential manager from a previous target. Since sensitive (obfuscated) values cannot be read back, the agent cannot verify whether it matches — this causes a new credential entry per target, polluting the credential manager.
+
+**Rule:** When multiple targets share the same credential and it already exists with `is_sensitive=True`, **prompt the user** to deobfuscate it (update to `is_sensitive=False` via `probely_update_credential`) so it can be read back and reused across targets. Inform the user why deobfuscation is needed.
+
+**Workflow for shared credentials:**
+1. Create the credential normally with `is_sensitive=True` for the first target.
+2. When a subsequent target needs the same credential, find the existing one via `probely_list_credentials`.
+3. If the existing credential is sensitive (value is `null`), prompt the user: *"The credential '<name>' is obfuscated. To reuse it across multiple targets, it needs to be deobfuscated. Would you like to proceed?"*
+4. If the user agrees, update it: `probely_update_credential(credentialId, is_sensitive=False)`.
+5. Reuse the same credential `uri` for the new target.
+
+**Pattern:**
+```
+cred = probely_create_credential(
+  name="<target_name> - <description>",
+  value="the_actual_secret_value",
+  is_sensitive=True                       # always sensitive by default
+)
+# cred["uri"] → "credentials://xxxx"
+```
 
 ## Web Application Onboarding Workflow
 
@@ -82,7 +105,7 @@ probely_create_extra_host(targetId, hostname="...", ip_address="")
 
 ### Step 3: Using Form Login (Playwright NOT Available)
 
-If the user opted in to credentials management, store the password via credential manager and pass the credential URI. Otherwise pass the password inline.
+By default, store the password via credential manager and pass the credential URI. If the user explicitly declines, pass the password inline.
 
 ```python
 probely_configure_form_login(

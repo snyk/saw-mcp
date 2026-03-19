@@ -782,7 +782,7 @@ description: Configure Snyk API & Web web application targets with authenticatio
 
 **Key Sections:**
 
-1. **Multiple Targets — Parallel Subagents:** When the user provides multiple targets, launch ALL subagents in a single message (max 10). Each subagent prompt should be short — just target details + instruction to read the skill file. Do NOT embed full skill text.
+1. **Multiple Targets — Sequential Subagents:** When the user provides multiple targets, launch subagents ONE at a time, waiting for each to complete before launching the next. Playwright uses a single browser instance — parallel subagents would conflict. Each subagent prompt should be short — just target details + instruction to read the skill file. Do NOT embed full skill text.
 
 2. **Step 1: Gather Information:** Collect target URL, name (priority: user-provided > page `<title>` > FQDN), labels (user-specified only, or omit for default), credentials, 2FA requirements. Prefer login sequence (Playwright) over form login.
 
@@ -896,8 +896,8 @@ Check progress every 5 minutes. Show progress delta, ETA, new vulnerabilities, s
 **8. Finding Management**
 Mark findings as `fixed`, `false_positive`, or `accepted_risk` using update tools.
 
-**9. Multiple Targets: Parallel Subagents**
-Launch separate `generalPurpose` subagents for each target. All Task tool calls in a single message. Keep prompts short. Subagents must NOT search the workspace (it's unrelated to target config).
+**9. Multiple Targets: Sequential Subagents**
+Launch separate `generalPurpose` subagents for each target, one at a time. Wait for each to complete before launching the next (Playwright uses a single browser instance). Keep prompts short. Subagents must NOT search the workspace (it's unrelated to target config).
 
 **10. Reporting**
 Generate reports when multiple vulnerabilities are fixed, before major releases, or for compliance documentation.
