@@ -23,12 +23,23 @@ Configure a Snyk API&Web web target:
 - Username: <user>
 - Password: <pass>
 - 2FA TOTP seed: <seed or "none">
+- Browser session name: <domain> (use with `playwright-cli -s=<domain>` for ALL browser commands)
 
 First, read the skill file at <ABSOLUTE_PATH_TO_THIS_SKILL_FILE> and follow the full workflow.
 Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, SAW link (https://plus.probely.app/targets/{targetId}).
 ```
 
 Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
+
+### Browser Session Isolation
+
+Browser automation uses `playwright-cli` via the Shell tool. Each subagent MUST use a **named session** (`-s=<domain>`) to get a fully isolated browser context (separate cookies, storage, network logs). This prevents cross-contamination when multiple targets are configured in parallel.
+
+### Shell Timeout for Browser Commands
+
+The Shell tool defaults to a 30-second timeout (`block_until_ms: 30000`), which is **too short** for browser automation. `playwright-cli` commands launch a Chromium instance, navigate to pages, and wait for content to load — this routinely exceeds 30 seconds, especially under parallel load.
+
+**ALWAYS set `block_until_ms: 60000` (60 seconds) on every Shell call that runs a `playwright-cli` command.** For particularly slow targets or heavy pages, use `block_until_ms: 90000`.
 
 ## Credentials Management — Optional; Do Not Apply by Default
 
@@ -45,22 +56,23 @@ Ask the user for (or derive):
 4. **Login credentials**
 5. **2FA/MFA requirements**
 
-**Authentication method:** 
-1. **Login Sequence** (use when Playwright is available) - Record the login in the browser. **Prefer this.**
-2. **Form Login** (only when Playwright is NOT available) - Simple form-based auth.
+**Authentication method:** Always configure authentication using a **login sequence** recorded via `playwright-cli`.
 
-### Step 2: Using Login Sequence (Playwright Available)
+### Step 2: Record the Login Sequence
 
-1. **Navigate to target URL** using Playwright
-2. **Find the login page** and record the URL.
-3. **Inspect the current step's form elements** - run `scripts/inspect-login-form.js` via `browser_evaluate` to detect what's visible. Run this on every step of the login flow.
-4. **Fill credentials and submit** - record selectors for the login sequence JSON.
-5. **Handle 2FA if needed** - use `probely_generate_totp` to get a code for the live login.
-6. **Verify login success** - **Record the absolute URL you land on after successful login** for logout detection.
-7. **Verify login selectors are NOT on the post-login page** - test if login selectors still exist using `browser_evaluate`.
-8. **Detect external API hosts (CRITICAL)** - Read `references/extra-hosts.md` for instructions on using network requests and `scripts/extract-api-hosts.js` to find extra hosts.
-9. **Generate the login sequence JSON** - Read `references/sequence-format.md` for the correct JSON format using custom fields.
-10. **Enable authentication with login sequence** - call `probely_configure_sequence_login(targetId, enabled=True)`.
+Use `playwright-cli` via the Shell tool to navigate and record the login sequence. Use the session name provided in the subagent prompt (or derive from the target domain for single-target flows).
+
+1. **Open a browser session and navigate**: `playwright-cli -s=SESSION open <url>`
+2. **Find the login page** — use `snapshot` to see the page and `goto <url>` to navigate. Record the login page URL.
+3. **Inspect the current step's form elements** — run `scripts/inspect-login-form.js` via `playwright-cli -s=SESSION eval '<js>'` to detect what's visible. Run this on every step of the login flow.
+4. **Fill credentials and submit** — use `snapshot` to get element refs, then `fill <ref> '<value>'` and `click <ref>`. Record CSS selectors for the login sequence JSON.
+5. **Handle 2FA if needed** — use `probely_generate_totp` to get a code for the live login.
+6. **Verify login success** — record the absolute URL via `playwright-cli -s=SESSION eval '() => window.location.href'` for logout detection.
+7. **Verify login selectors are NOT on the post-login page** — test if login selectors still exist using `eval`.
+8. **Detect external API hosts (CRITICAL)** — run `playwright-cli -s=SESSION network` at checkpoint 1 (after login page loads) and checkpoint 2 (after login). Read `references/extra-hosts.md` for full instructions.
+9. **Generate the login sequence JSON** — Read `references/sequence-format.md` for the correct JSON format using custom fields.
+10. **Enable authentication with login sequence** — call `probely_configure_sequence_login(targetId, enabled=True)`.
+11. **Close the browser session** — `playwright-cli -s=SESSION close`
 
 #### Configuration Tool Calls
 
@@ -78,20 +90,4 @@ probely_configure_logout_detection(targetId, enabled=True, check_session_url=...
 
 # Add extra hosts if detected. See references/extra-hosts.md
 probely_create_extra_host(targetId, hostname="...", ip_address="")
-```
-
-### Step 3: Using Form Login (Playwright NOT Available)
-
-If the user opted in to credentials management, store the password via credential manager and pass the credential URI. Otherwise pass the password inline.
-
-```python
-probely_configure_form_login(
-  targetId,
-  login_url="https://app.example.com/login",
-  username_field="email",
-  password_field="password",
-  username="user@example.com",
-  password="...", # inline or cred URI
-  check_pattern="Welcome"
-)
 ```
