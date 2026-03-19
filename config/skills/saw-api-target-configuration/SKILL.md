@@ -96,93 +96,121 @@ If the API requires authentication:
 
 **IMPORTANT:** There are two different ways to configure headers/cookies in Probely:
 
-1. **General custom headers/cookies** (via `probely_update_target`): Sent with every scan request, NOT used for authentication. Simple structure: `{"name": "...", "value": "..."}`
+1. **General custom headers/cookies** (via `probely_update_target` `headers`/`cookies` parameters): Sent with every scan request, NOT used for authentication. Simple structure: `{"name": "...", "value": "..."}`
 
-2. **API authentication headers/cookies** (via `probelyrequest` PATCH): Used for authentication. Requires full structure with authentication flags and `api_scan_settings`.
+2. **API authentication headers/cookies** (via `probely_update_target` `api_auth_headers`/`api_auth_cookies` parameters): Used for authentication. Requires full structure with authentication flags. The tool automatically configures `api_scan_settings`.
 
 #### Authentication Method 1: HTTP Basic Auth
 
-Use `probelyrequest` to PATCH the target with Basic Auth credentials:
+Use `probely_update_target` with `basic_auth_username` and `basic_auth_password` parameters:
 
 ```
 # When user opts in to credentials management:
 username_cred = probely_create_credential(name="<target_name> - username", value="api-user", is_sensitive=False)
 password_cred = probely_create_credential(name="<target_name> - password", value="secret123", is_sensitive=True)
 
-probelyrequest(
-  method="PATCH",
-  path=f"/targets/{targetId}/",
-  json={
-    "has_basic_auth": True,
-    "basic_auth": {
-      "username": username_cred["uri"],  # e.g., "credentials://4DY4qGohso1r"
-      "password": password_cred["uri"]   # e.g., "credentials://3B7JRXx6vbrD"
-    }
-  }
+probely_update_target(
+  targetId=targetId,
+  basic_auth_username=username_cred["uri"],  # e.g., "credentials://4DY4qGohso1r"
+  basic_auth_password=password_cred["uri"]   # e.g., "credentials://3B7JRXx6vbrD"
 )
 
 # When user does NOT opt in:
-probelyrequest(
-  method="PATCH",
-  path=f"/targets/{targetId}/",
-  json={
-    "has_basic_auth": True,
-    "basic_auth": {
-      "username": "api-user",
-      "password": "secret123"
-    }
-  }
+probely_update_target(
+  targetId=targetId,
+  basic_auth_username="api-user",
+  basic_auth_password="secret123"
 )
 ```
 
 #### Authentication Method 2: Static Headers/Cookies (API Keys, Bearer Tokens, Session Cookies)
 
-Use `probelyrequest` to PATCH the target with authentication headers/cookies:
+Use `probely_update_target` with `api_auth_headers` and/or `api_auth_cookies` parameters:
 
 ```
+# Example 1: API Key Header Authentication
 # When user opts in to credentials management:
-api_key_cred = probely_create_credential(name="<name-of-credential>", value="<value-of-this-credential>", is_sensitive=True)
+api_key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
 
-## Bearer token
-probely_update_target(targetId, headers=[{"name": "Authorization", "value": token_cred["uri"]}])
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "X-API-Key",
+    "value": api_key_cred["uri"],  # e.g., "credentials://3hBVSPfBbcaH"
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
 
-## API key header
-key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "X-Api-Key", "value": key_cred["uri"]}])
+# When user does NOT opt in:
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "X-API-Key",
+    "value": "sk-live-xxx",  # Inline value
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
 
-## Basic Auth (store password via credential manager, pass username inline)
-pwd_cred = probely_create_credential(name="<target_name> - Basic Auth password", value="secret", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "Authorization", "value": pwd_cred["uri"]}])
+# Example 2: Bearer Token Authentication
+token_cred = probely_create_credential(name="<target_name> - Bearer token", value="eyJhb...", is_sensitive=True)
 
-## Custom cookies with sensitive values
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "Authorization",
+    "value": f"Bearer {token_cred['uri']}",  # Note: prefix with "Bearer "
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
+
+# Example 3: Session Cookie Authentication
 cookie_cred = probely_create_credential(name="<target_name> - session cookie", value="secret-token", is_sensitive=True)
-probely_update_target(targetId, cookies=[{"name": "session", "value": cookie_cred["uri"]}])
 
-## For API Authentication using static headers/cookies, you'll be having this:
-{
-    "site": {
-      "headers": [{
-        "name": "X-API-Key",
-        "value": api_key_cred["uri"],  # e.g., "credentials://3hBVSPfBbcaH"
-        "value_is_sensitive": False,
-        "allow_testing": False,
-        "authentication": True,
-        "authentication_secondary": False
-      }],
-      "cookies": [{
-        "name": "session",
-        "value": cookie_cred["uri"],  # e.g., "credentials://32otBAEip2Km"
-        "value_is_sensitive": False,
-        "allow_testing": False,
-        "authentication": True,
-        "authentication_secondary": False
-      }],
-      "api_scan_settings": {
-        "api_login_enabled": True,
-        "api_headers_cookies_login_enabled_secondary": False,
-        "api_login_method": "headers_or_cookies"
-      }
-    }
+probely_update_target(
+  targetId=targetId,
+  api_auth_cookies=[{
+    "name": "session",
+    "value": cookie_cred["uri"],  # e.g., "credentials://32otBAEip2Km"
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
+
+# Example 4: Combined Headers and Cookies
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "X-Secret-Header",
+    "value": "credentials://xxx",
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }],
+  api_auth_cookies=[{
+    "name": "secret-cookie",
+    "value": "credentials://yyy",
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
 )
 ```
+
+**Note:** The `probely_update_target` tool automatically sets `api_scan_settings` with:
+- `api_login_enabled: True`
+- `api_login_method: "headers_or_cookies"`
+- `api_headers_cookies_login_enabled_secondary: False`
 

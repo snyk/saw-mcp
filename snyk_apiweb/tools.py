@@ -349,51 +349,16 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         """Make a raw request to Probely API (path relative to base).
 
-        When configuring authentication, reference saved credentials using the URI format
+        IMPORTANT: For authentication configuration, use probely_update_target instead:
+        - HTTP Basic Auth: use basic_auth_username and basic_auth_password parameters
+        - API Headers/Cookies Auth: use api_auth_headers and api_auth_cookies parameters
+
+        This tool is for advanced use cases or API endpoints not covered by dedicated tools.
+
+        When using this tool, reference saved credentials using the URI format
         'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
         Get credential URIs from probely_list_credentials or probely_create_credential.
-        Do NOT use template syntax like {{cred-name}}.
-
-        Common API authentication patterns:
-
-        1. HTTP Basic Auth (PATCH /targets/<targetId>/):
-        {
-          "has_basic_auth": true,
-          "basic_auth": {
-            "username": "credentials://4DY4qGohso1r",
-            "password": "credentials://3B7JRXx6vbrD"
-          }
-        }
-
-        2. API Static Headers/Cookies Authentication (PATCH /targets/<targetId>/):
-        {
-          "site": {
-            "headers": [{
-              "name": "X-API-Key",
-              "value": "credentials://3hBVSPfBbcaH",
-              "value_is_sensitive": false,
-              "allow_testing": false,
-              "authentication": true,
-              "authentication_secondary": false
-            }],
-            "cookies": [{
-              "name": "session-cookie",
-              "value": "credentials://32otBAEip2Km",
-              "value_is_sensitive": false,
-              "allow_testing": false,
-              "authentication": true,
-              "authentication_secondary": false
-            }],
-            "api_scan_settings": {
-              "api_login_enabled": true,
-              "api_headers_cookies_login_enabled_secondary": false,
-              "api_login_method": "headers_or_cookies"
-            }
-          }
-        }
-
-        Note: For general custom headers/cookies (NOT for authentication), use probely_update_target
-        with simple {"name": "...", "value": "..."} structure instead."""
+        Do NOT use template syntax like {{cred-name}}."""
         return client.raw(
             method=method, path=path, params=params, json=json, data=data
         )
@@ -546,7 +511,7 @@ def build_server() -> FastMCP:
             'Each entry: {"name": "<header-name>", "value": "<header-value>"}. '
             "Replaces all existing custom headers. "
             "To reference saved credentials in header values, use URI format 'credentials://4DY4qGohso1r'. "
-            "For API authentication using static headers, see main docstring.",
+            "For API authentication using static headers, use api_auth_headers parameter instead.",
         ),
         cookies: Optional[List[Dict[str, str]]] = Field(
             default=None,
@@ -554,7 +519,31 @@ def build_server() -> FastMCP:
             'Each entry: {"name": "<cookie-name>", "value": "<cookie-value>"}. '
             "Replaces all existing custom cookies. "
             "To reference saved credentials in cookie values, use URI format 'credentials://4DY4qGohso1r'. "
-            "For API authentication using static cookies, see main docstring.",
+            "For API authentication using static cookies, use api_auth_cookies parameter instead.",
+        ),
+        basic_auth_username: Optional[str] = Field(
+            default=None,
+            description="Username for HTTP Basic Auth. Use credential URI format 'credentials://xxx' to reference saved credentials. "
+            "When set, basic_auth_password must also be provided.",
+        ),
+        basic_auth_password: Optional[str] = Field(
+            default=None,
+            description="Password for HTTP Basic Auth. Use credential URI format 'credentials://xxx' to reference saved credentials. "
+            "When set, basic_auth_username must also be provided.",
+        ),
+        api_auth_headers: Optional[List[Dict[str, Any]]] = Field(
+            default=None,
+            description="Authentication headers for API targets. Full structure with authentication flags. "
+            'Each entry: {"name": "X-API-Key", "value": "credentials://xxx", "value_is_sensitive": false, '
+            '"allow_testing": false, "authentication": true, "authentication_secondary": false}. '
+            "Automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.",
+        ),
+        api_auth_cookies: Optional[List[Dict[str, Any]]] = Field(
+            default=None,
+            description="Authentication cookies for API targets. Full structure with authentication flags. "
+            'Each entry: {"name": "session", "value": "credentials://xxx", "value_is_sensitive": false, '
+            '"allow_testing": false, "authentication": true, "authentication_secondary": false}. '
+            "Automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.",
         ),
     ) -> Dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
@@ -564,10 +553,22 @@ def build_server() -> FastMCP:
         IMPORTANT: The headers/cookies parameters are for general custom headers/cookies sent with
         every scan request (NOT for authentication). They use a simple structure: {"name": "...", "value": "..."}.
 
-        For API authentication using static headers/cookies, use probelyrequest to PATCH /targets/<targetId>/:
-        {
-          "site": {
-            "headers": [{
+        For HTTP Basic Auth authentication:
+        Use basic_auth_username and basic_auth_password parameters. Both must be provided together.
+        Example:
+          probely_update_target(
+            targetId,
+            basic_auth_username="credentials://xxx",  # or inline: "api-user"
+            basic_auth_password="credentials://yyy"   # or inline: "secret123"
+          )
+
+        For API authentication with static headers/cookies:
+        Use api_auth_headers and/or api_auth_cookies parameters with full structure including authentication flags.
+        The tool automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.
+        Example:
+          probely_update_target(
+            targetId,
+            api_auth_headers=[{
               "name": "X-API-Key",
               "value": "credentials://xxx",
               "value_is_sensitive": false,
@@ -575,30 +576,15 @@ def build_server() -> FastMCP:
               "authentication": true,
               "authentication_secondary": false
             }],
-            "cookies": [{
-              "name": "session-cookie",
+            api_auth_cookies=[{
+              "name": "session",
               "value": "credentials://yyy",
               "value_is_sensitive": false,
               "allow_testing": false,
               "authentication": true,
               "authentication_secondary": false
-            }],
-            "api_scan_settings": {
-              "api_login_enabled": true,
-              "api_headers_cookies_login_enabled_secondary": false,
-              "api_login_method": "headers_or_cookies"
-            }
-          }
-        }
-
-        For HTTP Basic Auth, use probelyrequest to PATCH /targets/<targetId>/:
-        {
-          "has_basic_auth": true,
-          "basic_auth": {
-            "username": "credentials://xxx",
-            "password": "credentials://yyy"
-          }
-        }
+            }]
+          )
 
         Reference saved credentials using URI format 'credentials://<credential_id>' (not {{cred-name}}).
         """
@@ -615,6 +601,24 @@ def build_server() -> FastMCP:
             site_fields["headers"] = headers
         if cookies is not None:
             site_fields["cookies"] = cookies
+
+        # Handle API authentication headers/cookies
+        if api_auth_headers is not None or api_auth_cookies is not None:
+            # Add authentication headers/cookies to site_fields
+            if api_auth_headers is not None:
+                site_fields["headers"] = api_auth_headers
+            if api_auth_cookies is not None:
+                site_fields["cookies"] = api_auth_cookies
+
+            # Set API scan settings for authentication
+            api_scan_settings = site_fields.get("api_scan_settings", {})
+            api_scan_settings.update({
+                "api_login_enabled": True,
+                "api_headers_cookies_login_enabled_secondary": False,
+                "api_login_method": "headers_or_cookies"
+            })
+            site_fields["api_scan_settings"] = api_scan_settings
+
         if site_fields:
             fields["site"] = site_fields
         if labels is not None:
@@ -623,6 +627,21 @@ def build_server() -> FastMCP:
             fields["scanning_agent"] = (
                 {"id": scanning_agent_id} if scanning_agent_id else None
             )
+
+        # Handle HTTP Basic Auth
+        if basic_auth_username is not None or basic_auth_password is not None:
+            if basic_auth_username is None or basic_auth_password is None:
+                return {
+                    "error": {
+                        "message": "Both basic_auth_username and basic_auth_password must be provided together"
+                    }
+                }
+            fields["has_basic_auth"] = True
+            fields["basic_auth"] = {
+                "username": basic_auth_username,
+                "password": basic_auth_password
+            }
+
         return client.update_target(target_id=targetId, **fields)
 
     @register_tool("probely_delete_target")
