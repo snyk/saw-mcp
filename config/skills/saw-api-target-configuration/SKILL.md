@@ -38,6 +38,10 @@ cred = probely_create_credential(
 # cred["uri"] → "credentials://xxxx"
 ```
 
+**Credential URIs:** Use the format `credentials://<credential_id>` (e.g., `credentials://4DY4qGohso1r`).
+Get credential URIs from `probely_list_credentials` or `probely_create_credential`.
+**Do NOT use template syntax like `{{cred-name}}`.**
+
 ## API Onboarding Workflow
 
 When the user wants to scan an **API**, follow this workflow:
@@ -84,33 +88,155 @@ probely_create_api_target_from_openapi(
 
 When creating a target, the API may return warnings. Handle them as follows:
 
-- **"Target already exists"** — The Probely API warns when a target with the same URL already exists. **Do NOT treat this as an error.** Inform the user that a target with this URL already exists and ask whether they want to proceed with creating a duplicate or use the existing target instead. If they choose the existing one, use `probely_list_targets(search="<url>")` to find it.
+- **"Target already exists"** — The Probely API warns when a target with the same URL already exists. **Do NOT treat this as an error.** Inform the user that a target with this URL already exists and ask whether they want to proceed with creating a duplicate or use the existing target instead. If they choose to create a duplicate, use the `allow_duplicate=True` parameter. If they choose the existing one, use `probely_list_targets(search="<url>")` to find it.
 - **"Target didn't match server URL from API schema"** — This warning appears when the `target_url` passed during creation doesn't match any `servers[].url` entry in the OpenAPI schema. **Do NOT treat this as an error.** Inform the user about the mismatch and ask whether the target URL is correct. Common causes: the schema lists `http://localhost:3000` but the target URL is the production domain, or the schema has a different base path. The target is still created — the scanner will use the provided target URL.
+
+#### Creating Duplicate Targets
+
+To create a duplicate target (same URL as existing target), use `allow_duplicate=True`. This is useful when you want multiple targets for the same URL with different configurations (e.g., different authentication methods, different test scenarios):
+
+```python
+# For OpenAPI targets:
+probely_create_api_target_from_openapi(
+  name="MyAPI - Different Auth Method",
+  target_url="https://api.example.com",  # Same URL as existing target
+  openapi_schema_url="https://...",
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+
+# For Postman targets:
+probely_create_api_target_from_postman(
+  name="MyAPI - Test Scenario 2",
+  target_url="https://api.example.com",  # Same URL as existing target
+  postman_collection_url="https://...",
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+```
 
 ### Step 3: Configure API Authentication (if needed)
 
 If the API requires authentication:
-- Ask user for auth type (API key, Bearer token, OAuth, Basic Auth)
+- Ask user for auth type (API key/Bearer token in headers, session cookies, or HTTP Basic Auth)
 - By default, store sensitive values via `probely_create_credential` and use the credential URI in the header/cookie value. If the user explicitly declines, inline values are allowed.
 - Use `probely_update_target` with the `headers` and/or `cookies` parameters
 
-**Examples:**
+**IMPORTANT:** There are two different ways to configure headers/cookies in Probely:
+
+1. **General custom headers/cookies** (via `probely_update_target` `headers`/`cookies` parameters): Sent with every scan request, NOT used for authentication. Simple structure: `{"name": "...", "value": "..."}`
+
+2. **API authentication headers/cookies** (via `probely_update_target` `api_auth_headers`/`api_auth_cookies` parameters): Used for authentication. Requires full structure with authentication flags. The tool automatically configures `api_scan_settings`.
+
+#### Authentication Method 1: HTTP Basic Auth
+
+Use `probely_update_target` with `basic_auth_username` and `basic_auth_password` parameters:
 
 ```
-# Bearer token
+# When user opts in to credentials management:
+username_cred = probely_create_credential(name="<target_name> - username", value="api-user", is_sensitive=False)
+password_cred = probely_create_credential(name="<target_name> - password", value="secret123", is_sensitive=True)
+
+probely_update_target(
+  targetId=targetId,
+  basic_auth_username=username_cred["uri"],  # e.g., "credentials://4DY4qGohso1r"
+  basic_auth_password=password_cred["uri"]   # e.g., "credentials://3B7JRXx6vbrD"
+)
+
+# When user does NOT opt in:
+probely_update_target(
+  targetId=targetId,
+  basic_auth_username="api-user",
+  basic_auth_password="secret123"
+)
+```
+
+#### Authentication Method 2: Static Headers/Cookies (API Keys, Bearer Tokens, Session Cookies)
+
+Use `probely_update_target` with `api_auth_headers` and/or `api_auth_cookies` parameters:
+
+```
+# Example 1: API Key Header Authentication
+# When user opts in to credentials management:
+api_key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
+
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "X-API-Key",
+    "value": api_key_cred["uri"],  # e.g., "credentials://3hBVSPfBbcaH"
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
+
+# When user does NOT opt in:
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "X-API-Key",
+    "value": "sk-live-xxx",  # Inline value
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
+
+# Example 2: Bearer Token Authentication
 token_cred = probely_create_credential(name="<target_name> - Bearer token", value="eyJhb...", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "Authorization", "value": token_cred["uri"]}])
 
-# API key header
-key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "X-Api-Key", "value": key_cred["uri"]}])
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "Authorization",
+    "value": f"Bearer {token_cred['uri']}",  # Note: prefix with "Bearer "
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
 
-# Basic Auth (store password via credential manager, pass username inline)
-pwd_cred = probely_create_credential(name="<target_name> - Basic Auth password", value="secret", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "Authorization", "value": pwd_cred["uri"]}])
-
-# Custom cookies with sensitive values
+# Example 3: Session Cookie Authentication
 cookie_cred = probely_create_credential(name="<target_name> - session cookie", value="secret-token", is_sensitive=True)
-probely_update_target(targetId, cookies=[{"name": "session", "value": cookie_cred["uri"]}])
+
+probely_update_target(
+  targetId=targetId,
+  api_auth_cookies=[{
+    "name": "session",
+    "value": cookie_cred["uri"],  # e.g., "credentials://32otBAEip2Km"
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
+
+# Example 4: Combined Headers and Cookies
+probely_update_target(
+  targetId=targetId,
+  api_auth_headers=[{
+    "name": "X-Secret-Header",
+    "value": "credentials://xxx",
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }],
+  api_auth_cookies=[{
+    "name": "secret-cookie",
+    "value": "credentials://yyy",
+    "value_is_sensitive": False,
+    "allow_testing": False,
+    "authentication": True,
+    "authentication_secondary": False
+  }]
+)
 ```
+
+**Note:** The `probely_update_target` tool automatically sets `api_scan_settings` with:
+- `api_login_enabled: True`
+- `api_login_method: "headers_or_cookies"`
+- `api_headers_cookies_login_enabled_secondary: False`
 
