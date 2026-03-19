@@ -385,7 +385,9 @@ class ProbelyClient:
         if allow_duplicate:
             params = {"duplicate_check": False}
 
-        return self.request("POST", "/targets/", json=payload, params=params)[1]
+        return self.request("POST", "/targets/", json=payload, params=params)[
+            1
+        ]
 
     def create_api_target(
         self,
