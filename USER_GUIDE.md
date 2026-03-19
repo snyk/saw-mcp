@@ -1,10 +1,10 @@
-# Snyk API&Web (SAW) MCP Server — User Guide
+# Snyk API & Web MCP Server — User Guide
 
 ## What it is
 
-The Snyk API&Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API&Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
+The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API & Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
 
-> **Naming note:** Snyk API&Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
+> **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
 ## Main value
 
@@ -21,7 +21,7 @@ The Snyk API&Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude 
 
 The AI will:
 
-1. Create the target in Snyk API&Web
+1. Create the target in Snyk API & Web
 2. Record a login sequence (navigates to the site, fills credentials, submits)
 3. Configure logout detection (so the scanner knows when to re-authenticate)
 4. Detect and add extra hosts (e.g. `api.taintedport.com` if the app calls it)
@@ -111,5 +111,5 @@ This covers every write operation: creating targets/credentials/sequences, updat
 
 ## Links
 
-- [Snyk API&Web API Reference](https://developers.probely.com/api/reference)
+- [Snyk API & Web API Reference](https://developers.probely.com/api/reference)
 - [MCP Protocol](https://modelcontextprotocol.io)

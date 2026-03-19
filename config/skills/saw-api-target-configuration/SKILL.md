@@ -1,13 +1,13 @@
 ---
 name: saw-api-target-configuration
-description: Configure Snyk API&Web API targets from OpenAPI/Swagger schemas or Postman collections. Use when creating API targets for security scanning.
+description: Configure Snyk API & Web API targets from OpenAPI/Swagger schemas or Postman collections. Use when creating API targets for security scanning.
 ---
 
-# SAW API Target Configuration Skill
+# API Target Configuration Skill (Snyk API & Web)
 
-Configure API targets for Snyk API&Web (SAW/Probely) security scanning. For web application targets with authentication, use the `saw-web-target-configuration` skill instead.
+Configure API targets for Snyk API & Web security scanning. For web application targets with authentication, use the `saw-web-target-configuration` skill instead.
 
-When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
+When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on Snyk API & Web. Use the Snyk API & Web app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
 ## Credentials Management — Recommended (Used by Default)
 

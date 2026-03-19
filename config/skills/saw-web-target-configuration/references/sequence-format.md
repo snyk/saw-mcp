@@ -1,6 +1,6 @@
 # Login Sequence JSON Format
 
-The sequence format (based on the [Snyk API&Web Sequence Recorder](https://github.com/Probely/sequence-recorder)):
+The sequence format (based on the [Snyk API & Web Sequence Recorder](https://github.com/Probely/sequence-recorder)):
 
 **IMPORTANT: Use Custom Fields; Use Credentials Manager by Default**
 

@@ -1,6 +1,6 @@
-# SAW MCP Server — AppBuilder Specification
+# Snyk API & Web MCP Server — AppBuilder Specification
 
-> **Purpose:** This document is a complete technical specification for rebuilding the Snyk API&Web (SAW) MCP Server from scratch. It covers architecture, every source file, every MCP tool, the HTTP client, configuration system, skills, rules, scripts, and deployment. An AI agent given this document should be able to reproduce the entire project.
+> **Purpose:** This document is a complete technical specification for rebuilding the Snyk API & Web MCP Server from scratch. It covers architecture, every source file, every MCP tool, the HTTP client, configuration system, skills, rules, scripts, and deployment. An AI agent given this document should be able to reproduce the entire project.
 
 ---
 
@@ -33,11 +33,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Name** | Snyk API&Web MCP Server (SAW) |
+| **Name** | Snyk API & Web MCP Server |
 | **Legacy name** | Probely MCP Server |
 | **Language** | Python 3.10+ |
 | **MCP framework** | FastMCP 2.0 (STDIO transport) |
-| **Upstream API** | Snyk API&Web (Probely) — `https://api.probely.com` |
+| **Upstream API** | Snyk API & Web (Probely) — `https://api.probely.com` |
 | **Auth scheme** | JWT bearer token (`Authorization: JWT <api_key>`) |
 | **License** | MIT |
 | **Package name** | `snyk_apiweb` |
@@ -55,28 +55,29 @@
 └──────────────────┼──────────────────────────────┘
                    │  STDIO (JSON-RPC)
 ┌──────────────────┼──────────────────────────────┐
-│  SAW MCP Server  │                              │
+│ Snyk API & Web   │                              │
+│  MCP Server      │                              │
 │  ┌───────────────┴───────────────────────┐      │
 │  │  FastMCP 2.0 app  (tools.py)          │      │
-│  │  46 registered tool functions          │      │
+│  │  46 registered tool functions         │      │
 │  └───────────────┬───────────────────────┘      │
-│                  │                               │
+│                  │                              │
 │  ┌───────────────┴───────────────────────┐      │
 │  │  ProbelyClient  (probely_client.py)   │      │
 │  │  requests.Session + tenacity retries  │      │
 │  └───────────────┬───────────────────────┘      │
-│                  │                               │
+│                  │                              │
 │  ┌───────────────┴───────────────────────┐      │
 │  │  Config loader  (config.py)           │      │
-│  │  env/.env/YAML → base_url, api_key     │      │
+│  │  env/.env/YAML → base_url, api_key    │      │
 │  └───────────────────────────────────────┘      │
 └─────────────────────────────────────────────────┘
                    │  HTTPS
                    ▼
-        ┌─────────────────────┐
-        │  api.probely.com    │
-        │  (Snyk API&Web API) │
-        └─────────────────────┘
+        ┌─────────────────────-┐
+        │   api.probely.com    │
+        │ (Snyk API & Web API) │
+        └─────────────────────-┘
 ```
 
 **Data flow:** IDE → (STDIO) → FastMCP app → tool function → ProbelyClient method → HTTP request → Probely API → JSON response → back up the chain.
@@ -159,13 +160,13 @@ tenacity>=8.5.0
 ### 5.1 Config File Format (`config/config.yaml.dist`)
 
 ```yaml
-# Snyk API&Web (SAW) MCP Server Configuration
+# Snyk API & Web MCP Server Configuration
 saw:
   base_url: "https://api.probely.com"
   api_key: "CHANGEME"
 
 server:
-  name: "Snyk API&Web"
+  name: "Snyk API & Web"
 
 target_defaults:
   label: "Agentic"          # Auto-applied label for new targets (created if missing)
@@ -776,7 +777,7 @@ Skills are Cursor Agent Skills stored in `config/skills/` and hard-linked to `~/
 **Frontmatter:**
 ```yaml
 name: saw-web-target-configuration
-description: Configure Snyk API&Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
+description: Configure Snyk API & Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
 ```
 
 **Key Sections:**
@@ -814,7 +815,7 @@ description: Configure Snyk API&Web web application targets with authentication,
 
 7. **Step 3: Form Login (No Playwright):** Simple `probely_configure_form_login()` as fallback.
 
-8. **Summary Table:** Always ends with a table including target ID, name, URL, login sequence status, logout detection, extra hosts, and SAW link (`https://plus.probely.app/targets/{targetId}`).
+8. **Summary Table:** Always ends with a table including target ID, name, URL, login sequence status, logout detection, extra hosts, and Snyk API & Web link (`https://plus.probely.app/targets/{targetId}`).
 
 ### 10.2 API Target Configuration Skill
 
@@ -825,7 +826,7 @@ description: Configure Snyk API&Web web application targets with authentication,
 **Frontmatter:**
 ```yaml
 name: saw-api-target-configuration
-description: Configure Snyk API&Web API targets from OpenAPI/Swagger schemas or Postman collections. Use when creating API targets for security scanning.
+description: Configure Snyk API & Web API targets from OpenAPI/Swagger schemas or Postman collections. Use when creating API targets for security scanning.
 ```
 
 **Workflow:**
@@ -833,9 +834,9 @@ description: Configure Snyk API&Web API targets from OpenAPI/Swagger schemas or 
 2. **Step 1:** Obtain API schema (OpenAPI/Swagger URL or file, Postman collection, or offer to generate from codebase).
 3. **Step 2:** Create target via `probely_create_api_target_from_postman()` or `probely_create_api_target_from_openapi()`. Validate OpenAPI schemas before uploading.
 4. **Step 3:** Configure API authentication if needed (API key, Bearer, OAuth, Basic Auth) via `probely_update_target` using the `headers` parameter.
-5. **Summary table** with SAW link.
+5. **Summary table** with Snyk API & Web link.
 
-### 10.3 Snyk Code Scanning Skill (related, not part of SAW server)
+### 10.3 Snyk Code Scanning Skill (related, not part of Snyk API & Web server)
 
 **Path:** `~/.cursor/skills/snyk-rules/SKILL.md`
 
@@ -853,18 +854,18 @@ Instructs the agent to:
 
 ## 11. Rules
 
-The rules file (`.mdc` format) defines behavioral constraints for AI agents using the SAW MCP server. It is hard-linked from `config/saw_rules.mdc` into each project as `.cursor/rules/saw_rules.mdc`.
+The rules file (`.mdc` format) defines behavioral constraints for AI agents using the Snyk API & Web MCP server. It is hard-linked from `config/saw_rules.mdc` into each project as `.cursor/rules/saw_rules.mdc`.
 
 **Path:** `config/saw_rules.mdc`
 **Frontmatter:**
 ```yaml
-description: Snyk API&Web (SAW) behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
+description: Snyk API & Web behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
 alwaysApply: true
 ```
 
 ### Rule Categories
 
-**1. CRITICAL: Always Use SAW MCP Server Tools**
+**1. CRITICAL: Always Use Snyk API & Web MCP Server Tools**
 - NEVER call the Probely API directly via HTTP.
 - NEVER write scripts, use curl, or create helper files as workarounds.
 - Always use `probely_*` MCP tools.
@@ -872,10 +873,10 @@ alwaysApply: true
 - MCP tools handle formatting (e.g., pretty-printing login sequences).
 
 **2. Trigger Keywords**
-Use SAW tools when user mentions: "Snyk API&Web", "SAW", "Probely", "DAST", "security scan", "vulnerability scan", "web scan", "target" (security context), "findings", "vulnerabilities".
+Use Snyk API & Web tools when user mentions: "Snyk API & Web", "SAW", "Probely", "DAST", "security scan", "vulnerability scan", "web scan", "target" (security context), "findings", "vulnerabilities".
 
 **3. Automatic Target Discovery**
-On workspace load, check if it's an app/API codebase. If yes, search for existing SAW targets via `probely_list_targets`. Inform user of coverage or suggest creating a target. Skip for non-app projects (libraries, CLIs, docs).
+On workspace load, check if it's an app/API codebase. If yes, search for existing Snyk API & Web targets via `probely_list_targets`. Inform user of coverage or suggest creating a target. Skip for non-app projects (libraries, CLIs, docs).
 
 **4. NEVER Start Scans Automatically**
 Scans are intrusive. Only start when user explicitly requests. Recommend quick scan profile first.
@@ -1180,4 +1181,4 @@ JavaScript snippet for detecting API hosts in the post-login page context:
 
 ---
 
-*End of AppBuilder specification. This document contains everything needed to rebuild the SAW MCP Server from scratch.*
+*End of AppBuilder specification. This document contains everything needed to rebuild the Snyk API & Web MCP Server from scratch.*
