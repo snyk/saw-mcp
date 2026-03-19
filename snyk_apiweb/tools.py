@@ -110,7 +110,7 @@ def build_server() -> FastMCP:
     tool_filter = get_tool_filter(cfg)
     target_defaults = get_target_defaults(cfg)
 
-    server_name = cfg.get("server", {}).get("name", "Snyk APIWeb")
+    server_name = cfg.get("server", {}).get("name", "Snyk API & Web")
     logger.info("Building MCP server '%s' (%s)", server_name, base_url)
     app = FastMCP(server_name)
 
@@ -136,7 +136,7 @@ def build_server() -> FastMCP:
     @app.prompt(
         name="saw_web_target_configuration",
         description=(
-            "Help configure a Snyk API&Web web target with authentication, "
+            "Help configure a Snyk API & Web web target with authentication, "
             "login sequence setup, logout detection, extra hosts, and "
             "optional TOTP."
         ),
@@ -176,7 +176,7 @@ def build_server() -> FastMCP:
         return (
             dedent(
                 """
-            Configure a Snyk API&Web web target for an authenticated web
+            Configure a Snyk API & Web web target for an authenticated web
             application.
 
             Target details:
@@ -205,7 +205,7 @@ def build_server() -> FastMCP:
             - Login sequence status
             - Logout detection status
             - Extra hosts added
-            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+            - Snyk API & Web link in this format: `https://plus.probely.app/targets/{{targetId}}`
 
             At the end, summarize the configured target in a table.
             """
@@ -224,7 +224,7 @@ def build_server() -> FastMCP:
     @app.prompt(
         name="saw_api_target_configuration",
         description=(
-            "Help configure a Snyk API&Web API target from an OpenAPI "
+            "Help configure a Snyk API & Web API target from an OpenAPI "
             "schema, Swagger document, Postman collection, or generated "
             "schema."
         ),
@@ -285,7 +285,7 @@ def build_server() -> FastMCP:
         return (
             dedent(
                 """
-            Configure a Snyk API&Web API target for an API described by an
+            Configure a Snyk API & Web API target for an API described by an
             OpenAPI/Swagger schema or a Postman collection.
 
             Target details:
@@ -318,7 +318,7 @@ def build_server() -> FastMCP:
             - Source type used
             - Authentication status
             - Extra hosts added
-            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+            - Snyk API & Web link in this format: `https://plus.probely.app/targets/{{targetId}}`
 
             At the end, summarize the configured target in a table.
             """
