@@ -100,6 +100,9 @@ class ProbelyClient:
                 resp.status_code,
                 resp.reason,
             )
+        logger.debug(
+            "[%s] Response: %s %s", tool_name, resp.status_code, str(body)
+        )
         return resp.status_code, body
 
     # Convenience wrappers for common resources
