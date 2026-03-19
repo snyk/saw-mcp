@@ -83,5 +83,5 @@ Pass the API key directly instead of using `.env`:
 ## Verifying the connection
 
 1. Open the Copilot Chat panel
-2. Click the **Tools** icon (wrench) — the SAW server should appear in the list
-3. Ask Copilot a question that triggers one of the SAW tools
+2. Click the **Tools** icon (wrench) — the Snyk API & Web server should appear in the list
+3. Ask Copilot a question that triggers one of the Snyk API & Web tools

@@ -9,7 +9,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 source venv/bin/activate
 
-echo "Starting SAW MCP Server in dev mode..."
+echo "Starting Snyk API & Web MCP Server in dev mode..."
 echo ""
 
 fastmcp dev snyk_apiweb/server.py
