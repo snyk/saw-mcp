@@ -347,7 +347,21 @@ def build_server() -> FastMCP:
         json: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Make a raw request to Probely API (path relative to base)."""
+        """Make a raw request to Probely API (path relative to base).
+
+        When configuring authentication (basic_auth, headers, etc.), reference saved credentials
+        using the URI format 'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
+        Get credential URIs from probely_list_credentials or probely_create_credential.
+        Do NOT use template syntax like {{cred-name}}.
+
+        Example for basic_auth:
+        {
+          "has_basic_auth": true,
+          "basic_auth": {
+            "username": "credentials://4DY4qGohso1r",
+            "password": "credentials://3B7JRXx6vbrD"
+          }
+        }"""
         return client.raw(
             method=method, path=path, params=params, json=json, data=data
         )
@@ -374,7 +388,11 @@ def build_server() -> FastMCP:
         is_sensitive: Optional[bool] = None,
         length: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """List credentials. Sensitive values are not returned."""
+        """List credentials. Sensitive values are not returned.
+
+        Returns credentials with their 'uri' field (e.g., 'credentials://4DY4qGohso1r').
+        Use this exact URI format when configuring authentication (basic_auth, headers, etc.).
+        Do NOT use template syntax like {{cred-name}}."""
         return client.list_credentials(
             page=page,
             search=search,
@@ -384,7 +402,10 @@ def build_server() -> FastMCP:
 
     @register_tool("probely_get_credential")
     def probely_get_credential(credentialId: str) -> Dict[str, Any]:
-        """Get a credential by ID. Value is null if sensitive."""
+        """Get a credential by ID. Value is null if sensitive.
+
+        Returns the credential with its 'uri' field (e.g., 'credentials://4DY4qGohso1r').
+        Use this URI to reference the credential in authentication configs."""
         return client.get_credential(credential_id=credentialId)
 
     @register_tool("probely_create_credential")
@@ -485,19 +506,25 @@ def build_server() -> FastMCP:
             default=None,
             description="Custom HTTP headers sent with every scan request. "
             'Each entry: {"name": "<header-name>", "value": "<header-value>"}. '
-            "Replaces all existing custom headers.",
+            "Replaces all existing custom headers. "
+            "To reference saved credentials in header values, use URI format 'credentials://4DY4qGohso1r'.",
         ),
         cookies: Optional[List[Dict[str, str]]] = Field(
             default=None,
             description="Custom cookies sent with every scan request. "
             'Each entry: {"name": "<cookie-name>", "value": "<cookie-value>"}. '
-            "Replaces all existing custom cookies.",
+            "Replaces all existing custom cookies. "
+            "To reference saved credentials in cookie values, use URI format 'credentials://4DY4qGohso1r'.",
         ),
     ) -> Dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign or change the scanning agent. Pass "" to remove it.
         Use headers/cookies to set custom HTTP headers/cookies included in every scan request.
+
+        To configure basic_auth or other authentication fields not exposed as parameters,
+        use probelyrequest to PATCH /targets/<targetId>/ with the full payload.
+        Reference saved credentials using URI format 'credentials://<credential_id>' (not {{cred-name}}).
         """
         fields: Dict[str, Any] = {}
         site_fields: Dict[str, Any] = {}
@@ -613,7 +640,10 @@ def build_server() -> FastMCP:
         password: str,
         check_pattern: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Configure form-based login authentication. Only use this as a fallback when Playwright is NOT available. When Playwright IS available, always record a login sequence instead (probely_create_sequence)."""
+        """Configure form-based login authentication. Only use this as a fallback when Playwright is NOT available. When Playwright IS available, always record a login sequence instead (probely_create_sequence).
+
+        To reference saved credentials, use URI format 'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
+        Get credential URIs from probely_list_credentials or probely_create_credential."""
         return client.configure_form_login(
             target_id=targetId,
             login_url=login_url,
