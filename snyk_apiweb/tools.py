@@ -946,7 +946,12 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
-        """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson."""
+        """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson.
+
+        IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
+        ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
+        parameter for all subsequent tool calls (update_target, start_scan, etc.).
+        Do NOT use the nested ``site.id`` field for target operations."""
         collection = _fetchjson_or_url(
             postman_collection_url, postman_collectionjson
         )
@@ -977,7 +982,12 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
-        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url."""
+        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url.
+
+        IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
+        ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
+        parameter for all subsequent tool calls (update_target, start_scan, etc.).
+        Do NOT use the nested ``site.id`` field for target operations."""
         if not openapi_schema_url and not openapi_schemajson:
             return {
                 "error": {
