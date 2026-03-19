@@ -9,27 +9,34 @@ Configure API targets for Snyk API & Web security scanning. For web application 
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on Snyk API & Web. Use the Snyk API & Web app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
-## Credentials Management — Optional; Do Not Apply by Default
+## Credentials Management — Recommended (Used by Default)
 
-Credentials management is **supported** but must **not** be applied automatically. **Prompt the user** to choose whether to use the credential manager for sensitive values (API keys, Bearer tokens, Basic Auth passwords, etc.). Only when the user opts in should you store values via `probely_create_credential` and use the returned `uri` (e.g. `credentials://xxxx`) in the API.
+Use the credential manager for sensitive values (API keys, Bearer tokens, Basic Auth passwords, etc.) by default. Store values via `probely_create_credential` with `is_sensitive=True` and use the returned `uri` (e.g. `credentials://xxxx`) in the API. If the user explicitly declines, inline values are allowed.
 
-- **Do not** populate credentials from the credential manager by default.
-- **Do** offer the option: e.g. "Do you want to store the API key / password in the credential manager, or use it inline for this target?"
-- When the user **opts in**, use this pattern for headers, cookies, and Basic Auth:
-  - Store the sensitive value via `probely_create_credential`, then pass the credential URI in the header/cookie value.
-- When the user **does not** opt in, inline values are allowed.
+Non-sensitive values (non-secret header names, environment labels) can be passed inline.
 
-**Pattern when user opts in:**
+### Shared Credentials Across Multiple Targets
+
+When configuring multiple targets that use **the same credentials**, the credential may already exist in the credential manager from a previous target. Since sensitive (obfuscated) values cannot be read back, the agent cannot verify whether it matches — this causes a new credential entry per target, polluting the credential manager.
+
+**Rule:** When multiple targets share the same credential and it already exists with `is_sensitive=True`, **prompt the user** to deobfuscate it (update to `is_sensitive=False` via `probely_update_credential`) so it can be read back and reused across targets. Inform the user why deobfuscation is needed.
+
+**Workflow for shared credentials:**
+1. Create the credential normally with `is_sensitive=True` for the first target.
+2. When a subsequent target needs the same credential, find the existing one via `probely_list_credentials`.
+3. If the existing credential is sensitive (is_sensitive=true), prompt the user: *"The credential '<name>' is obfuscated. To reuse it across multiple targets, it needs to be deobfuscated. Would you like to proceed?"*
+4. If the user agrees, update it: `probely_update_credential(credentialId, is_sensitive=False)`.
+5. Reuse the same credential `uri` for the new target.
+
+**Pattern:**
 ```
 cred = probely_create_credential(
   name="<target_name> - <description>",   # e.g. "MyAPI - Bearer token"
   value="the_actual_secret_value",
-  is_sensitive=True
+  is_sensitive=True                       # always sensitive by default
 )
-# cred["uri"] → "credentials://xxxx" — use this wherever the secret is needed
+# cred["uri"] → "credentials://xxxx"
 ```
-
-Non-sensitive values (non-secret header names, environment labels) can be passed inline in all cases.
 
 ## API Onboarding Workflow
 
@@ -84,10 +91,10 @@ When creating a target, the API may return warnings. Handle them as follows:
 
 If the API requires authentication:
 - Ask user for auth type (API key, Bearer token, OAuth, Basic Auth)
-- **Prompt the user** whether to use the credential manager for sensitive values. **Do not** apply it by default. When the user opts in, store sensitive values via `probely_create_credential` and use the credential URI in the header/cookie value; otherwise allow inline values.
+- By default, store sensitive values via `probely_create_credential` and use the credential URI in the header/cookie value. If the user explicitly declines, inline values are allowed.
 - Use `probely_update_target` with the `headers` and/or `cookies` parameters
 
-**Examples (when user has opted in to credentials management):**
+**Examples:**
 
 ```
 # Bearer token
@@ -98,7 +105,7 @@ probely_update_target(targetId, headers=[{"name": "Authorization", "value": toke
 key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
 probely_update_target(targetId, headers=[{"name": "X-Api-Key", "value": key_cred["uri"]}])
 
-# Basic Auth (store the password when user opts in, pass username inline)
+# Basic Auth (store password via credential manager, pass username inline)
 pwd_cred = probely_create_credential(name="<target_name> - Basic Auth password", value="secret", is_sensitive=True)
 probely_update_target(targetId, headers=[{"name": "Authorization", "value": pwd_cred["uri"]}])
 
