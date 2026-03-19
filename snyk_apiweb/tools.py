@@ -612,11 +612,13 @@ def build_server() -> FastMCP:
 
             # Set API scan settings for authentication
             api_scan_settings = site_fields.get("api_scan_settings", {})
-            api_scan_settings.update({
-                "api_login_enabled": True,
-                "api_headers_cookies_login_enabled_secondary": False,
-                "api_login_method": "headers_or_cookies"
-            })
+            api_scan_settings.update(
+                {
+                    "api_login_enabled": True,
+                    "api_headers_cookies_login_enabled_secondary": False,
+                    "api_login_method": "headers_or_cookies",
+                }
+            )
             site_fields["api_scan_settings"] = api_scan_settings
 
         if site_fields:
@@ -639,7 +641,7 @@ def build_server() -> FastMCP:
             fields["has_basic_auth"] = True
             fields["basic_auth"] = {
                 "username": basic_auth_username,
-                "password": basic_auth_password
+                "password": basic_auth_password,
             }
 
         return client.update_target(target_id=targetId, **fields)
