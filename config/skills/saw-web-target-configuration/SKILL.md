@@ -43,7 +43,7 @@ When configuring multiple targets that use **the same credentials**, the credent
 **Workflow for shared credentials:**
 1. Create the credential normally with `is_sensitive=True` for the first target.
 2. When a subsequent target needs the same credential, find the existing one via `probely_list_credentials`.
-3. If the existing credential is sensitive (value is `null`), prompt the user: *"The credential '<name>' is obfuscated. To reuse it across multiple targets, it needs to be deobfuscated. Would you like to proceed?"*
+3. If the existing credential is sensitive (`is_sensitive=True` or value is `null`), prompt the user: *"The credential '<name>' is obfuscated. To reuse it across multiple targets, it needs to be deobfuscated. Would you like to proceed?"*
 4. If the user agrees, update it: `probely_update_credential(credentialId, is_sensitive=False)`.
 5. Reuse the same credential `uri` for the new target.
 
@@ -57,6 +57,10 @@ cred = probely_create_credential(
 # cred["uri"] → "credentials://xxxx"
 ```
 
+**Credential URIs:** Use the format `credentials://<credential_id>` (e.g., `credentials://4DY4qGohso1r`).
+Get credential URIs from `probely_list_credentials` or `probely_create_credential`.
+**Do NOT use template syntax like `{{cred-name}}`.**
+
 ## Web Application Onboarding Workflow
 
 ### Step 1: Gather Information and Determine Authentication Method
@@ -68,9 +72,21 @@ Ask the user for (or derive):
 4. **Login credentials**
 5. **2FA/MFA requirements**
 
-**Authentication method:** 
+**Authentication method:**
 1. **Login Sequence** (use when Playwright is available) - Record the login in the browser. **Prefer this.**
 2. **Form Login** (only when Playwright is NOT available) - Simple form-based auth.
+
+#### Creating Duplicate Targets
+
+To create a duplicate target (same URL as existing target), use `allow_duplicate=True`. This is useful when you want multiple targets for the same URL with different configurations (e.g., different authentication methods, different test scenarios):
+
+```python
+probely_create_web_target(
+  name="MyApp - Different Auth Method",
+  url="https://app.example.com",  # Same URL as existing target
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+```
 
 ### Step 2: Using Login Sequence (Playwright Available)
 

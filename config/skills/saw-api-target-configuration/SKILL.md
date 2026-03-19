@@ -38,6 +38,10 @@ cred = probely_create_credential(
 # cred["uri"] → "credentials://xxxx"
 ```
 
+**Credential URIs:** Use the format `credentials://<credential_id>` (e.g., `credentials://4DY4qGohso1r`).
+Get credential URIs from `probely_list_credentials` or `probely_create_credential`.
+**Do NOT use template syntax like `{{cred-name}}`.**
+
 ## API Onboarding Workflow
 
 When the user wants to scan an **API**, follow this workflow:
@@ -84,8 +88,30 @@ probely_create_api_target_from_openapi(
 
 When creating a target, the API may return warnings. Handle them as follows:
 
-- **"Target already exists"** — The Probely API warns when a target with the same URL already exists. **Do NOT treat this as an error.** Inform the user that a target with this URL already exists and ask whether they want to proceed with creating a duplicate or use the existing target instead. If they choose the existing one, use `probely_list_targets(search="<url>")` to find it.
+- **"Target already exists"** — The Probely API warns when a target with the same URL already exists. **Do NOT treat this as an error.** Inform the user that a target with this URL already exists and ask whether they want to proceed with creating a duplicate or use the existing target instead. If they choose to create a duplicate, use the `allow_duplicate=True` parameter. If they choose the existing one, use `probely_list_targets(search="<url>")` to find it.
 - **"Target didn't match server URL from API schema"** — This warning appears when the `target_url` passed during creation doesn't match any `servers[].url` entry in the OpenAPI schema. **Do NOT treat this as an error.** Inform the user about the mismatch and ask whether the target URL is correct. Common causes: the schema lists `http://localhost:3000` but the target URL is the production domain, or the schema has a different base path. The target is still created — the scanner will use the provided target URL.
+
+#### Creating Duplicate Targets
+
+To create a duplicate target (same URL as existing target), use `allow_duplicate=True`. This is useful when you want multiple targets for the same URL with different configurations (e.g., different authentication methods, different test scenarios):
+
+```python
+# For OpenAPI targets:
+probely_create_api_target_from_openapi(
+  name="MyAPI - Different Auth Method",
+  target_url="https://api.example.com",  # Same URL as existing target
+  openapi_schema_url="https://...",
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+
+# For Postman targets:
+probely_create_api_target_from_postman(
+  name="MyAPI - Test Scenario 2",
+  target_url="https://api.example.com",  # Same URL as existing target
+  postman_collection_url="https://...",
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+```
 
 ### Step 3: Configure API Authentication (if needed)
 
