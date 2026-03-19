@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] - 2026-03-19
+
+### Fixed
+
+- PATCH /target: corrected `targetId` vs `siteId` confusion causing incorrect target updates (#40).
+- Credential lookup now uses credential `id` instead of `name` for accurate resolution (#40).
+- Duplicate target creation no longer fails when a target already exists (#40).
+- API authentication static headers and cookies now applied correctly (#40).
+
+### Changed
+
+- HTTP responses now logged at `DEBUG` level for improved traceability (#40).
+- `saw-web` and `saw-api` SKILL.md files made uniform in structure and terminology (#40).
+
 ## [0.9.4] - 2026-03-19
 
 ### Changed
