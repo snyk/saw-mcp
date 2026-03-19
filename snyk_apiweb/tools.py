@@ -349,19 +349,51 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         """Make a raw request to Probely API (path relative to base).
 
-        When configuring authentication (basic_auth, headers, etc.), reference saved credentials
-        using the URI format 'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
+        When configuring authentication, reference saved credentials using the URI format
+        'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
         Get credential URIs from probely_list_credentials or probely_create_credential.
         Do NOT use template syntax like {{cred-name}}.
 
-        Example for basic_auth:
+        Common API authentication patterns:
+
+        1. HTTP Basic Auth (PATCH /targets/<targetId>/):
         {
           "has_basic_auth": true,
           "basic_auth": {
             "username": "credentials://4DY4qGohso1r",
             "password": "credentials://3B7JRXx6vbrD"
           }
-        }"""
+        }
+
+        2. API Static Headers/Cookies Authentication (PATCH /targets/<targetId>/):
+        {
+          "site": {
+            "headers": [{
+              "name": "X-API-Key",
+              "value": "credentials://3hBVSPfBbcaH",
+              "value_is_sensitive": false,
+              "allow_testing": false,
+              "authentication": true,
+              "authentication_secondary": false
+            }],
+            "cookies": [{
+              "name": "session-cookie",
+              "value": "credentials://32otBAEip2Km",
+              "value_is_sensitive": false,
+              "allow_testing": false,
+              "authentication": true,
+              "authentication_secondary": false
+            }],
+            "api_scan_settings": {
+              "api_login_enabled": true,
+              "api_headers_cookies_login_enabled_secondary": false,
+              "api_login_method": "headers_or_cookies"
+            }
+          }
+        }
+
+        Note: For general custom headers/cookies (NOT for authentication), use probely_update_target
+        with simple {"name": "...", "value": "..."} structure instead."""
         return client.raw(
             method=method, path=path, params=params, json=json, data=data
         )
@@ -510,26 +542,64 @@ def build_server() -> FastMCP:
         scanning_agent_id: Optional[str] = None,
         headers: Optional[List[Dict[str, str]]] = Field(
             default=None,
-            description="Custom HTTP headers sent with every scan request. "
+            description="Custom HTTP headers sent with every scan request (for general use, NOT for authentication). "
             'Each entry: {"name": "<header-name>", "value": "<header-value>"}. '
             "Replaces all existing custom headers. "
-            "To reference saved credentials in header values, use URI format 'credentials://4DY4qGohso1r'.",
+            "To reference saved credentials in header values, use URI format 'credentials://4DY4qGohso1r'. "
+            "For API authentication using static headers, see main docstring.",
         ),
         cookies: Optional[List[Dict[str, str]]] = Field(
             default=None,
-            description="Custom cookies sent with every scan request. "
+            description="Custom cookies sent with every scan request (for general use, NOT for authentication). "
             'Each entry: {"name": "<cookie-name>", "value": "<cookie-value>"}. '
             "Replaces all existing custom cookies. "
-            "To reference saved credentials in cookie values, use URI format 'credentials://4DY4qGohso1r'.",
+            "To reference saved credentials in cookie values, use URI format 'credentials://4DY4qGohso1r'. "
+            "For API authentication using static cookies, see main docstring.",
         ),
     ) -> Dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign or change the scanning agent. Pass "" to remove it.
-        Use headers/cookies to set custom HTTP headers/cookies included in every scan request.
 
-        To configure basic_auth or other authentication fields not exposed as parameters,
-        use probelyrequest to PATCH /targets/<targetId>/ with the full payload.
+        IMPORTANT: The headers/cookies parameters are for general custom headers/cookies sent with
+        every scan request (NOT for authentication). They use a simple structure: {"name": "...", "value": "..."}.
+
+        For API authentication using static headers/cookies, use probelyrequest to PATCH /targets/<targetId>/:
+        {
+          "site": {
+            "headers": [{
+              "name": "X-API-Key",
+              "value": "credentials://xxx",
+              "value_is_sensitive": false,
+              "allow_testing": false,
+              "authentication": true,
+              "authentication_secondary": false
+            }],
+            "cookies": [{
+              "name": "session-cookie",
+              "value": "credentials://yyy",
+              "value_is_sensitive": false,
+              "allow_testing": false,
+              "authentication": true,
+              "authentication_secondary": false
+            }],
+            "api_scan_settings": {
+              "api_login_enabled": true,
+              "api_headers_cookies_login_enabled_secondary": false,
+              "api_login_method": "headers_or_cookies"
+            }
+          }
+        }
+
+        For HTTP Basic Auth, use probelyrequest to PATCH /targets/<targetId>/:
+        {
+          "has_basic_auth": true,
+          "basic_auth": {
+            "username": "credentials://xxx",
+            "password": "credentials://yyy"
+          }
+        }
+
         Reference saved credentials using URI format 'credentials://<credential_id>' (not {{cred-name}}).
         """
         fields: Dict[str, Any] = {}

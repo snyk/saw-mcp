@@ -83,27 +83,151 @@ When creating a target, the API may return warnings. Handle them as follows:
 ### Step 3: Configure API Authentication (if needed)
 
 If the API requires authentication:
-- Ask user for auth type (API key, Bearer token, OAuth, Basic Auth)
-- **Prompt the user** whether to use the credential manager for sensitive values. **Do not** apply it by default. When the user opts in, store sensitive values via `probely_create_credential` and use the credential URI in the header/cookie value; otherwise allow inline values.
-- Use `probely_update_target` with the `headers` and/or `cookies` parameters
+- Ask user for auth type (API key/Bearer token in headers, session cookies, or HTTP Basic Auth)
+- **Prompt the user** whether to use the credential manager for sensitive values. **Do not** apply it by default. When the user opts in, store sensitive values via `probely_create_credential` and use the credential URI; otherwise allow inline values.
 
-**Examples (when user has opted in to credentials management):**
+**IMPORTANT:** There are two different ways to configure headers/cookies in Probely:
+
+1. **General custom headers/cookies** (via `probely_update_target`): Sent with every scan request, NOT used for authentication. Simple structure: `{"name": "...", "value": "..."}`
+
+2. **API authentication headers/cookies** (via `probelyrequest` PATCH): Used for authentication. Requires full structure with authentication flags and `api_scan_settings`.
+
+#### Authentication Method 1: HTTP Basic Auth
+
+Use `probelyrequest` to PATCH the target with Basic Auth credentials:
 
 ```
-# Bearer token
+# When user opts in to credentials management:
+username_cred = probely_create_credential(name="<target_name> - username", value="api-user", is_sensitive=False)
+password_cred = probely_create_credential(name="<target_name> - password", value="secret123", is_sensitive=True)
+
+probelyrequest(
+  method="PATCH",
+  path=f"/targets/{targetId}/",
+  json={
+    "has_basic_auth": True,
+    "basic_auth": {
+      "username": username_cred["uri"],  # e.g., "credentials://4DY4qGohso1r"
+      "password": password_cred["uri"]   # e.g., "credentials://3B7JRXx6vbrD"
+    }
+  }
+)
+
+# When user does NOT opt in:
+probelyrequest(
+  method="PATCH",
+  path=f"/targets/{targetId}/",
+  json={
+    "has_basic_auth": True,
+    "basic_auth": {
+      "username": "api-user",
+      "password": "secret123"
+    }
+  }
+)
+```
+
+#### Authentication Method 2: Static Headers/Cookies (API Keys, Bearer Tokens, Session Cookies)
+
+Use `probelyrequest` to PATCH the target with authentication headers/cookies:
+
+```
+# When user opts in to credentials management:
+api_key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
+
+probelyrequest(
+  method="PATCH",
+  path=f"/targets/{targetId}/",
+  json={
+    "site": {
+      "headers": [{
+        "name": "X-API-Key",
+        "value": api_key_cred["uri"],  # e.g., "credentials://3hBVSPfBbcaH"
+        "value_is_sensitive": False,
+        "allow_testing": False,
+        "authentication": True,
+        "authentication_secondary": False
+      }],
+      "api_scan_settings": {
+        "api_login_enabled": True,
+        "api_headers_cookies_login_enabled_secondary": False,
+        "api_login_method": "headers_or_cookies"
+      }
+    }
+  }
+)
+
+# Example with Bearer token:
 token_cred = probely_create_credential(name="<target_name> - Bearer token", value="eyJhb...", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "Authorization", "value": token_cred["uri"]}])
 
-# API key header
-key_cred = probely_create_credential(name="<target_name> - API key", value="sk-live-xxx", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "X-Api-Key", "value": key_cred["uri"]}])
+probelyrequest(
+  method="PATCH",
+  path=f"/targets/{targetId}/",
+  json={
+    "site": {
+      "headers": [{
+        "name": "Authorization",
+        "value": f"Bearer {token_cred['uri']}",  # Note: prefix with "Bearer "
+        "value_is_sensitive": False,
+        "allow_testing": False,
+        "authentication": True,
+        "authentication_secondary": False
+      }],
+      "api_scan_settings": {
+        "api_login_enabled": True,
+        "api_headers_cookies_login_enabled_secondary": False,
+        "api_login_method": "headers_or_cookies"
+      }
+    }
+  }
+)
 
-# Basic Auth (store the password when user opts in, pass username inline)
-pwd_cred = probely_create_credential(name="<target_name> - Basic Auth password", value="secret", is_sensitive=True)
-probely_update_target(targetId, headers=[{"name": "Authorization", "value": pwd_cred["uri"]}])
-
-# Custom cookies with sensitive values
+# Example with session cookie:
 cookie_cred = probely_create_credential(name="<target_name> - session cookie", value="secret-token", is_sensitive=True)
-probely_update_target(targetId, cookies=[{"name": "session", "value": cookie_cred["uri"]}])
+
+probelyrequest(
+  method="PATCH",
+  path=f"/targets/{targetId}/",
+  json={
+    "site": {
+      "cookies": [{
+        "name": "session",
+        "value": cookie_cred["uri"],  # e.g., "credentials://32otBAEip2Km"
+        "value_is_sensitive": False,
+        "allow_testing": False,
+        "authentication": True,
+        "authentication_secondary": False
+      }],
+      "api_scan_settings": {
+        "api_login_enabled": True,
+        "api_headers_cookies_login_enabled_secondary": False,
+        "api_login_method": "headers_or_cookies"
+      }
+    }
+  }
+)
+
+# When user does NOT opt in, replace credential URIs with inline values:
+probelyrequest(
+  method="PATCH",
+  path=f"/targets/{targetId}/",
+  json={
+    "site": {
+      "headers": [{
+        "name": "X-API-Key",
+        "value": "sk-live-xxx",  # Inline value
+        "value_is_sensitive": False,
+        "allow_testing": False,
+        "authentication": True,
+        "authentication_secondary": False
+      }],
+      "api_scan_settings": {
+        "api_login_enabled": True,
+        "api_headers_cookies_login_enabled_secondary": False,
+        "api_login_method": "headers_or_cookies"
+      }
+    }
+  }
+)
 ```
 
