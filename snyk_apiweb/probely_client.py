@@ -362,8 +362,14 @@ class ProbelyClient:
         default_label: Optional[Dict[str, str]] = None,
         name_prefix: str = "",
         scanning_agent_id: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
-        """Create a new web target."""
+        """Create a new web target.
+
+        Args:
+            allow_duplicate: If True, allows creating a target even if another target
+                           with the same URL already exists. Default: False.
+        """
         payload = self._build_create_target_payload(
             name,
             url,
@@ -374,7 +380,12 @@ class ProbelyClient:
             scanning_agent_id,
         )
         payload["type"] = "single"
-        return self.request("POST", "/targets/", json=payload)[1]
+
+        params = None
+        if allow_duplicate:
+            params = {"duplicate_check": False}
+
+        return self.request("POST", "/targets/", json=payload, params=params)[1]
 
     def create_api_target(
         self,
@@ -388,6 +399,7 @@ class ProbelyClient:
         default_label: Optional[Dict[str, str]] = None,
         name_prefix: str = "",
         scanning_agent_id: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Create a new API target with its schema included in the creation payload.
 
@@ -395,6 +407,8 @@ class ProbelyClient:
             schema_type: "postman" or "openapi"
             schema: Optional inline Postman collection or OpenAPI schema JSON (omit when using api_schema_url).
             api_schema_url: For openapi: URL of the schema (sets api_scan_settings.api_schema_url).
+            allow_duplicate: If True, allows creating a target even if another target
+                           with the same URL already exists. Default: False.
         """
         payload = self._build_create_target_payload(
             name,
@@ -422,7 +436,7 @@ class ProbelyClient:
 
         params = {
             "check_fullpath": False,
-            "duplicate_check": True,
+            "duplicate_check": not allow_duplicate,
             "skip_fullpath_warning": True,
             "skip_reachability_check": True,
             "skip_redirect_check": True,

@@ -475,10 +475,15 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
         scanning_agent_id: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign a scanning agent for internal/private targets.
+
+        Set allow_duplicate=True to create a target even if another target with the same URL
+        already exists. This is useful when you want multiple targets for the same URL with
+        different configurations (e.g., different auth methods, different test scenarios).
 
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
@@ -492,6 +497,7 @@ def build_server() -> FastMCP:
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
             scanning_agent_id=scanning_agent_id,
+            allow_duplicate=allow_duplicate,
         )
 
     @register_tool("probely_update_target")
@@ -975,8 +981,13 @@ def build_server() -> FastMCP:
         postman_collectionjson: Optional[Dict[str, Any]] = None,
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson.
+
+        Set allow_duplicate=True to create a target even if another target with the same URL
+        already exists. This is useful when you want multiple targets for the same URL with
+        different configurations (e.g., different auth methods, different test scenarios).
 
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
@@ -1000,6 +1011,7 @@ def build_server() -> FastMCP:
             label_names=labels,
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
+            allow_duplicate=allow_duplicate,
         )
 
     # API Target from OpenAPI
@@ -1011,8 +1023,13 @@ def build_server() -> FastMCP:
         openapi_schemajson: Optional[Dict[str, Any]] = None,
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url.
+
+        Set allow_duplicate=True to create a target even if another target with the same URL
+        already exists. This is useful when you want multiple targets for the same URL with
+        different configurations (e.g., different auth methods, different test scenarios).
 
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
@@ -1035,6 +1052,7 @@ def build_server() -> FastMCP:
                 label_names=labels,
                 default_label=target_defaults.get("default_label"),
                 name_prefix=target_defaults.get("name_prefix", ""),
+                allow_duplicate=allow_duplicate,
             )
         schema = _fetchjson_or_url(None, openapi_schemajson)
         if not schema:
@@ -1048,6 +1066,7 @@ def build_server() -> FastMCP:
             label_names=labels,
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
+            allow_duplicate=allow_duplicate,
         )
 
     return app
