@@ -7,6 +7,16 @@ description: Configure Snyk API&Web web application targets with authentication,
 
 Configure web application targets for Snyk API&Web (SAW/Probely) security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
 
+## Prerequisite: playwright-cli
+
+Before running this skill, verify that `playwright-cli` is installed and Chromium is available:
+
+```bash
+playwright-cli --version
+```
+
+If the command is not found, run `./scripts/setup-playwright.sh` from the repo root. This installs `@playwright/cli` globally and downloads the Chromium binary.
+
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on SAW. Use the SAW app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
 ## Multiple Targets — MUST Use Subagents in Parallel

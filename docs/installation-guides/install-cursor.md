@@ -6,6 +6,18 @@
 
 Replace `/<basedir>/saw-mcp` with the absolute path to this repo.
 
+## Prerequisites
+
+### Browser Automation (playwright-cli)
+
+Web target configuration records login sequences using a real browser via `playwright-cli`. Run once after cloning:
+
+```bash
+./scripts/setup-playwright.sh
+```
+
+Requires Node.js 18+. This installs `@playwright/cli` globally and downloads the Chromium binary.
+
 ## Option A: `.env` file (recommended)
 
 Run `./scripts/setup-env.sh` once, then use this config — no key in the JSON:
