@@ -1,4 +1,4 @@
-# Snyk API&Web MCP Server — Example Prompts
+# Snyk API & Web MCP Server — Example Prompts
 
 A collection of ready-to-use prompts, from quick one-liners to detailed multi-target configurations.
 
@@ -40,7 +40,7 @@ Add an internal target https://10.0.1.50:8443 named "Internal Admin Panel" using
 
 ---
 
-## Parallel Multi-Target Onboarding
+## Multi-Target Onboarding
 
 ```
 Add these targets:
@@ -57,7 +57,7 @@ Onboard these three apps, all labeled "Sprint-42":
 ```
 
 ```
-Add these targets in parallel with custom names:
+Add these targets with custom names:
 - "Checkout Flow" at https://checkout.shop.io (buyer@shop.io / shopPass1)
 - "Merchant Dashboard" at https://merchant.shop.io (merchant@shop.io / merchPass2)
 ```
@@ -89,7 +89,7 @@ Add an API target named "Payments API" from the Postman collection in ./postman/
 ### Generated from codebase
 
 ```
-Scan this project for API endpoints, generate an OpenAPI schema, and create a SAW API target for https://api.myapp.com
+Scan this project for API endpoints, generate an OpenAPI schema, and create a Snyk API & Web API target for https://api.myapp.com
 ```
 
 ---
@@ -474,5 +474,5 @@ For each target labeled "PCI-DSS":
 
 ```
 Look at this project's codebase, figure out the deployed URL and any API endpoints,
-then create the appropriate SAW targets and configure them for scanning.
+then create the appropriate Snyk API & Web targets and configure them for scanning.
 ```
