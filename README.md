@@ -194,3 +194,5 @@ For active development with automatic reload on file changes:
 ## License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
+
+<!-- mcp-name: io.github.snyk/saw-mcp -->

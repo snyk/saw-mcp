@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.snyk/saw-mcp",
+  "title": "Snyk API & Web MCP Server",
+  "description": "MCP server for Snyk API & Web (Probely) — create targets, run scans, manage findings",
+  "repository": {
+    "url": "https://github.com/snyk/saw-mcp",
+    "source": "github"
+  },
+  "version": "0.9.4",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "snyk-apiweb-mcp",
+      "version": "0.9.4",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MCP_SAW_API_KEY",
+          "description": "Snyk API & Web API key",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
