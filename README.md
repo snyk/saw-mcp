@@ -1,12 +1,12 @@
 ![SAW MCP Banner](./assets/Snyk_API_and_Web_Banner.webp)
 
-# Snyk API & Web MCP Server
+# Snyk API&Web (SAW) MCP Server
 
-Connect your AI coding assistant to Snyk API & Web so it can onboard scan targets, configure authentication, run DAST scans, and triage findings — all through natural language.
+Connect your AI coding assistant to Snyk API&Web (SAW) so it can onboard scan targets, configure authentication, run DAST scans, and triage findings — all through natural language.
 
 Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
 
-> **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
+> **Naming note:** Snyk API&Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
 See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 
@@ -15,19 +15,14 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 ## Requirements
 
 - Python 3.10+
-- Snyk API & Web API key
+- Node.js 18+ and npm (for browser automation)
+- Snyk API&Web API key
 
 ## Quick Start
 
 ### 1. Get Your API Key
 
-Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and create an API key.
-
-> **Important**
->
-> Use a **custom role, limited-scope API key** for the Snyk API & Web MCP Server.
-> Create the key only with the permissions required for the intended actions.
-> Do not use a highly privileged or global API key, as this can affect your entire account and its resources.
+Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and create an API key with **global (account) scope** and **admin** role.
 
 ### 2. Install
 
@@ -53,7 +48,17 @@ This writes a `.env` file in the project root (gitignored). The server loads it 
 
 > **Config precedence:** environment variable → `.env` file → `config/config.yaml`
 
-### 4. Configure Your IDE
+### 4. Install Browser Automation (playwright-cli)
+
+Web target configuration uses `playwright-cli` to record login sequences in a real browser. Run the setup script once:
+
+```bash
+./scripts/setup-playwright.sh
+```
+
+This installs `@playwright/cli` globally and downloads the Chromium browser binary. Requires Node.js 18+.
+
+### 5. Configure Your IDE
 
 Add to your MCP client configuration (replace `/<basedir>/saw-mcp` with the absolute path to this repo):
 
@@ -85,12 +90,12 @@ For host-specific setup see the [Installation Guides](docs/installation-guides/)
 
 </details>
 
-### 5. Start Using
+### 6. Start Using
 
 Ask your AI assistant to:
 
-- "Configure a Snyk API & Web API target from this OpenAPI schema / Swagger document / Postman collection."
-- "Configure a Snyk API & Web web target for this authenticated application."
+- "Configure a Snyk API&Web API target from this OpenAPI schema / Swagger document / Postman collection."
+- "Configure a Snyk API&Web web target for this authenticated application."
 
 See **[prompts.md](prompts.md)** for a full catalog of example prompts — from simple one-liners to complex multi-target workflows.
 
@@ -105,7 +110,7 @@ source venv/bin/activate
 pip install -e .
 ```
 
-Then follow steps 3–4 above to store your API key and configure your IDE.
+Then follow steps 3–5 above to store your API key, install playwright-cli, and configure your IDE.
 
 </details>
 
