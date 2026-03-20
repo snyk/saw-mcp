@@ -1,11 +1,11 @@
 ---
 name: saw-web-target-configuration
-description: Configure Snyk API&Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
+description: Configure Snyk API & Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
 ---
 
-# SAW Web Target Configuration Skill
+# Web Target Configuration Skill (Snyk API & Web)
 
-Configure web application targets for Snyk API&Web (SAW/Probely) security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
+Configure web application targets for Snyk API & Web security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
 
 ## Prerequisite: playwright-cli
 
@@ -26,7 +26,7 @@ When you finish adding/configuring a target, always summarize it with a table, a
 Each subagent prompt should be short — just the target details and an instruction to read the skill file:
 
 ```
-Configure a Snyk API&Web web target:
+Configure a Snyk API & Web web target:
 - URL: <url>
 - Name: <name or "auto" — if "auto", derive from the site's <title>>
 - Labels: <["Label1", ...] or "default" — if "default", do NOT pass labels param>
@@ -36,7 +36,7 @@ Configure a Snyk API&Web web target:
 - Browser session name: <domain> (use with `playwright-cli -s=<domain>` for ALL browser commands)
 
 First, read the skill file at <ABSOLUTE_PATH_TO_THIS_SKILL_FILE> and follow the full workflow.
-Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, SAW link (https://plus.probely.app/targets/{targetId}).
+Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, Snyk API & Web link (https://plus.probely.app/targets/{targetId}).
 ```
 
 Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
@@ -68,25 +68,38 @@ The Shell tool defaults to a 30-second timeout (`block_until_ms: 30000`), which 
 
 **ALWAYS set `block_until_ms: 60000` (60 seconds) on every Shell call that runs a `playwright-cli` command.** For particularly slow targets or heavy pages, use `block_until_ms: 90000`.
 
-## Credentials Management — Optional; Do Not Apply by Default
+## Credentials Management — Recommended (Used by Default)
+
+Use the credential manager for sensitive values (passwords, TOTP seeds, etc.) by default. Store values via `probely_create_credential` with `is_sensitive=True` and use the returned `uri` (e.g. `credentials://xxxx`) in the API. If the user explicitly declines, inline values are allowed.
+
+### Shared Credentials Across Multiple Targets
+
+When configuring multiple targets that use **the same credentials**, the credential may already exist in the credential manager from a previous target. Since sensitive (obfuscated) values cannot be read back, the agent cannot verify whether it matches — this causes a new credential entry per target, polluting the credential manager.
+
+**Rule:** When multiple targets share the same credential and it already exists with `is_sensitive=True`, **prompt the user** to deobfuscate it (update to `is_sensitive=False` via `probely_update_credential`) so it can be read back and reused across targets. Inform the user why deobfuscation is needed.
+
+**Workflow for shared credentials:**
+1. Create the credential normally with `is_sensitive=True` for the first target.
+2. When a subsequent target needs the same credential, find the existing one via `probely_list_credentials`.
+3. If the existing credential is sensitive (`is_sensitive=True` or value is `null`), prompt the user: *"The credential '<name>' is obfuscated. To reuse it across multiple targets, it needs to be deobfuscated. Would you like to proceed?"*
+4. If the user agrees, update it: `probely_update_credential(credentialId, is_sensitive=False)`.
+5. Reuse the same credential `uri` for the new target.
+
+**Pattern:**
+```
+cred = probely_create_credential(
+  name="<target_name> - <description>",
+  value="the_actual_secret_value",
+  is_sensitive=True                       # always sensitive by default
+)
+# cred["uri"] → "credentials://xxxx"
+```
 
 **Credential URIs:** Use the format `credentials://<credential_id>` (e.g., `credentials://4DY4qGohso1r`).
 Get credential URIs from `probely_list_credentials` or `probely_create_credential`.
 **Do NOT use template syntax like `{{cred-name}}`.**
 
 ## Web Application Onboarding Workflow
-
-### Creating Duplicate Targets
-
-To create a duplicate target (same URL as existing target), use `allow_duplicate=True`. This is useful when you want multiple targets for the same URL with different configurations (e.g., different authentication methods, different test scenarios):
-
-```python
-probely_create_web_target(
-  name="MyApp - Different Auth Method",
-  url="https://app.example.com",  # Same URL as existing target
-  allow_duplicate=True  # Bypass duplicate URL check
-)
-```
 
 ### Step 1: Gather Information and Determine Authentication Method
 
@@ -97,44 +110,19 @@ Ask the user for (or derive):
 4. **Login credentials**
 5. **2FA/MFA requirements**
 
-## Recording Login Sequences — PRIMARY METHOD
+**Authentication method:** Always configure authentication using a **login sequence** recorded via `playwright-cli`.
 
-**CRITICAL: Always use Playwright browser automation (`playwright-cli`) to record login sequences for ALL Probely targets.**
+#### Creating Duplicate Targets
 
-### When to use Playwright:
-- ✅ **ANY login form** (simple form-based authentication)
-- ✅ **Multi-step authentication flows**
-- ✅ **Login sequences with or without 2FA/TOTP**
-- ✅ **Complex authentication requiring browser interaction**
+To create a duplicate target (same URL as existing target), use `allow_duplicate=True`. This is useful when you want multiple targets for the same URL with different configurations (e.g., different authentication methods, different test scenarios):
 
-**Default behavior:** Use playwright-cli for all authentication configurations unless explicitly blocked by technical constraints.
-
-### Workflow for playwright-cli Login Sequences:
-
-1. **If 2FA/TOTP is required:**
-   - First configure 2FA: `probely_configure_2fa_totp(targetId, otp_secret)`
-
-2. **Record sequence with Playwright (see Step 2 below for detailed commands):**
-   - Navigate to login page
-   - Fill credentials
-   - For TOTP: Generate fresh code with `probely_generate_totp(secret)` and fill it
-   - Click submit
-   - Verify successful login
-
-3. **Convert to Probely sequence:**
-   - Use `probely_create_sequence()` with JSON steps
-   - Use `fill_otp` step type for TOTP fields (NOT `fill_value`)
-   - Map credentials with `custom_field_mappings` parameter
-   - Enable with `probely_configure_sequence_login(targetId)`
-
-### ⚠️ FALLBACK ONLY: probely_configure_form_login
-
-**Only use `probely_configure_form_login` when:**
-- Playwright is explicitly NOT available (technical failure, missing installation)
-- The user explicitly requests not to use Playwright
-- Simple form-based login without 2FA and Playwright cannot be used
-
-This is a **legacy method**. Login sequences are always the preferred approach.
+```python
+probely_create_web_target(
+  name="MyApp - Different Auth Method",
+  url="https://app.example.com",  # Same URL as existing target
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+```
 
 ### Step 2: Record the Login Sequence
 
@@ -155,7 +143,7 @@ Use `playwright-cli` via the Shell tool to navigate and record the login sequenc
 #### Configuration Tool Calls
 
 ```python
-target = probely_create_target(name=..., url=..., desc=..., labels=...) # Use target["id"] as targetId
+target = probely_create_web_target(name=..., url=..., desc=..., labels=...) # Use target["id"] as targetId
 
 # Build the sequence JSON and pass it to probely_create_sequence
 probely_create_sequence(targetId, name="Login Sequence", content="...", sequence_type="login", enabled=True, custom_field_mappings=[...])
