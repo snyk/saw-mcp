@@ -97,7 +97,44 @@ Ask the user for (or derive):
 4. **Login credentials**
 5. **2FA/MFA requirements**
 
-**Authentication method:** Always configure authentication using a **login sequence** recorded via `playwright-cli`.
+## Recording Login Sequences — PRIMARY METHOD
+
+**CRITICAL: Always use Playwright browser automation (`playwright-cli`) to record login sequences for ALL Probely targets.**
+
+### When to use Playwright:
+- ✅ **ANY login form** (simple form-based authentication)
+- ✅ **Multi-step authentication flows**
+- ✅ **Login sequences with or without 2FA/TOTP**
+- ✅ **Complex authentication requiring browser interaction**
+
+**Default behavior:** Use playwright-cli for all authentication configurations unless explicitly blocked by technical constraints.
+
+### Workflow for playwright-cli Login Sequences:
+
+1. **If 2FA/TOTP is required:**
+   - First configure 2FA: `probely_configure_2fa_totp(targetId, otp_secret)`
+
+2. **Record sequence with Playwright (see Step 2 below for detailed commands):**
+   - Navigate to login page
+   - Fill credentials
+   - For TOTP: Generate fresh code with `probely_generate_totp(secret)` and fill it
+   - Click submit
+   - Verify successful login
+
+3. **Convert to Probely sequence:**
+   - Use `probely_create_sequence()` with JSON steps
+   - Use `fill_otp` step type for TOTP fields (NOT `fill_value`)
+   - Map credentials with `custom_field_mappings` parameter
+   - Enable with `probely_configure_sequence_login(targetId)`
+
+### ⚠️ FALLBACK ONLY: probely_configure_form_login
+
+**Only use `probely_configure_form_login` when:**
+- Playwright is explicitly NOT available (technical failure, missing installation)
+- The user explicitly requests not to use Playwright
+- Simple form-based login without 2FA and Playwright cannot be used
+
+This is a **legacy method**. Login sequences are always the preferred approach.
 
 ### Step 2: Record the Login Sequence
 
