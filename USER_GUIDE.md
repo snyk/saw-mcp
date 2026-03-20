@@ -1,10 +1,10 @@
-# Snyk API&Web (SAW) MCP Server — User Guide
+# Snyk API & Web MCP Server — User Guide
 
 ## What it is
 
-The Snyk API&Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API&Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
+The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API & Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
 
-> **Naming note:** Snyk API&Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
+> **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
 ## Main value
 
@@ -21,7 +21,7 @@ The Snyk API&Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude 
 
 The AI will:
 
-1. Create the target in Snyk API&Web
+1. Create the target in Snyk API & Web
 2. Record a login sequence (navigates to the site, fills credentials, submits)
 3. Configure logout detection (so the scanner knows when to re-authenticate)
 4. Detect and add extra hosts (e.g. `api.taintedport.com` if the app calls it)
@@ -30,13 +30,13 @@ The target is ready for scanning.
 
 > **More examples:** See **[prompts.md](prompts.md)** for a full catalog of prompts covering targets, scans, findings, credentials, reports, and multi-step workflows.
 
-## Multiple targets in parallel
+## Multiple targets
 
 You can onboard several targets at once. For example:
 
 *"Add these targets: app1.example.com (user1@example.com / pass1), app2.example.com (user2@example.com / pass2 / TOTP seed 34566424343)"*
 
-The AI creates a **subagent per target** and configures them in parallel, so multiple targets are onboarded at the same time.
+The AI creates a **subagent per target** and configures them sequentially (one at a time), since Playwright uses a single browser instance that cannot be shared across parallel sessions.
 
 ## What's available
 
@@ -59,10 +59,10 @@ The AI creates a **subagent per target** and configures them in parallel, so mul
 
 ### Key tools (selection)
 
-- `probely_list_targets(search?)`, `probely_create_target(name, url, ...)`, `probely_start_scan(targetId, profile?)`
+- `probely_list_targets(search?)`, `probely_create_web_target(name, url, ...)`, `probely_start_scan(targetId, profile?)`
 - `probely_list_findings(targetId, severity?, state?)`, `probely_update_finding(targetId, findingId, state)`
 - `probely_create_sequence(...)`, `probely_configure_sequence_login(targetId, enabled)`
-- `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials can be linked to sequence custom fields for passwords when the user opts in; the system does not apply credentials management by default
+- `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials are used by default for sensitive values (passwords, tokens, secrets) and linked to sequence custom fields for passwords
 - `probely_configure_form_login(...)`, `probely_configure_2fa(...)`
 - `probely_create_api_target_from_postman(...)`, `probely_create_api_target_from_openapi(...)`
 - `probely_request(method, path, ...)` for any endpoint
@@ -76,7 +76,7 @@ You can enable or disable specific tools in `config/config.yaml`:
 tools:
   enabled:
     - probely_list_targets
-    - probely_create_target
+    - probely_create_web_target
     - probely_start_scan
     - probely_list_findings
 
@@ -111,5 +111,5 @@ This covers every write operation: creating targets/credentials/sequences, updat
 
 ## Links
 
-- [Snyk API&Web API Reference](https://developers.probely.com/api/reference)
+- [Snyk API & Web API Reference](https://developers.probely.com/api/reference)
 - [MCP Protocol](https://modelcontextprotocol.io)

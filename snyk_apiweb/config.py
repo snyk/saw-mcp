@@ -81,7 +81,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
 
 
 def get_probely_base_url(cfg: Dict[str, Any]) -> str:
-    """Get the Snyk API&Web base URL from env or config.
+    """Get the Snyk API & Web base URL from env or config.
 
     Precedence: MCP_SAW_BASE_URL env var → saw.base_url → probely.base_url → default.
     Supports both 'saw' (new) and 'probely' (legacy) config sections.
@@ -100,7 +100,7 @@ def get_probely_base_url(cfg: Dict[str, Any]) -> str:
 
 
 def get_probely_api_key(cfg: Dict[str, Any]) -> str:
-    """Get the Snyk API&Web API key from env or config.
+    """Get the Snyk API & Web API key from env or config.
 
     Precedence: MCP_SAW_API_KEY env var → saw.api_key → probely.api_key.
     Supports both 'saw' (new) and 'probely' (legacy) config sections.
@@ -118,7 +118,7 @@ def get_probely_api_key(cfg: Dict[str, Any]) -> str:
         "CHANGEME",
     ):
         raise RuntimeError(
-            f"Snyk API&Web API key not set. Set {API_KEY_ENV} or update "
+            f"Snyk API & Web API key not set. Set {API_KEY_ENV} or update "
             "config/config.yaml 'saw.api_key' / 'probely.api_key'."
         )
     if len(key) < 20:

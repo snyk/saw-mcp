@@ -1,10 +1,10 @@
-# Snyk API&Web (SAW) MCP Server Configuration
+# Snyk API & Web MCP Server Configuration
 saw:
   base_url: "https://api.probely.com"
   api_key: "CHANGEME"
 
 server:
-  name: "Snyk API&Web"
+  name: "Snyk API & Web"
 
 # Default settings auto-applied to every new target (all fields optional)
 target_defaults:
@@ -74,7 +74,7 @@ tools:
     # Targets
     # - probely_create_api_target_from_openapi
     # - probely_create_api_target_from_postman
-    # - probely_create_target
+    # - probely_create_web_target
     # - probely_get_target
     # - probely_get_target_settings
     # - probely_list_targets

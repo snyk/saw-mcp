@@ -100,6 +100,9 @@ class ProbelyClient:
                 resp.status_code,
                 resp.reason,
             )
+        logger.debug(
+            "[%s] Response: %s %s", tool_name, resp.status_code, str(body)
+        )
         return resp.status_code, body
 
     # Convenience wrappers for common resources
@@ -353,7 +356,7 @@ class ProbelyClient:
 
         return payload
 
-    def create_target(
+    def create_web_target(
         self,
         name: str,
         url: str,
@@ -362,8 +365,14 @@ class ProbelyClient:
         default_label: Optional[Dict[str, str]] = None,
         name_prefix: str = "",
         scanning_agent_id: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
-        """Create a new web target."""
+        """Create a new web target.
+
+        Args:
+            allow_duplicate: If True, allows creating a target even if another target
+                           with the same URL already exists. Default: False.
+        """
         payload = self._build_create_target_payload(
             name,
             url,
@@ -373,25 +382,38 @@ class ProbelyClient:
             name_prefix,
             scanning_agent_id,
         )
-        return self.request("POST", "/targets/", json=payload)[1]
+        payload["type"] = "single"
+
+        params = None
+        if allow_duplicate:
+            params = {"duplicate_check": False}
+
+        return self.request("POST", "/targets/", json=payload, params=params)[
+            1
+        ]
 
     def create_api_target(
         self,
         name: str,
         target_url: str,
         schema_type: str,
-        schema: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
+        api_schema_url: Optional[str] = None,
         desc: Optional[str] = None,
         label_names: Optional[list[str]] = None,
         default_label: Optional[Dict[str, str]] = None,
         name_prefix: str = "",
         scanning_agent_id: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Create a new API target with its schema included in the creation payload.
 
         Args:
             schema_type: "postman" or "openapi"
-            schema: The Postman collection or OpenAPI schema JSON content
+            schema: Optional inline Postman collection or OpenAPI schema JSON (omit when using api_schema_url).
+            api_schema_url: For openapi: URL of the schema (sets api_scan_settings.api_schema_url).
+            allow_duplicate: If True, allows creating a target even if another target
+                           with the same URL already exists. Default: False.
         """
         payload = self._build_create_target_payload(
             name,
@@ -402,9 +424,32 @@ class ProbelyClient:
             name_prefix,
             scanning_agent_id,
         )
-        schema_key = "collection" if schema_type == "postman" else "schema"
-        payload[schema_key] = schema
-        return self.request("POST", "/targets/", json=payload)[1]
+        payload["type"] = "api"
+
+        api_scan_settings: Dict[str, Any] = {
+            "api_schema_type": "openapi"
+            if schema_type == "openapi"
+            else "postman",
+        }
+        if schema_type == "openapi" and api_schema_url:
+            api_scan_settings["api_schema_url"] = api_schema_url
+        payload["site"]["api_scan_settings"] = api_scan_settings
+
+        if schema is not None and not api_schema_url:
+            schema_key = "collection" if schema_type == "postman" else "schema"
+            payload[schema_key] = schema
+
+        params = {
+            "check_fullpath": False,
+            "duplicate_check": not allow_duplicate,
+            "skip_fullpath_warning": True,
+            "skip_reachability_check": True,
+            "skip_redirect_check": True,
+        }
+
+        return self.request("POST", "/targets/", json=payload, params=params)[
+            1
+        ]
 
     def update_target(self, target_id: str, **fields: Any) -> Dict[str, Any]:
         return self.request("PATCH", f"/targets/{target_id}/", json=fields)[1]

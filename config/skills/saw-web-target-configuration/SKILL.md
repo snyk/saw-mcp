@@ -31,6 +31,23 @@ Return a summary with: target ID, name, URL, login sequence status, logout detec
 
 Launch **all** Task tool calls in a **single assistant message** (max 10 at a time). Do NOT wait for one to finish before launching the next. After all finish, compile summaries into one table.
 
+## Credentials Management — Recommended (Used by Default)
+
+Use the credential manager for sensitive values (passwords, TOTP seeds, etc.) by default. Store values via `probely_create_credential` with `is_sensitive=True` and use the returned `uri` (e.g. `credentials://xxxx`) in the API. If the user explicitly declines, inline values are allowed.
+
+### Shared Credentials Across Multiple Targets
+
+When configuring multiple targets that use **the same credentials**, the credential may already exist in the credential manager from a previous target. Since sensitive (obfuscated) values cannot be read back, the agent cannot verify whether it matches — this causes a new credential entry per target, polluting the credential manager.
+
+**Rule:** When multiple targets share the same credential and it already exists with `is_sensitive=True`, **prompt the user** to deobfuscate it (update to `is_sensitive=False` via `probely_update_credential`) so it can be read back and reused across targets. Inform the user why deobfuscation is needed.
+
+**Workflow for shared credentials:**
+1. Create the credential normally with `is_sensitive=True` for the first target.
+2. When a subsequent target needs the same credential, find the existing one via `probely_list_credentials`.
+3. If the existing credential is sensitive (`is_sensitive=True` or value is `null`), prompt the user: *"The credential '<name>' is obfuscated. To reuse it across multiple targets, it needs to be deobfuscated. Would you like to proceed?"*
+4. If the user agrees, update it: `probely_update_credential(credentialId, is_sensitive=False)`.
+5. Reuse the same credential `uri` for the new target.
+
 ### Browser Session Isolation
 
 Browser automation uses `playwright-cli` via the Shell tool. Each subagent MUST use a **named session** (`-s=<domain>`) to get a fully isolated browser context (separate cookies, storage, network logs). This prevents cross-contamination when multiple targets are configured in parallel.
@@ -43,9 +60,23 @@ The Shell tool defaults to a 30-second timeout (`block_until_ms: 30000`), which 
 
 ## Credentials Management — Optional; Do Not Apply by Default
 
-Credentials management is **supported** but must **not** be applied automatically. **Prompt the user** to choose whether to use the credential manager for sensitive values. Only when the user opts in should you store values via `probely_create_credential` and use the returned `uri` (e.g. `credentials://xxxx`) in the API.
+**Credential URIs:** Use the format `credentials://<credential_id>` (e.g., `credentials://4DY4qGohso1r`).
+Get credential URIs from `probely_list_credentials` or `probely_create_credential`.
+**Do NOT use template syntax like `{{cred-name}}`.**
 
 ## Web Application Onboarding Workflow
+
+### Creating Duplicate Targets
+
+To create a duplicate target (same URL as existing target), use `allow_duplicate=True`. This is useful when you want multiple targets for the same URL with different configurations (e.g., different authentication methods, different test scenarios):
+
+```python
+probely_create_web_target(
+  name="MyApp - Different Auth Method",
+  url="https://app.example.com",  # Same URL as existing target
+  allow_duplicate=True  # Bypass duplicate URL check
+)
+```
 
 ### Step 1: Gather Information and Determine Authentication Method
 

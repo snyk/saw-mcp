@@ -26,7 +26,7 @@ def main() -> None:
             logging.StreamHandler(),  # Also keep console output
         ],
     )
-    logger.info("Starting Snyk API&Web MCP server")
+    logger.info("Starting Snyk API & Web MCP server")
     app = build_server()
     app.run()
 
