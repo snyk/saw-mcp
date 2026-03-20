@@ -38,12 +38,12 @@ Choose one of the following installation methods:
 ```bash
 tar -xzvf SnykAPIWeb-<version>.tgz
 cd SnykAPIWeb
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .
+python -m venv venv
+source venv/bin/activate # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-Replace \<version\> with the downloaded tarball from the [Releases](https://github.com/snyk/saw-mcp/releases).
+Download from [Releases](https://github.com/snyk/saw-mcp/releases) and replace `<version>` with the actual version number (e.g., `0.9.4`).
 
 **Option B: Clone from source**
 
@@ -51,8 +51,8 @@ Replace \<version\> with the downloaded tarball from the [Releases](https://gith
 git clone https://github.com/snyk/saw-mcp.git
 cd saw-mcp
 python -m venv venv
-source venv/bin/activate
-pip install -e .
+source venv/bin/activate # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### 3. Store Your API Key
