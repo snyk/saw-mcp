@@ -1,17 +1,17 @@
 ---
-description: Snyk API&Web (SAW) behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
+description: Snyk API & Web behavioral rules - safety constraints, proactive monitoring, and vulnerability handling.
 alwaysApply: true
 ---
 
-# Snyk API&Web (SAW) Project Rules
+# Snyk API & Web Project Rules
 
 These rules define behavioral constraints and proactive behaviors for projects using SAW.
 
 ## CRITICAL: Always Use the SAW MCP Server
 
-**For ANY task involving Snyk API&Web, SAW, or Probely, you MUST use the SAW MCP Server tools.**
+**For ANY task involving Snyk API & Web, SAW, or Probely, you MUST use the SAW MCP Server tools.**
 
-- Do NOT attempt to call the Snyk API&Web REST API directly via HTTP requests
+- Do NOT attempt to call the Snyk API & Web REST API directly via HTTP requests
 - Do NOT write code that makes API calls to api.probely.com
 - ALWAYS use the `probely_*` MCP tools provided by the SAW MCP server
 - The SAW MCP server handles authentication, retries, and error handling for you
@@ -28,7 +28,7 @@ The MCP tools handle formatting (e.g., pretty-printing login sequences). Bypassi
 ### Trigger Keywords
 
 Use SAW MCP tools when the user mentions any of:
-- "Snyk API&Web" / "Snyk APIWeb" / "Snyk API Web"
+- "Snyk API & Web" / "Snyk APIWeb" / "Snyk API Web"
 - "SAW" (when referring to security scanning)
 - "Probely" (legacy name)
 - "DAST" / "Dynamic Application Security Testing"
@@ -56,7 +56,7 @@ The following tools automatically pause and show a confirmation prompt in the us
 All tools that create, update, or delete resources require confirmation:
 
 **Create:**
-- `probely_create_target` / `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`
+- `probely_create_web_target` / `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`
 - `probely_create_credential`
 - `probely_create_label`
 - `probely_create_sequence`
@@ -139,11 +139,11 @@ Use `probely_update_finding` or `probely_bulk_update_findings` to mark findings 
 - `false_positive` - if verified as not exploitable
 - `accepted_risk` - with user approval for business-justified risks
 
-## Multiple Targets: Use Subagents in Parallel
+## Multiple Targets: Use Subagents in Sequence
 
 When the user asks to add, configure, or onboard **more than one** SAW target in a single request, you **MUST** launch a separate `generalPurpose` subagent for each target via the Task tool.
 
-**CRITICAL: All Task tool calls MUST be in a single assistant message.** Keep each subagent prompt short (target details + instruction to read the skill file). Do NOT embed the full skill text in each prompt — that makes the message too large and causes sequential execution. Each subagent reads the skill file itself.
+**CRITICAL: Launch subagents ONE at a time.** Wait for each subagent to complete before launching the next. Playwright uses a single browser instance — parallel subagents would conflict and cause failures. Keep each subagent prompt short (target details + instruction to read the skill file). Do NOT embed the full skill text in each prompt. Each subagent reads the skill file itself.
 
 ### Subagent workspace discipline
 

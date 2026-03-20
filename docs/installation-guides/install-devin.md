@@ -36,7 +36,7 @@ Requires Node.js 18+. This installs `@playwright/cli` globally and downloads the
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `MCP_SAW_API_KEY` | Snyk API&Web API key | Yes (or use `.env` file) |
+| `MCP_SAW_API_KEY` | Snyk API & Web API key | Yes (or use `.env` file) |
 | `MCP_SAW_BASE_URL` | Override the API endpoint (e.g. staging) | No |
 | `MCP_SAW_CONFIG_PATH` | Path to a `config.yaml` file | No |
 | `MCP_SAW_LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO) | No |
