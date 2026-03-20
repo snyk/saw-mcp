@@ -110,7 +110,7 @@ def build_server() -> FastMCP:
     tool_filter = get_tool_filter(cfg)
     target_defaults = get_target_defaults(cfg)
 
-    server_name = cfg.get("server", {}).get("name", "Snyk APIWeb")
+    server_name = cfg.get("server", {}).get("name", "Snyk API & Web")
     logger.info("Building MCP server '%s' (%s)", server_name, base_url)
     app = FastMCP(server_name)
 
@@ -136,7 +136,7 @@ def build_server() -> FastMCP:
     @app.prompt(
         name="saw_web_target_configuration",
         description=(
-            "Help configure a Snyk API&Web web target with authentication, "
+            "Help configure a Snyk API & Web web target with authentication, "
             "login sequence setup, logout detection, extra hosts, and "
             "optional TOTP."
         ),
@@ -176,7 +176,7 @@ def build_server() -> FastMCP:
         return (
             dedent(
                 """
-            Configure a Snyk API&Web web target for an authenticated web
+            Configure a Snyk API & Web web target for an authenticated web
             application.
 
             Target details:
@@ -196,7 +196,7 @@ def build_server() -> FastMCP:
             - Detect and configure any required extra hosts.
             - Configure logout detection explicitly with `check_session_url`, `logout_detector_type`, and `logout_detector_value`.
             - If 2FA is enabled, configure TOTP before creating the login sequence.
-            - If the user opts in to credentials management, store the password via probely_create_credential and link it in `custom_field_mappings`; otherwise inline values are allowed. Do not apply credentials management by default—prompt the user to choose.
+            - Use credentials management by default: store the password via probely_create_credential and link it in `custom_field_mappings`. If the user explicitly declines, inline values are allowed. When multiple targets share the same credential and it already exists and is_sensitive=True, prompt the user to deobfuscate it in order to allow reuse.
 
             Return:
             - Target ID
@@ -205,7 +205,7 @@ def build_server() -> FastMCP:
             - Login sequence status
             - Logout detection status
             - Extra hosts added
-            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+            - Snyk API & Web link in this format: `https://plus.probely.app/targets/{{targetId}}`
 
             At the end, summarize the configured target in a table.
             """
@@ -224,7 +224,7 @@ def build_server() -> FastMCP:
     @app.prompt(
         name="saw_api_target_configuration",
         description=(
-            "Help configure a Snyk API&Web API target from an OpenAPI "
+            "Help configure a Snyk API & Web API target from an OpenAPI "
             "schema, Swagger document, Postman collection, or generated "
             "schema."
         ),
@@ -285,7 +285,7 @@ def build_server() -> FastMCP:
         return (
             dedent(
                 """
-            Configure a Snyk API&Web API target for an API described by an
+            Configure a Snyk API & Web API target for an API described by an
             OpenAPI/Swagger schema or a Postman collection.
 
             Target details:
@@ -306,6 +306,7 @@ def build_server() -> FastMCP:
             - If labels are `default`, do not pass a `labels` parameter.
             - Create a new target; do not search for or reuse an existing one.
             - If the source type is `openapi`, validate the schema before uploading it and fix any violations first.
+            - When the user provides an OpenAPI schema URL, do not fetch the schema JSON from that URL; pass it as `openapi_schema_url` only.
             - If neither an OpenAPI schema nor a Postman collection is available and the source type is `generate`, generate a basic OpenAPI 3.0 schema from the codebase before creating the target.
             - Use the OpenAPI target creation flow for OpenAPI/Swagger input and the Postman target creation flow for Postman input.
             - If authentication is required, configure it after target creation using the workflow in the skill.
@@ -317,7 +318,7 @@ def build_server() -> FastMCP:
             - Source type used
             - Authentication status
             - Extra hosts added
-            - SAW link in this format: `https://plus.probely.app/targets/{{targetId}}`
+            - Snyk API & Web link in this format: `https://plus.probely.app/targets/{{targetId}}`
 
             At the end, summarize the configured target in a table.
             """
@@ -346,7 +347,18 @@ def build_server() -> FastMCP:
         json: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Make a raw request to Probely API (path relative to base)."""
+        """Make a raw request to Probely API (path relative to base).
+
+        IMPORTANT: For authentication configuration, use probely_update_target instead:
+        - HTTP Basic Auth: use basic_auth_username and basic_auth_password parameters
+        - API Headers/Cookies Auth: use api_auth_headers and api_auth_cookies parameters
+
+        This tool is for advanced use cases or API endpoints not covered by dedicated tools.
+
+        When using this tool, reference saved credentials using the URI format
+        'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
+        Get credential URIs from probely_list_credentials or probely_create_credential.
+        Do NOT use template syntax like {{cred-name}}."""
         return client.raw(
             method=method, path=path, params=params, json=json, data=data
         )
@@ -373,7 +385,11 @@ def build_server() -> FastMCP:
         is_sensitive: Optional[bool] = None,
         length: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """List credentials. Sensitive values are not returned."""
+        """List credentials. Sensitive values are not returned.
+
+        Returns credentials with their 'uri' field (e.g., 'credentials://4DY4qGohso1r').
+        Use this exact URI format when configuring authentication (basic_auth, headers, etc.).
+        Do NOT use template syntax like {{cred-name}}."""
         return client.list_credentials(
             page=page,
             search=search,
@@ -383,7 +399,10 @@ def build_server() -> FastMCP:
 
     @register_tool("probely_get_credential")
     def probely_get_credential(credentialId: str) -> Dict[str, Any]:
-        """Get a credential by ID. Value is null if sensitive."""
+        """Get a credential by ID. Value is null if sensitive.
+
+        Returns the credential with its 'uri' field (e.g., 'credentials://4DY4qGohso1r').
+        Use this URI to reference the credential in authentication configs."""
         return client.get_credential(credential_id=credentialId)
 
     @register_tool("probely_create_credential")
@@ -446,23 +465,28 @@ def build_server() -> FastMCP:
     def probely_get_target(targetId: str) -> Dict[str, Any]:
         return client.get_target(target_id=targetId)
 
-    @register_tool("probely_create_target")
-    def probely_create_target(
+    @register_tool("probely_create_web_target")
+    def probely_create_web_target(
         name: str,
         url: str,
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
         scanning_agent_id: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign a scanning agent for internal/private targets.
 
+        Set allow_duplicate=True to create a target even if another target with the same URL
+        already exists. This is useful when you want multiple targets for the same URL with
+        different configurations (e.g., different auth methods, different test scenarios).
+
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
         parameter for all subsequent tool calls (sequences, scans, logout detection, etc.).
         """
-        return client.create_target(
+        return client.create_web_target(
             name=name,
             url=url,
             desc=desc,
@@ -470,6 +494,7 @@ def build_server() -> FastMCP:
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
             scanning_agent_id=scanning_agent_id,
+            allow_duplicate=allow_duplicate,
         )
 
     @register_tool("probely_update_target")
@@ -482,21 +507,86 @@ def build_server() -> FastMCP:
         scanning_agent_id: Optional[str] = None,
         headers: Optional[List[Dict[str, str]]] = Field(
             default=None,
-            description="Custom HTTP headers sent with every scan request. "
+            description="Custom HTTP headers sent with every scan request (for general use, NOT for authentication). "
             'Each entry: {"name": "<header-name>", "value": "<header-value>"}. '
-            "Replaces all existing custom headers.",
+            "Replaces all existing custom headers. "
+            "To reference saved credentials in header values, use URI format 'credentials://4DY4qGohso1r'. "
+            "For API authentication using static headers, use api_auth_headers parameter instead.",
         ),
         cookies: Optional[List[Dict[str, str]]] = Field(
             default=None,
-            description="Custom cookies sent with every scan request. "
+            description="Custom cookies sent with every scan request (for general use, NOT for authentication). "
             'Each entry: {"name": "<cookie-name>", "value": "<cookie-value>"}. '
-            "Replaces all existing custom cookies.",
+            "Replaces all existing custom cookies. "
+            "To reference saved credentials in cookie values, use URI format 'credentials://4DY4qGohso1r'. "
+            "For API authentication using static cookies, use api_auth_cookies parameter instead.",
+        ),
+        basic_auth_username: Optional[str] = Field(
+            default=None,
+            description="Username for HTTP Basic Auth. Use credential URI format 'credentials://xxx' to reference saved credentials. "
+            "When set, basic_auth_password must also be provided.",
+        ),
+        basic_auth_password: Optional[str] = Field(
+            default=None,
+            description="Password for HTTP Basic Auth. Use credential URI format 'credentials://xxx' to reference saved credentials. "
+            "When set, basic_auth_username must also be provided.",
+        ),
+        api_auth_headers: Optional[List[Dict[str, Any]]] = Field(
+            default=None,
+            description="Authentication headers for API targets. Full structure with authentication flags. "
+            'Each entry: {"name": "X-API-Key", "value": "credentials://xxx", "value_is_sensitive": false, '
+            '"allow_testing": false, "authentication": true, "authentication_secondary": false}. '
+            "Automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.",
+        ),
+        api_auth_cookies: Optional[List[Dict[str, Any]]] = Field(
+            default=None,
+            description="Authentication cookies for API targets. Full structure with authentication flags. "
+            'Each entry: {"name": "session", "value": "credentials://xxx", "value_is_sensitive": false, '
+            '"allow_testing": false, "authentication": true, "authentication_secondary": false}. '
+            "Automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.",
         ),
     ) -> Dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign or change the scanning agent. Pass "" to remove it.
-        Use headers/cookies to set custom HTTP headers/cookies included in every scan request.
+
+        IMPORTANT: The headers/cookies parameters are for general custom headers/cookies sent with
+        every scan request (NOT for authentication). They use a simple structure: {"name": "...", "value": "..."}.
+
+        For HTTP Basic Auth authentication:
+        Use basic_auth_username and basic_auth_password parameters. Both must be provided together.
+        Example:
+          probely_update_target(
+            targetId,
+            basic_auth_username="credentials://xxx",  # or inline: "api-user"
+            basic_auth_password="credentials://yyy"   # or inline: "secret123"
+          )
+
+        For API authentication with static headers/cookies:
+        Use api_auth_headers and/or api_auth_cookies parameters with full structure including authentication flags.
+        The tool automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.
+        Example:
+          probely_update_target(
+            targetId,
+            api_auth_headers=[{
+              "name": "X-API-Key",
+              "value": "credentials://xxx",
+              "value_is_sensitive": false,
+              "allow_testing": false,
+              "authentication": true,
+              "authentication_secondary": false
+            }],
+            api_auth_cookies=[{
+              "name": "session",
+              "value": "credentials://yyy",
+              "value_is_sensitive": false,
+              "allow_testing": false,
+              "authentication": true,
+              "authentication_secondary": false
+            }]
+          )
+
+        Reference saved credentials using URI format 'credentials://<credential_id>' (not {{cred-name}}).
         """
         fields: Dict[str, Any] = {}
         site_fields: Dict[str, Any] = {}
@@ -511,6 +601,26 @@ def build_server() -> FastMCP:
             site_fields["headers"] = headers
         if cookies is not None:
             site_fields["cookies"] = cookies
+
+        # Handle API authentication headers/cookies
+        if api_auth_headers is not None or api_auth_cookies is not None:
+            # Add authentication headers/cookies to site_fields
+            if api_auth_headers is not None:
+                site_fields["headers"] = api_auth_headers
+            if api_auth_cookies is not None:
+                site_fields["cookies"] = api_auth_cookies
+
+            # Set API scan settings for authentication
+            api_scan_settings = site_fields.get("api_scan_settings", {})
+            api_scan_settings.update(
+                {
+                    "api_login_enabled": True,
+                    "api_headers_cookies_login_enabled_secondary": False,
+                    "api_login_method": "headers_or_cookies",
+                }
+            )
+            site_fields["api_scan_settings"] = api_scan_settings
+
         if site_fields:
             fields["site"] = site_fields
         if labels is not None:
@@ -519,6 +629,21 @@ def build_server() -> FastMCP:
             fields["scanning_agent"] = (
                 {"id": scanning_agent_id} if scanning_agent_id else None
             )
+
+        # Handle HTTP Basic Auth
+        if basic_auth_username is not None or basic_auth_password is not None:
+            if basic_auth_username is None or basic_auth_password is None:
+                return {
+                    "error": {
+                        "message": "Both basic_auth_username and basic_auth_password must be provided together"
+                    }
+                }
+            fields["has_basic_auth"] = True
+            fields["basic_auth"] = {
+                "username": basic_auth_username,
+                "password": basic_auth_password,
+            }
+
         return client.update_target(target_id=targetId, **fields)
 
     @register_tool("probely_delete_target")
@@ -549,11 +674,11 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials.
 
-        Do not apply credentials management by default. When the user has opted in to credentials management, link a credential (created via probely_create_credential) for the password; otherwise inline values are allowed.
-        - With credential (when user opted in): [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
-        - With inline value: [{"name": "[CUSTOM_PASSWORD]", "value": "secret", "value_is_sensitive": true, "enabled": true}]
+        Use credentials management by default: link a credential (created via probely_create_credential) for the password. If the user explicitly declines, inline values are allowed.
+        - Password credential: [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
+        - When multiple targets share the same credential and it already exists and is_sensitive=True, prompt the user to deobfuscate it in order to allow reuse.
 
-        For username: [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
+        For username: [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": true, "enabled": true}]
         """
         mappings = _parse_list_of_dicts(custom_field_mappings)
         return client.create_sequence(
@@ -574,7 +699,7 @@ def build_server() -> FastMCP:
         enabled: Optional[bool] = None,
         custom_field_mappings: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content. Do not apply credentials management by default—use credential URIs only when the user has opted in.
+        """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content. Use credential URIs for sensitive values by default.
 
         custom_field_mappings should be a JSON array string, e.g.:
         [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
@@ -612,7 +737,10 @@ def build_server() -> FastMCP:
         password: str,
         check_pattern: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Configure form-based login authentication. Only use this as a fallback when Playwright is NOT available. When Playwright IS available, always record a login sequence instead (probely_create_sequence)."""
+        """Configure form-based login authentication. Only use this as a fallback when Playwright is NOT available. When Playwright IS available, always record a login sequence instead (probely_create_sequence).
+
+        To reference saved credentials, use URI format 'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
+        Get credential URIs from probely_list_credentials or probely_create_credential."""
         return client.configure_form_login(
             target_id=targetId,
             login_url=login_url,
@@ -944,8 +1072,18 @@ def build_server() -> FastMCP:
         postman_collectionjson: Optional[Dict[str, Any]] = None,
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
-        """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson."""
+        """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson.
+
+        Set allow_duplicate=True to create a target even if another target with the same URL
+        already exists. This is useful when you want multiple targets for the same URL with
+        different configurations (e.g., different auth methods, different test scenarios).
+
+        IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
+        ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
+        parameter for all subsequent tool calls (update_target, start_scan, etc.).
+        Do NOT use the nested ``site.id`` field for target operations."""
         collection = _fetchjson_or_url(
             postman_collection_url, postman_collectionjson
         )
@@ -964,6 +1102,7 @@ def build_server() -> FastMCP:
             label_names=labels,
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
+            allow_duplicate=allow_duplicate,
         )
 
     # API Target from OpenAPI
@@ -975,15 +1114,40 @@ def build_server() -> FastMCP:
         openapi_schemajson: Optional[Dict[str, Any]] = None,
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
+        allow_duplicate: bool = False,
     ) -> Dict[str, Any]:
-        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson."""
-        schema = _fetchjson_or_url(openapi_schema_url, openapi_schemajson)
-        if not schema:
+        """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url.
+
+        Set allow_duplicate=True to create a target even if another target with the same URL
+        already exists. This is useful when you want multiple targets for the same URL with
+        different configurations (e.g., different auth methods, different test scenarios).
+
+        IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
+        ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
+        parameter for all subsequent tool calls (update_target, start_scan, etc.).
+        Do NOT use the nested ``site.id`` field for target operations."""
+        if not openapi_schema_url and not openapi_schemajson:
             return {
                 "error": {
                     "message": "Provide openapi_schema_url or openapi_schemajson"
                 }
             }
+        if openapi_schema_url:
+            return client.create_api_target(
+                name=name,
+                target_url=target_url,
+                schema_type="openapi",
+                schema=None,
+                api_schema_url=openapi_schema_url,
+                desc=desc,
+                label_names=labels,
+                default_label=target_defaults.get("default_label"),
+                name_prefix=target_defaults.get("name_prefix", ""),
+                allow_duplicate=allow_duplicate,
+            )
+        schema = _fetchjson_or_url(None, openapi_schemajson)
+        if not schema:
+            return {"error": {"message": "Could not use openapi_schemajson"}}
         return client.create_api_target(
             name=name,
             target_url=target_url,
@@ -993,6 +1157,7 @@ def build_server() -> FastMCP:
             label_names=labels,
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
+            allow_duplicate=allow_duplicate,
         )
 
     return app
