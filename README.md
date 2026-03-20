@@ -15,6 +15,7 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 ## Requirements
 
 - Python 3.10+
+- Node.js 18+ and npm (for browser automation)
 - Snyk API & Web API key
 
 ## Quick Start
@@ -36,7 +37,7 @@ git clone https://github.com/snyk/saw-mcp.git
 cd saw-mcp
 python -m venv venv
 source venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 ```
 
 ### 3. Store Your API Key
@@ -53,7 +54,17 @@ This writes a `.env` file in the project root (gitignored). The server loads it 
 
 > **Config precedence:** environment variable → `.env` file → `config/config.yaml`
 
-### 4. Configure Your IDE
+### 4. Install Browser Automation (playwright-cli)
+
+Web target configuration uses `playwright-cli` to record login sequences in a real browser. Run the setup script once:
+
+```bash
+./scripts/setup-playwright.sh
+```
+
+This installs `@playwright/cli` globally and downloads the Chromium browser binary. Requires Node.js 18+.
+
+### 5. Configure Your IDE
 
 Add to your MCP client configuration (replace `/<basedir>/saw-mcp` with the absolute path to this repo):
 
@@ -85,7 +96,7 @@ For host-specific setup see the [Installation Guides](docs/installation-guides/)
 
 </details>
 
-### 5. Start Using
+### 6. Start Using
 
 Ask your AI assistant to:
 
@@ -102,10 +113,10 @@ tar -xzvf SnykAPIWeb-*.tgz
 cd SnykAPIWeb
 python3 -m venv venv
 source venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 ```
 
-Then follow steps 3–4 above to store your API key and configure your IDE.
+Then follow steps 3–5 above to store your API key, install playwright-cli, and configure your IDE.
 
 </details>
 
