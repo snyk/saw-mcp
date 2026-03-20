@@ -4,7 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - 2026-03-19
+## [1.0.0] - 2026-03-20
+
+First stable release of the Snyk API & Web MCP Server. This version marks the tool as
+production-ready for connecting AI coding assistants to Snyk API & Web to onboard DAST
+scan targets, configure authentication, and triage findings — all through natural language.
+Works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
+
+### Added
+
+- **Web target configuration** via the `saw-web-target-configuration` skill: record and replay multi-step login sequences — including TOTP/2FA — to configure authenticated DAST scanning targets.
+- **API target configuration**: onboard API scan targets directly from OpenAPI schemas, Swagger documents, and Postman collections.
+- **Credential management**: securely store and reuse credentials across targets via `probely_create_credential`; sensitive values are kept as credential URIs and never exposed in plain text.
+- **Login sequence management**: create, update, and enable login sequences with support for standard forms, multi-step flows, and TOTP-based 2FA via `probely_create_sequence` and `probely_configure_sequence_login`.
+- **Confirmation guardrail for destructive operations**: explicit user confirmation required before any action that modifies or deletes existing scan configuration.
+- **Elicitation support**: interactive guided forms for collecting target configuration, with automatic fallback for CLI-based MCP clients that do not support forms.
+- **Configurable log verbosity**: control server output via `MCP_SAW_LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`; default: `INFO`).
+- **Optional credentials manager**: server starts and operates fully even when the credentials manager is not configured.
+- **Example prompts catalog** (`prompts.md`): ready-to-use prompt library covering single-target onboarding, bulk workflows, credential reuse, and scan triage.
+- **Installation guides** for Cursor, Claude Desktop, Devin, and VS Code.
+- **Secure API key setup** via `scripts/setup-env.sh` — stores the key in a gitignored `.env` file without exposing it in shell history.
 
 ### Fixed
 
@@ -15,8 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
-- HTTP responses now logged at `DEBUG` level for improved traceability (#40).
-- `saw-web` and `saw-api` SKILL.md files made uniform in structure and terminology (#40).
+- HTTP responses logged at `DEBUG` level for easier troubleshooting (#40).
+- `saw-web` and `saw-api` skill files unified in structure and terminology for consistency (#40).
+- README restructured to present tarball download and git clone as explicit alternatives (Option A / Option B) (#48).
+- Standalone server mode documented as a development and debugging tool — not required for normal MCP client usage (#48).
 
 ## [0.9.4] - 2026-03-19
 
