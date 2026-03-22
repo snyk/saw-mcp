@@ -38,6 +38,7 @@ Works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
 - `saw-web` and `saw-api` skill files unified in structure and terminology for consistency (#40).
 - README restructured to present tarball download and git clone as explicit alternatives (Option A / Option B) (#48).
 - Standalone server mode documented as a development and debugging tool — not required for normal MCP client usage (#48).
+- `saw-web-target-configuration` skill is now the **default** for all target creation requests; `saw-api-target-configuration` is only selected when the user explicitly provides an OpenAPI/Swagger schema, Postman collection, or says "API target". Eliminates ambiguous skill selection on weaker models.
 
 ## [0.9.4] - 2026-03-19
 

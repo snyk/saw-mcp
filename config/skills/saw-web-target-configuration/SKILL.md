@@ -1,11 +1,18 @@
 ---
 name: saw-web-target-configuration
-description: Configure Snyk API & Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
+description: DEFAULT skill for creating Snyk API & Web targets. Use for all target creation requests unless the user explicitly mentions an API target, OpenAPI schema, Swagger spec, or Postman collection. Handles web application targets with authentication, login sequences, 2FA, and logout detection.
 ---
 
 # Web Target Configuration Skill (Snyk API & Web)
 
 Configure web application targets for Snyk API & Web security scanning with authentication support. For API targets, use the `saw-api-target-configuration` skill instead.
+
+## Target Type Check — Do This First
+
+Before proceeding, determine whether this is an API target or a web target:
+
+- If the user has provided an **OpenAPI/Swagger schema** (URL or file), a **Postman collection**, or explicitly said **"API target"** — stop and use the `saw-api-target-configuration` skill instead.
+- Otherwise, **treat it as a web target by default**. If the user just says "add a target", "create a target", or provides a URL without further qualification, proceed here.
 
 When you finish adding/configuring a target, always summarize it with a table, and include a link to the target on Snyk API & Web. Use the Snyk API & Web app URL **https://plus.probely.app**. Include a column if you added extra hosts or not and in case you did, which ones.
 
