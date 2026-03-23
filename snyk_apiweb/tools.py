@@ -674,6 +674,9 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials.
 
+        IMPORTANT: After creating a login sequence, you MUST call probely_configure_sequence_login(targetId, enabled=True)
+        to enable sequence-based authentication on the target. Creating a sequence does NOT automatically enable it for authentication.
+
         Use credentials management by default: link a credential (created via probely_create_credential) for the password. If the user explicitly declines, inline values are allowed.
         - Password credential: [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
         - When multiple targets share the same credential and it already exists and is_sensitive=True, prompt the user to deobfuscate it in order to allow reuse.
