@@ -39,6 +39,7 @@ Works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
 - README restructured to present tarball download and git clone as explicit alternatives (Option A / Option B) (#48).
 - Standalone server mode documented as a development and debugging tool — not required for normal MCP client usage (#48).
 - `saw-web-target-configuration` skill is now the **default** for all target creation requests; `saw-api-target-configuration` is only selected when the user explicitly provides an OpenAPI/Swagger schema, Postman collection, or says "API target". Eliminates ambiguous skill selection on weaker models.
+- Web and API target onboarding guidance now instructs the agent to offer a retry with `skip_reachability_check=True` when initial target creation fails because the domain is unreachable or cannot be resolved.
 
 ## [0.9.4] - 2026-03-19
 
