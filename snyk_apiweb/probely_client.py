@@ -366,12 +366,15 @@ class ProbelyClient:
         name_prefix: str = "",
         scanning_agent_id: Optional[str] = None,
         allow_duplicate: bool = False,
+        skip_reachability_check: bool = False,
     ) -> Dict[str, Any]:
         """Create a new web target.
 
         Args:
             allow_duplicate: If True, allows creating a target even if another target
                            with the same URL already exists. Default: False.
+            skip_reachability_check: If True, bypass the API reachability check when
+                           creating the target. Default: False.
         """
         payload = self._build_create_target_payload(
             name,
@@ -384,9 +387,13 @@ class ProbelyClient:
         )
         payload["type"] = "single"
 
-        params = None
-        if allow_duplicate:
-            params = {"duplicate_check": False}
+        params: Optional[Dict[str, Any]] = None
+        if allow_duplicate or skip_reachability_check:
+            params = {}
+            if allow_duplicate:
+                params["duplicate_check"] = False
+            if skip_reachability_check:
+                params["skip_reachability_check"] = True
 
         return self.request("POST", "/targets/", json=payload, params=params)[
             1
@@ -405,6 +412,7 @@ class ProbelyClient:
         name_prefix: str = "",
         scanning_agent_id: Optional[str] = None,
         allow_duplicate: bool = False,
+        skip_reachability_check: bool = False,
     ) -> Dict[str, Any]:
         """Create a new API target with its schema included in the creation payload.
 
@@ -414,6 +422,8 @@ class ProbelyClient:
             api_schema_url: For openapi: URL of the schema (sets api_scan_settings.api_schema_url).
             allow_duplicate: If True, allows creating a target even if another target
                            with the same URL already exists. Default: False.
+            skip_reachability_check: If True, bypass the API reachability check when
+                           creating the target. Default: False.
         """
         payload = self._build_create_target_payload(
             name,
@@ -443,7 +453,7 @@ class ProbelyClient:
             "check_fullpath": False,
             "duplicate_check": not allow_duplicate,
             "skip_fullpath_warning": True,
-            "skip_reachability_check": True,
+            "skip_reachability_check": skip_reachability_check,
             "skip_redirect_check": True,
         }
 
