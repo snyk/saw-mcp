@@ -75,6 +75,8 @@ Works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
 - Removed user elicitation confirmation step from the create-target tool.
 - All internal references renamed from `saw-mcp-server` to `saw-mcp` (#20).
 - CircleCI restructured into a single CICD workflow with `snyk/prodsec-orb` (#31, #32).
+- CI action upgrades: `actions/checkout` to v6 (#17, #29), `actions/setup-python` to v6 (#18, #30), `actions/upload-artifact` to v7 (#19).
+- Repository brought into compliance with Snyk open-source repo standards (#25).
 
 ## [0.9.2] - 2025-06-01
 
