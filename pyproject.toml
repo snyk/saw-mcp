@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snyk-apiweb-mcp"
-version = "0.9.4"
+version = "1.0.0"
 description = "MCP server for Snyk API & Web (Probely) — create targets, run scans, manage findings"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = "Apache-2.0"
 authors = [{ name = "Snyk" }]
 keywords = ["mcp", "snyk", "probely", "security", "dast"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
