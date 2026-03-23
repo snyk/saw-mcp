@@ -621,15 +621,6 @@ def build_server() -> FastMCP:
             )
             site_fields["api_scan_settings"] = api_scan_settings
 
-        if site_fields:
-            fields["site"] = site_fields
-        if labels is not None:
-            fields["labels"] = client.resolve_labels(labels)
-        if scanning_agent_id is not None:
-            fields["scanning_agent"] = (
-                {"id": scanning_agent_id} if scanning_agent_id else None
-            )
-
         # Handle HTTP Basic Auth
         if basic_auth_username is not None or basic_auth_password is not None:
             if basic_auth_username is None or basic_auth_password is None:
@@ -638,11 +629,20 @@ def build_server() -> FastMCP:
                         "message": "Both basic_auth_username and basic_auth_password must be provided together"
                     }
                 }
-            fields["has_basic_auth"] = True
-            fields["basic_auth"] = {
+            site_fields["has_basic_auth"] = True
+            site_fields["basic_auth"] = {
                 "username": basic_auth_username,
                 "password": basic_auth_password,
             }
+
+        if site_fields:
+            fields["site"] = site_fields
+        if labels is not None:
+            fields["labels"] = client.resolve_labels(labels)
+        if scanning_agent_id is not None:
+            fields["scanning_agent"] = (
+                {"id": scanning_agent_id} if scanning_agent_id else None
+            )
 
         return client.update_target(target_id=targetId, **fields)
 
