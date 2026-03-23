@@ -90,6 +90,7 @@ When creating a target, the API may return warnings. Handle them as follows:
 
 - **"Target already exists"** — The Probely API warns when a target with the same URL already exists. **Do NOT treat this as an error.** Inform the user that a target with this URL already exists and ask whether they want to proceed with creating a duplicate or use the existing target instead. If they choose to create a duplicate, use the `allow_duplicate=True` parameter. If they choose the existing one, use `probely_list_targets(search="<url>")` to find it.
 - **"Target didn't match server URL from API schema"** — This warning appears when the `target_url` passed during creation doesn't match any `servers[].url` entry in the OpenAPI schema. **Do NOT treat this as an error.** Inform the user about the mismatch and ask whether the target URL is correct. Common causes: the schema lists `http://localhost:3000` but the target URL is the production domain, or the schema has a different base path. The target is still created — the scanner will use the provided target URL.
+- **Reachability errors** — If target creation fails because the target is unreachable or the domain cannot be resolved, ask the user whether you should retry with `skip_reachability_check=True`. Only retry after the user explicitly agrees.
 
 #### Creating Duplicate Targets
 

@@ -95,6 +95,10 @@ probely_create_web_target(
 )
 ```
 
+#### Reachability Failures
+
+If target creation fails because the target is unreachable or the domain cannot be resolved, do not stop at the first error. Ask the user whether you should retry with `skip_reachability_check=True`. Only retry after the user explicitly agrees.
+
 ### Step 2: Using Login Sequence (Playwright Available)
 
 1. **Navigate to target URL** using Playwright
