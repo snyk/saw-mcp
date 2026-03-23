@@ -31,12 +31,28 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 ### 2. Install
 
+Choose one of the following installation methods:
+
+**Option A: Install from release tarball**
+
+```bash
+tar -xzvf SnykAPIWeb-<version>.tgz
+cd SnykAPIWeb
+python -m venv venv
+source venv/bin/activate # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Download from [Releases](https://github.com/snyk/saw-mcp/releases) and replace `<version>` with the actual version number (e.g., `0.9.4`).
+
+**Option B: Clone from source**
+
 ```bash
 git clone https://github.com/snyk/saw-mcp.git
 cd saw-mcp
 python -m venv venv
-source venv/bin/activate
-pip install -e .
+source venv/bin/activate # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### 3. Store Your API Key
@@ -94,27 +110,6 @@ Ask your AI assistant to:
 
 See **[prompts.md](prompts.md)** for a full catalog of example prompts — from simple one-liners to complex multi-target workflows.
 
-<details>
-<summary><strong>Installation from Tarball</strong></summary>
-
-```bash
-tar -xzvf SnykAPIWeb-*.tgz
-cd SnykAPIWeb
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .
-```
-
-Then follow steps 3–4 above to store your API key and configure your IDE.
-
-</details>
-
-## Run the Server (standalone)
-
-```bash
-./venv/bin/python -m snyk_apiweb.server
-```
-
 ## IDE Integration
 
 Detailed per-host guides live in [`docs/installation-guides/`](docs/installation-guides/):
@@ -132,6 +127,24 @@ bash scripts/package.sh
 ```
 
 Creates `dist/SnykAPIWeb-<version>.tgz` (version from `snyk_apiweb/__init__.py`).
+
+## Development & Testing
+
+### Run the Server (standalone)
+
+Running the server directly starts it and waits for an MCP client connection. This is mainly useful for **development and debugging**:
+
+```bash
+./venv/bin/python -m snyk_apiweb.server
+```
+
+### Development Mode (hot reload)
+
+For active development with automatic reload on file changes:
+
+```bash
+./scripts/dev.sh
+```
 
 ## License
 
