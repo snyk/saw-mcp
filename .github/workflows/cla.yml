@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: CLA Assistant
         continue-on-error: true
-        uses: contributor-assistant/github-action@v2.4.0
+        uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
