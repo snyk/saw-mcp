@@ -28,6 +28,12 @@ dependencies = [
     "tenacity>=8.5.0",
 ]
 
+[project.scripts]
+saw-mcp = "snyk_apiweb.server:main"
+
+[project.scripts]
+saw-mcp = "snyk_apiweb.server:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "ruff>=0.8.0"]
 
