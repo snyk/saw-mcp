@@ -31,9 +31,46 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 ### 2. Install
 
-Choose one of the following installation methods:
+#### Cursor Marketplace (recommended)
 
-**Option A: Install from release tarball**
+Install directly from the [Cursor Marketplace](https://cursor.com/marketplace):
+
+1. Open Cursor and go to **Settings → Plugins**
+2. Search for **Snyk API & Web**
+3. Click **Install**
+4. Set your API key as an environment variable:
+   ```bash
+   export MCP_SAW_API_KEY="your-api-key"
+   ```
+
+The plugin installs the MCP server, rules, and skills automatically.
+
+#### One-command install (any MCP client)
+
+```bash
+uvx --from git+https://github.com/snyk/saw-mcp.git saw-mcp
+```
+
+Or add to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "SAW": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/snyk/saw-mcp.git", "saw-mcp"],
+      "env": {
+        "MCP_SAW_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+<details>
+<summary>Alternative installation methods</summary>
+
+**Install from release tarball**
 
 ```bash
 tar -xzvf SnykAPIWeb-<version>.tgz
@@ -43,9 +80,9 @@ source venv/bin/activate # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Download from [Releases](https://github.com/snyk/saw-mcp/releases) and replace `<version>` with the actual version number (e.g., `0.9.4`).
+Download from [Releases](https://github.com/snyk/saw-mcp/releases) and replace `<version>` with the actual version number (e.g., `1.0.0`).
 
-**Option B: Clone from source**
+**Clone from source**
 
 ```bash
 git clone https://github.com/snyk/saw-mcp.git
@@ -55,7 +92,19 @@ source venv/bin/activate # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+</details>
+
 ### 3. Store Your API Key
+
+The server reads your API key from (in order of precedence): environment variable `MCP_SAW_API_KEY` → `.env` file → `config/config.yaml`.
+
+**Option A: Environment variable** (recommended for Marketplace / `uvx` installs)
+
+```bash
+export MCP_SAW_API_KEY="your-api-key"
+```
+
+**Option B: `.env` file** (recommended for source installs)
 
 Run the setup script (prompts securely, no key in shell history):
 
@@ -65,38 +114,33 @@ Run the setup script (prompts securely, no key in shell history):
 
 Or pipe from a secret manager: `op read 'op://vault/item/key' | ./scripts/setup-env.sh`
 
-This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup — no env var needed in your IDE config.
-
-> **Config precedence:** environment variable → `.env` file → `config/config.yaml`
+This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup.
 
 ### 4. Configure Your IDE
 
-Add to your MCP client configuration (replace `/<basedir>/saw-mcp` with the absolute path to this repo):
+If you installed from the Cursor Marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
 
 ```json
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp/venv/bin/python",
-      "args": ["-m", "snyk_apiweb.server"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/snyk/saw-mcp.git", "saw-mcp"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp"
+        "MCP_SAW_API_KEY": "your-api-key"
       }
     }
   }
 }
 ```
 
-The server picks up your API key from `.env` (step 3) automatically. No key in the config block needed.
-
 For host-specific setup see the [Installation Guides](docs/installation-guides/).
 
 <details>
-<summary>Alternative configuration methods</summary>
+<summary>Additional configuration options</summary>
 
-- **Pass the key directly:** add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
-- **Override the base URL** (e.g. staging): add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
-- **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"` instead.
+- **Override the base URL:** add `"MCP_SAW_BASE_URL": "https://your-instance-url"` to the `env` block.
+- **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/path/to/config.yaml"` instead.
 - **Set log level:** add `"MCP_SAW_LOG_LEVEL": "DEBUG"` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO).
 
 </details>

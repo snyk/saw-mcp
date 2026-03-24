@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "SAW": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/snyk/saw-mcp.git", "saw-mcp"],
+      "env": {
+        "MCP_SAW_API_KEY": "${env:MCP_SAW_API_KEY}"
+      }
+    }
+  }
+}
