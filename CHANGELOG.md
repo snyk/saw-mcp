@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-03-24
+
+### Added
+
+- **Cursor Marketplace plugin**: `.cursor-plugin/plugin.json` manifest and `.mcp.json` for one-click installation from the Cursor Marketplace.
+- **`uvx` one-command install**: run the server directly from GitHub without cloning — `uvx --from git+https://github.com/snyk/saw-mcp.git saw-mcp`.
+- **`saw-mcp` console script entry point**: `pyproject.toml` now declares a `[project.scripts]` entry, enabling `uvx` and `pipx` execution.
+
+### Changed
+
+- All installation guides (Cursor, Claude Desktop, Devin, VS Code) updated with `uvx` as the primary install option alongside the existing local clone method.
+- Cursor install guide restructured with Marketplace as the recommended path and manual options (uvx, local clone) as alternatives.
+- Removed non-public environment URLs from documentation.
+
 ## [1.0.0] - 2026-03-20
 
 First stable release of the Snyk API & Web MCP Server. This version marks the tool as

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snyk-apiweb-mcp"
-version = "1.0.0"
+version = "1.1.0"
 description = "MCP server for Snyk API & Web (Probely) — create targets, run scans, manage findings"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,9 @@ dependencies = [
     "typer>=0.12.5",
     "tenacity>=8.5.0",
 ]
+
+[project.scripts]
+saw-mcp = "snyk_apiweb.server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "ruff>=0.8.0"]
