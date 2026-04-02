@@ -161,6 +161,7 @@ Detailed per-host guides live in [`docs/installation-guides/`](docs/installation
 | Host | Guide |
 |------|-------|
 | **Cursor** | [install-cursor.md](docs/installation-guides/install-cursor.md) |
+| **Windsurf** | [install-windsurf.md](docs/installation-guides/install-windsurf.md) |
 | **Claude Desktop** | [install-claude.md](docs/installation-guides/install-claude.md) |
 | **Devin / Other IDEs** | [install-devin.md](docs/installation-guides/install-devin.md) |
 
