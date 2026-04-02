@@ -47,13 +47,9 @@ When a new project is loaded or workspace is opened, check if it's an **applicat
 
 **Skip this for non-app projects** (libraries, CLI tools, documentation, etc.).
 
-## Tools Requiring Confirmation
+## Destructive or Sensitive Tools
 
-**These tools use FastMCP Elicitation to enforce user confirmation before executing.**
-
-The following tools automatically pause and show a confirmation prompt in the user's UI. The user must explicitly choose "yes" or "no" — the LLM cannot bypass this.
-
-All tools that create, update, or delete resources require confirmation:
+The following tools create, update, or delete resources. There is **no server-side confirmation mechanism** — the LLM must exercise caution and follow the safety rules in this document before calling them.
 
 **Create:**
 - `probely_create_web_target` / `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`
