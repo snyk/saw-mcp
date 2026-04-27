@@ -31,6 +31,11 @@ dependencies = [
 [project.scripts]
 saw-mcp = "snyk_apiweb.server:main"
 
+[project.urls]
+Homepage = "https://github.com/snyk/saw-mcp"
+Repository = "https://github.com/snyk/saw-mcp"
+"Bug Tracker" = "https://github.com/snyk/saw-mcp/issues"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "ruff>=0.8.0"]
 
