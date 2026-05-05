@@ -1,20 +1,8 @@
 # Cursor
 
-## Cursor Marketplace (recommended)
+## Configuration
 
-1. Open Cursor and go to **Settings → Plugins**
-2. Search for **Snyk API & Web**
-3. Click **Install**
-4. Set your API key as an environment variable before launching Cursor:
-   ```bash
-   export MCP_SAW_API_KEY="your-api-key"
-   ```
-
-The plugin automatically registers the MCP server, rules, and skills. No manual configuration needed.
-
-## Manual Configuration
-
-If you prefer manual setup, open **Settings → Tools & MCP → New MCP Server** and paste one of the blocks below.
+Open **Settings → Tools & MCP → New MCP Server** and paste one of the blocks below.
 
 ### Option A: `uvx` (recommended)
 
@@ -95,9 +83,7 @@ Add these to the `env` block in any of the options above:
 
 ## Skills and Rules
 
-When installed via the Cursor Marketplace, rules and skills are loaded automatically by the plugin.
-
-For manual installs, link them so Cursor can find them:
+Link them so Cursor can find them:
 
 ```bash
 # Project rules (per project)

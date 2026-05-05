@@ -31,20 +31,6 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 ### 2. Install
 
-#### Cursor Marketplace (recommended)
-
-Install directly from the [Cursor Marketplace](https://cursor.com/marketplace):
-
-1. Open Cursor and go to **Settings → Plugins**
-2. Search for **Snyk API & Web**
-3. Click **Install**
-4. Set your API key as an environment variable:
-   ```bash
-   export MCP_SAW_API_KEY="your-api-key"
-   ```
-
-The plugin installs the MCP server, rules, and skills automatically.
-
 #### One-command install (any MCP client)
 
 ```bash
@@ -98,7 +84,7 @@ pip install -r requirements.txt
 
 The server reads your API key from (in order of precedence): environment variable `MCP_SAW_API_KEY` → `.env` file → `config/config.yaml`.
 
-**Option A: Environment variable** (recommended for Marketplace / `uvx` installs)
+**Option A: Environment variable** (recommended for `uvx` installs)
 
 ```bash
 export MCP_SAW_API_KEY="your-api-key"
@@ -118,7 +104,7 @@ This writes a `.env` file in the project root (gitignored). The server loads it 
 
 ### 4. Configure Your IDE
 
-If you installed from the Cursor Marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
+Add to your MCP client configuration:
 
 ```json
 {
