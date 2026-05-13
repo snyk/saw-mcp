@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.3] - 2026-05-13
+
+### Added
+
+- **Windsurf Marketplace install**: the MCP server is now listed on the Windsurf Marketplace and can be installed with a single click from the Cascade panel. Updated `install-windsurf.md` to document this as the recommended install path, and updated `README.md` quick-start accordingly.
+
+### Fixed
+
+- `snyk_apiweb/__init__.py` version was not updated in the 1.1.1 and 1.1.2 releases; corrected to `1.1.3`.
+
 ## [1.1.0] - 2026-03-24
 
 ### Added
