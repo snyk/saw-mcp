@@ -28,6 +28,8 @@ The AI will:
 
 The target is ready for scanning.
 
+> **Prerequisite for web targets:** The SAW MCP server does not include a browser. Login sequences are recorded via **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)**, which must be installed alongside SAW. Without it, the AI cannot navigate the app and may produce an incorrect sequence format. See the [Cursor installation guide](docs/installation-guides/install-cursor.md#web-target-configuration-playwright-mcp) for setup. If Playwright is unavailable, the AI falls back to form login for simple login pages.
+
 > **More examples:** See **[prompts.md](prompts.md)** for a full catalog of prompts covering targets, scans, findings, credentials, reports, and multi-step workflows.
 
 ## Multiple targets
@@ -104,9 +106,9 @@ This covers every write operation: creating targets/credentials/sequences, updat
 
 ## Supported IDEs
 
-- **Cursor** — Full support with example config
+- **Cursor** — Full support; install from the [Cursor Marketplace](https://cursor.com/marketplace) or follow [install-cursor.md](docs/installation-guides/install-cursor.md)
 - **Devin** — Full support
-- **Windsurf** — Compatible
+- **Windsurf** — Compatible; install from the [Windsurf Marketplace](https://windsurf.com/marketplace)
 - **Any MCP-compatible IDE** — Standard protocol
 
 ## Links

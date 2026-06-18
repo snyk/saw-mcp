@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Cursor Marketplace install**: restored documentation for one-click installation from the [Cursor Marketplace](https://cursor.com/marketplace) now that the plugin is published.
+- **Playwright MCP prerequisite**: documented that web target onboarding with login sequences requires [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) installed alongside SAW. Updated `README.md`, `USER_GUIDE.md`, and `install-cursor.md`.
+
 ## [1.1.3] - 2026-05-13
 
 ### Added

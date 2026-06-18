@@ -16,6 +16,7 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 
 - Python 3.10+
 - Snyk API & Web API key
+- **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** (Node.js 18+) — required for web target onboarding with login sequences; see [Web target prerequisites](#web-target-prerequisites)
 
 ## Quick Start
 
@@ -30,6 +31,20 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 > Do not use a highly privileged or global API key, as this can affect your entire account and its resources.
 
 ### 2. Install
+
+#### Cursor Marketplace (recommended for Cursor users)
+
+Install directly from the [Cursor Marketplace](https://cursor.com/marketplace):
+
+1. Open Cursor and go to **Settings → Plugins**
+2. Search for **Snyk API & Web**
+3. Click **Install**
+4. Set your API key as an environment variable before launching Cursor:
+   ```bash
+   export MCP_SAW_API_KEY="your-api-key"
+   ```
+
+The plugin installs the MCP server, rules, and skills automatically.
 
 #### Windsurf Marketplace (Windsurf users)
 
@@ -114,7 +129,7 @@ This writes a `.env` file in the project root (gitignored). The server loads it 
 
 ### 4. Configure Your IDE
 
-If you installed from the Windsurf Marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
+If you installed from the Cursor or Windsurf Marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
 
 ```json
 {
@@ -149,6 +164,18 @@ Ask your AI assistant to:
 - "Configure a Snyk API & Web web target for this authenticated application."
 
 See **[prompts.md](prompts.md)** for a full catalog of example prompts — from simple one-liners to complex multi-target workflows.
+
+### Web target prerequisites
+
+The SAW MCP server talks to the Snyk API & Web platform — it does not include a browser. To onboard **web targets with login sequences**, the AI also needs **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** installed alongside SAW:
+
+1. Install [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) in your IDE (Node.js 18+ required).
+2. Use a natural-language prompt with the target URL and credentials — for example: *"Add target example.com with credentials user@example.com / password123"*.
+3. The AI uses Playwright to navigate the app, inspect the login form, and record selectors, then uses SAW MCP tools to create the target and upload the sequence in the [Probely sequence-recorder format](https://github.com/Probely/sequence-recorder).
+
+Without Playwright MCP, the AI cannot record a login flow and may produce an incorrect sequence JSON. In that case it falls back to **form login** (`probely_configure_form_login`), which works for simple login pages but not multi-step flows or 2FA.
+
+See the [Cursor installation guide](docs/installation-guides/install-cursor.md#web-target-configuration-playwright-mcp) for setup details.
 
 ## IDE Integration
 
