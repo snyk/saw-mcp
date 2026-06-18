@@ -2,12 +2,10 @@
 
 ## Cursor Marketplace (recommended)
 
-Install directly from the [Cursor Marketplace](https://cursor.com/marketplace):
+Install directly from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web):
 
-1. Open Cursor and go to **Settings → Plugins**
-2. Search for **Snyk API & Web**
-3. Click **Install**
-4. Set your API key as an environment variable before launching Cursor:
+1. Open the [Snyk API & Web plugin page](https://cursor.com/marketplace/snyk/snyk-api-web) and click **Install**, or go to **Settings → Plugins** and search for **Snyk API & Web**
+2. Set your API key as an environment variable before launching Cursor:
    ```bash
    export MCP_SAW_API_KEY="your-api-key"
    ```

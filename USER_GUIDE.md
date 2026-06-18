@@ -106,7 +106,7 @@ This covers every write operation: creating targets/credentials/sequences, updat
 
 ## Supported IDEs
 
-- **Cursor** — Full support; install from the [Cursor Marketplace](https://cursor.com/marketplace) or follow [install-cursor.md](docs/installation-guides/install-cursor.md)
+- **Cursor** — Full support; install from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web) or follow [install-cursor.md](docs/installation-guides/install-cursor.md)
 - **Devin** — Full support
 - **Windsurf** — Compatible; install from the [Windsurf Marketplace](https://windsurf.com/marketplace)
 - **Any MCP-compatible IDE** — Standard protocol
