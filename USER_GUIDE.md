@@ -2,7 +2,7 @@
 
 ## What it is
 
-The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API & Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
+The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Claude Code, etc.) interact with the Snyk API & Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
 
 > **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
@@ -107,8 +107,7 @@ This covers every write operation: creating targets/credentials/sequences, updat
 ## Supported IDEs
 
 - **Cursor** — Full support; install from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web) or follow [install-cursor.md](docs/installation-guides/install-cursor.md)
-- **Devin** — Full support
-- **Windsurf** — Compatible; install from the [Windsurf Marketplace](https://windsurf.com/marketplace)
+- **Devin** — Full support; install from Devin's MCP Marketplace by going to **Settings → Configuration → MCP servers → Open MCP Marketplace** and searching for **Snyk API & Web**
 - **Any MCP-compatible IDE** — Standard protocol
 
 ## Links

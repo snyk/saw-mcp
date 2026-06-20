@@ -4,7 +4,7 @@
 
 Connect your AI coding assistant to Snyk API & Web so it can onboard scan targets, configure authentication, run DAST scans, and triage findings — all through natural language.
 
-Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
+Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, and any MCP-compatible client.
 
 > **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
@@ -44,15 +44,16 @@ Install directly from the [Cursor Marketplace](https://cursor.com/marketplace/sn
 
 The plugin installs the MCP server, rules, and skills automatically.
 
-#### Windsurf Marketplace (Windsurf users)
+#### Devin MCP Marketplace (Devin users)
 
-Install directly from the [Windsurf Marketplace](https://windsurf.com/marketplace):
+Install directly from Devin's MCP Marketplace:
 
-1. Open Windsurf and click the **MCPs icon** in the Cascade panel, or go to **Windsurf Settings → Cascade → MCP Servers**.
-2. Search for **Snyk API & Web** and click **Install**.
-3. When prompted, enter your API key.
+1. Open Devin and go to **Settings → Configuration**.
+2. Under **MCP servers**, click **Open MCP Marketplace**.
+3. Search for **Snyk API & Web** and click **Install**.
+4. When prompted, enter your API key.
 
-No manual configuration needed — Windsurf handles the setup automatically.
+No manual configuration needed — Devin handles the setup automatically.
 
 #### One-command install (any MCP client)
 
@@ -127,7 +128,7 @@ This writes a `.env` file in the project root (gitignored). The server loads it 
 
 ### 4. Configure Your IDE
 
-If you installed from the Cursor or Windsurf Marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
+If you installed from the Cursor or Devin marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
 
 ```json
 {
@@ -182,7 +183,6 @@ Detailed per-host guides live in [`docs/installation-guides/`](docs/installation
 | Host | Guide |
 |------|-------|
 | **Cursor** | [install-cursor.md](docs/installation-guides/install-cursor.md) |
-| **Windsurf** | [install-windsurf.md](docs/installation-guides/install-windsurf.md) |
 | **Claude Desktop** | [install-claude.md](docs/installation-guides/install-claude.md) |
 | **Devin / Other IDEs** | [install-devin.md](docs/installation-guides/install-devin.md) |
 
