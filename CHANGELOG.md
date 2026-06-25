@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Playwright MCP prerequisite**: documented that web target onboarding with login sequences requires [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) installed alongside SAW. Updated `README.md`, `USER_GUIDE.md`, and `install-cursor.md`.
 - **Devin MCP Marketplace install**: updated documentation for the current Devin product and marketplace flow, replacing the old product references.
 
+### Fixed
+
+- **Version coherence**: `.cursor-plugin/plugin.json` version synced to `1.1.3` to match `pyproject.toml`, `server.json`, and `snyk_apiweb/__init__.py`.
+- **Installation guide index**: restored `install-windsurf.md` and aligned the README and installation-guides tables (Windsurf, VS Code).
+- **`.env.example`**: documents optional `MCP_SAW_CONFIG_PATH` and `MCP_SAW_LOG_LEVEL` env vars.
+
 ## [1.1.3] - 2026-05-13
 
 ### Added
