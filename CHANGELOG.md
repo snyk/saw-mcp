@@ -15,7 +15,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 
 - **Version coherence**: `.cursor-plugin/plugin.json` version synced to `1.1.3` to match `pyproject.toml`, `server.json`, and `snyk_apiweb/__init__.py`.
-- **Installation guide index**: restored `install-windsurf.md` and aligned the README and installation-guides tables (Windsurf, VS Code).
 - **`.env.example`**: documents optional `MCP_SAW_CONFIG_PATH` and `MCP_SAW_LOG_LEVEL` env vars.
 
 ## [1.1.3] - 2026-05-13
