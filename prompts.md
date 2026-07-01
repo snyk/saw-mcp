@@ -6,6 +6,8 @@ A collection of ready-to-use prompts, from quick one-liners to detailed multi-ta
 
 ## Target Creation
 
+> **Web targets with authentication** require [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) installed alongside SAW. Prompt with the target URL and credentials — the AI records the login automatically. Do not ask for a specific sequence JSON format.
+
 ### Simple
 
 ```
@@ -36,6 +38,12 @@ Create a target named "Customer Portal" for https://portal.acme.com, label it "P
 
 ```
 Add an internal target https://10.0.1.50:8443 named "Internal Admin Panel" using scanning agent "office-scanner"
+```
+
+### Reachability retry
+
+```
+Create a target for https://staging.myapp.io and label it "Staging". If target creation fails because the domain is unreachable or cannot be resolved, ask me whether to retry with skip_reachability_check=true.
 ```
 
 ---

@@ -4,7 +4,7 @@
 
 Connect your AI coding assistant to Snyk API & Web so it can onboard scan targets, configure authentication, run DAST scans, and triage findings — all through natural language.
 
-Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
+Built on FastMCP 2.0, works with Cursor, Claude Code, Devin, and any MCP-compatible client.
 
 > **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
@@ -32,15 +32,89 @@ Go to [https://plus.probely.app/api-keys](https://plus.probely.app/api-keys) and
 
 ### 2. Install
 
+#### Cursor Marketplace (recommended for Cursor users)
+
+Install directly from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web):
+
+1. Open the [Snyk API & Web plugin page](https://cursor.com/marketplace/snyk/snyk-api-web) and click **Install**, or go to **Settings → Plugins** and search for **Snyk API & Web**
+2. Set your API key as an environment variable before launching Cursor:
+   ```bash
+   export MCP_SAW_API_KEY="your-api-key"
+   ```
+
+The plugin installs the MCP server, rules, and skills automatically.
+
+#### Devin MCP Marketplace (Devin users)
+
+Install directly from Devin's MCP Marketplace:
+
+1. Open Devin and go to **Settings → Configuration**.
+2. Under **MCP servers**, click **Open MCP Marketplace**.
+3. Search for **Snyk API & Web** and click **Install**.
+4. When prompted, enter your API key.
+
+No manual configuration needed — Devin handles the setup automatically.
+
+#### One-command install (any MCP client)
+
+```bash
+uvx --from git+https://github.com/snyk/saw-mcp.git saw-mcp
+```
+
+Or add to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "SAW": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/snyk/saw-mcp.git", "saw-mcp"],
+      "env": {
+        "MCP_SAW_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+<details>
+<summary>Alternative installation methods</summary>
+
+**Install from release tarball**
+
+```bash
+tar -xzvf SnykAPIWeb-<version>.tgz
+cd SnykAPIWeb
+python -m venv venv
+source venv/bin/activate # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Download from [Releases](https://github.com/snyk/saw-mcp/releases) and replace `<version>` with the actual version number (e.g., `1.0.0`).
+
+**Clone from source**
+
 ```bash
 git clone https://github.com/snyk/saw-mcp.git
 cd saw-mcp
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+</details>
+
 ### 3. Store Your API Key
+
+The server reads your API key from (in order of precedence): environment variable `MCP_SAW_API_KEY` → `.env` file → `config/config.yaml`.
+
+**Option A: Environment variable** (recommended for Marketplace / `uvx` installs)
+
+```bash
+export MCP_SAW_API_KEY="your-api-key"
+```
+
+**Option B: `.env` file** (recommended for source installs)
 
 Run the setup script (prompts securely, no key in shell history):
 
@@ -50,9 +124,7 @@ Run the setup script (prompts securely, no key in shell history):
 
 Or pipe from a secret manager: `op read 'op://vault/item/key' | ./scripts/setup-env.sh`
 
-This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup — no env var needed in your IDE config.
-
-> **Config precedence:** environment variable → `.env` file → `config/config.yaml`
+This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup.
 
 ### 4. Install Browser Automation (playwright-cli)
 
@@ -66,32 +138,29 @@ This installs `@playwright/cli` globally and downloads the Chromium browser bina
 
 ### 5. Configure Your IDE
 
-Add to your MCP client configuration (replace `/<basedir>/saw-mcp` with the absolute path to this repo):
+If you installed from the Cursor or Devin marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
 
 ```json
 {
   "mcpServers": {
     "SAW": {
-      "command": "/<basedir>/saw-mcp/venv/bin/python",
-      "args": ["-m", "snyk_apiweb.server"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/snyk/saw-mcp.git", "saw-mcp"],
       "env": {
-        "PYTHONPATH": "/<basedir>/saw-mcp"
+        "MCP_SAW_API_KEY": "your-api-key"
       }
     }
   }
 }
 ```
 
-The server picks up your API key from `.env` (step 3) automatically. No key in the config block needed.
-
 For host-specific setup see the [Installation Guides](docs/installation-guides/).
 
 <details>
-<summary>Alternative configuration methods</summary>
+<summary>Additional configuration options</summary>
 
-- **Pass the key directly:** add `"MCP_SAW_API_KEY": "your-api-key"` to the `env` block.
-- **Override the base URL** (e.g. staging): add `"MCP_SAW_BASE_URL": "https://api.staging.probely.dev"`.
-- **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/<basedir>/saw-mcp/config/config.yaml"` instead.
+- **Override the base URL:** add `"MCP_SAW_BASE_URL": "https://your-instance-url"` to the `env` block.
+- **Use a config file:** set `"MCP_SAW_CONFIG_PATH": "/path/to/config.yaml"` instead.
 - **Set log level:** add `"MCP_SAW_LOG_LEVEL": "DEBUG"` (options: DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO).
 
 </details>
@@ -105,8 +174,7 @@ Ask your AI assistant to:
 
 See **[prompts.md](prompts.md)** for a full catalog of example prompts — from simple one-liners to complex multi-target workflows.
 
-<details>
-<summary><strong>Installation from Tarball</strong></summary>
+### Web target prerequisites
 
 ```bash
 tar -xzvf SnykAPIWeb-*.tgz
@@ -118,13 +186,9 @@ pip install -r requirements.txt
 
 Then follow steps 3–5 above to store your API key, install playwright-cli, and configure your IDE.
 
-</details>
+Without browser automation (`playwright-cli`), the AI cannot record a login flow and may produce an incorrect sequence JSON. In that case it falls back to **form login** (`probely_configure_form_login`), which works for simple login pages but not multi-step flows or 2FA.
 
-## Run the Server (standalone)
-
-```bash
-./venv/bin/python -m snyk_apiweb.server
-```
+See the [Cursor installation guide](docs/installation-guides/install-cursor.md#prerequisites) for setup details.
 
 ## IDE Integration
 
@@ -144,6 +208,26 @@ bash scripts/package.sh
 
 Creates `dist/SnykAPIWeb-<version>.tgz` (version from `snyk_apiweb/__init__.py`).
 
+## Development & Testing
+
+### Run the Server (standalone)
+
+Running the server directly starts it and waits for an MCP client connection. This is mainly useful for **development and debugging**:
+
+```bash
+./venv/bin/python -m snyk_apiweb.server
+```
+
+### Development Mode (hot reload)
+
+For active development with automatic reload on file changes:
+
+```bash
+./scripts/dev.sh
+```
+
 ## License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
+
+<!-- mcp-name: io.github.snyk/saw-mcp -->

@@ -1,6 +1,35 @@
-# Devin and Other IDEs
+# Installing Snyk API & Web MCP in Devin
 
-Use the same command and args as the other installation guides. Set the appropriate environment variables for your IDE.
+## Option 1: Devin MCP Marketplace (Recommended)
+
+The Snyk API & Web MCP Server is available from Devin's MCP Marketplace and can be installed without editing MCP configuration files manually.
+
+1. Open Devin and go to **Settings → Configuration**.
+2. Under **MCP servers**, click **Open MCP Marketplace**.
+3. Search for **Snyk API & Web** and click **Install**.
+4. When prompted, enter your API key (create one at [plus.probely.app/api-keys](https://plus.probely.app/api-keys)).
+
+Devin handles the MCP server setup automatically — no manual configuration needed.
+
+## Option 2: `uvx`
+
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) installed. No local clone needed.
+
+```json
+{
+  "mcpServers": {
+    "SAW": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/snyk/saw-mcp.git", "saw-mcp"],
+      "env": {
+        "MCP_SAW_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+## Option 3: Local clone
 
 Replace `/<basedir>/saw-mcp` with the absolute path to this repo.
 
@@ -15,9 +44,6 @@ Web target configuration records login sequences using a real browser via `playw
 ```
 
 Requires Node.js 18+. This installs `@playwright/cli` globally and downloads the Chromium binary.
-
-## Configuration
-
 ```json
 {
   "mcpServers": {

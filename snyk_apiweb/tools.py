@@ -473,6 +473,7 @@ def build_server() -> FastMCP:
         labels: Optional[list[str]] = None,
         scanning_agent_id: Optional[str] = None,
         allow_duplicate: bool = False,
+        skip_reachability_check: bool = False,
     ) -> Dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
@@ -481,6 +482,9 @@ def build_server() -> FastMCP:
         Set allow_duplicate=True to create a target even if another target with the same URL
         already exists. This is useful when you want multiple targets for the same URL with
         different configurations (e.g., different auth methods, different test scenarios).
+
+        If target creation fails because the target is unreachable or the domain cannot be
+        resolved, ask the user whether to retry with skip_reachability_check=True.
 
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
@@ -495,6 +499,7 @@ def build_server() -> FastMCP:
             name_prefix=target_defaults.get("name_prefix", ""),
             scanning_agent_id=scanning_agent_id,
             allow_duplicate=allow_duplicate,
+            skip_reachability_check=skip_reachability_check,
         )
 
     @register_tool("probely_update_target")
@@ -621,15 +626,6 @@ def build_server() -> FastMCP:
             )
             site_fields["api_scan_settings"] = api_scan_settings
 
-        if site_fields:
-            fields["site"] = site_fields
-        if labels is not None:
-            fields["labels"] = client.resolve_labels(labels)
-        if scanning_agent_id is not None:
-            fields["scanning_agent"] = (
-                {"id": scanning_agent_id} if scanning_agent_id else None
-            )
-
         # Handle HTTP Basic Auth
         if basic_auth_username is not None or basic_auth_password is not None:
             if basic_auth_username is None or basic_auth_password is None:
@@ -638,11 +634,20 @@ def build_server() -> FastMCP:
                         "message": "Both basic_auth_username and basic_auth_password must be provided together"
                     }
                 }
-            fields["has_basic_auth"] = True
-            fields["basic_auth"] = {
+            site_fields["has_basic_auth"] = True
+            site_fields["basic_auth"] = {
                 "username": basic_auth_username,
                 "password": basic_auth_password,
             }
+
+        if site_fields:
+            fields["site"] = site_fields
+        if labels is not None:
+            fields["labels"] = client.resolve_labels(labels)
+        if scanning_agent_id is not None:
+            fields["scanning_agent"] = (
+                {"id": scanning_agent_id} if scanning_agent_id else None
+            )
 
         return client.update_target(target_id=targetId, **fields)
 
@@ -674,10 +679,12 @@ def build_server() -> FastMCP:
     ) -> Dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials.
 
+        IMPORTANT: After creating a login sequence, you MUST call probely_configure_sequence_login(targetId, enabled=True)
+        to enable sequence-based authentication on the target. Creating a sequence does NOT automatically enable it for authentication.
+
         Use credentials management by default: link a credential (created via probely_create_credential) for the password. If the user explicitly declines, inline values are allowed.
         - Password credential: [{"name": "[CUSTOM_PASSWORD]", "value": "credentials://<credential_id>", "value_is_sensitive": true, "enabled": true}]
         - When multiple targets share the same credential and it already exists and is_sensitive=True, prompt the user to deobfuscate it in order to allow reuse.
-
         For username: [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": true, "enabled": true}]
         """
         mappings = _parse_list_of_dicts(custom_field_mappings)
@@ -1073,12 +1080,16 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
         allow_duplicate: bool = False,
+        skip_reachability_check: bool = False,
     ) -> Dict[str, Any]:
         """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson.
 
         Set allow_duplicate=True to create a target even if another target with the same URL
         already exists. This is useful when you want multiple targets for the same URL with
         different configurations (e.g., different auth methods, different test scenarios).
+
+        If target creation fails because the target is unreachable or the domain cannot be
+        resolved, ask the user whether to retry with skip_reachability_check=True.
 
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
@@ -1103,6 +1114,7 @@ def build_server() -> FastMCP:
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
             allow_duplicate=allow_duplicate,
+            skip_reachability_check=skip_reachability_check,
         )
 
     # API Target from OpenAPI
@@ -1115,12 +1127,16 @@ def build_server() -> FastMCP:
         desc: Optional[str] = None,
         labels: Optional[list[str]] = None,
         allow_duplicate: bool = False,
+        skip_reachability_check: bool = False,
     ) -> Dict[str, Any]:
         """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url.
 
         Set allow_duplicate=True to create a target even if another target with the same URL
         already exists. This is useful when you want multiple targets for the same URL with
         different configurations (e.g., different auth methods, different test scenarios).
+
+        If target creation fails because the target is unreachable or the domain cannot be
+        resolved, ask the user whether to retry with skip_reachability_check=True.
 
         IMPORTANT: The response contains a top-level ``id`` (the target ID) and a nested
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
@@ -1144,6 +1160,7 @@ def build_server() -> FastMCP:
                 default_label=target_defaults.get("default_label"),
                 name_prefix=target_defaults.get("name_prefix", ""),
                 allow_duplicate=allow_duplicate,
+                skip_reachability_check=skip_reachability_check,
             )
         schema = _fetchjson_or_url(None, openapi_schemajson)
         if not schema:
@@ -1158,6 +1175,7 @@ def build_server() -> FastMCP:
             default_label=target_defaults.get("default_label"),
             name_prefix=target_defaults.get("name_prefix", ""),
             allow_duplicate=allow_duplicate,
+            skip_reachability_check=skip_reachability_check,
         )
 
     return app

@@ -1,0 +1,23 @@
+{
+  "name": "snyk-api-web",
+  "version": "1.1.0",
+  "description": "Snyk API & Web MCP Server — onboard scan targets, configure authentication, run DAST scans, and triage findings through natural language. Built on FastMCP 2.0.",
+  "author": {
+    "name": "Snyk"
+  },
+  "repository": "https://github.com/snyk/saw-mcp",
+  "homepage": "https://github.com/snyk/saw-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mcp",
+    "snyk",
+    "security",
+    "dast",
+    "api-security",
+    "web-security",
+    "vulnerability-scanning"
+  ],
+  "logo": "assets/Snyk_API_and_Web_Banner.webp",
+  "skills": "config/skills",
+  "rules": "config/saw_rules.mdc"
+}

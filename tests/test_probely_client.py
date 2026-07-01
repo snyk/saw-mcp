@@ -186,6 +186,25 @@ def test_create_target_sends_post(client, mock_response):
     assert sent_payload["site"]["url"] == "https://web.test"
     assert "collection" not in sent_payload
     assert "schema" not in sent_payload
+    assert req_call.kwargs["params"] is None
+
+
+def test_create_target_can_skip_reachability_check(client, mock_response):
+    resp = mock_response(
+        status_code=201,
+        json_data={"id": "t1"},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    client.create_web_target(
+        name="Web App",
+        url="https://web.test",
+        skip_reachability_check=True,
+    )
+
+    req_call = client._session.request.call_args
+    assert req_call.kwargs["params"] == {"skip_reachability_check": True}
 
 
 # --- create_api_target ---
@@ -208,9 +227,11 @@ def test_create_api_target_postman_uses_collection_key(client, mock_response):
     )
 
     sent = client._session.request.call_args.kwargs["json"]
+    params = client._session.request.call_args.kwargs["params"]
     assert sent["site"]["api_scan_settings"] == {"api_schema_type": "postman"}
     assert sent["collection"] == schema
     assert "schema" not in sent
+    assert params["skip_reachability_check"] is False
 
 
 def test_create_api_target_openapi_uses_schema_key(client, mock_response):
@@ -230,9 +251,11 @@ def test_create_api_target_openapi_uses_schema_key(client, mock_response):
     )
 
     sent = client._session.request.call_args.kwargs["json"]
+    params = client._session.request.call_args.kwargs["params"]
     assert sent["site"]["api_scan_settings"] == {"api_schema_type": "openapi"}
     assert sent["schema"] == schema
     assert "collection" not in sent
+    assert params["skip_reachability_check"] is False
 
 
 def test_create_api_target_openapi_with_url_uses_api_scan_settings(
@@ -254,12 +277,35 @@ def test_create_api_target_openapi_with_url_uses_api_scan_settings(
     )
 
     sent = client._session.request.call_args.kwargs["json"]
+    params = client._session.request.call_args.kwargs["params"]
     assert sent["site"]["api_scan_settings"] == {
         "api_schema_type": "openapi",
         "api_schema_url": "http://api:8060/",
     }
     assert "schema" not in sent
     assert "collection" not in sent
+    assert params["skip_reachability_check"] is False
+
+
+def test_create_api_target_can_skip_reachability_check(client, mock_response):
+    resp = mock_response(
+        status_code=201,
+        json_data={"id": "t4"},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+    schema = {"openapi": "3.0.0", "paths": {}}
+
+    client.create_api_target(
+        name="API",
+        target_url="https://api.test",
+        schema_type="openapi",
+        schema=schema,
+        skip_reachability_check=True,
+    )
+
+    params = client._session.request.call_args.kwargs["params"]
+    assert params["skip_reachability_check"] is True
 
 
 # --- _prettyjson_content ---
