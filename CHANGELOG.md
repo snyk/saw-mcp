@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Cursor Marketplace install**: restored documentation for one-click installation from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web) now that the plugin is published.
+- **Playwright MCP prerequisite**: documented that web target onboarding with login sequences requires [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) installed alongside SAW. Updated `README.md`, `USER_GUIDE.md`, and `install-cursor.md`.
+- **Devin MCP Marketplace install**: updated documentation for the current Devin product and marketplace flow, replacing the old product references.
+
+## [1.1.3] - 2026-05-13
+
+### Added
+
+- **Devin MCP Marketplace install**: the MCP server is listed in Devin's MCP Marketplace and can be installed from **Settings → Configuration → MCP servers → Open MCP Marketplace**. Updated `install-devin.md` to document this as the recommended install path, and updated `README.md` quick-start accordingly.
+
+### Fixed
+
+- `snyk_apiweb/__init__.py` version was not updated in the 1.1.1 and 1.1.2 releases; corrected to `1.1.3`.
+
 ## [1.1.0] - 2026-03-24
 
 ### Added
@@ -23,7 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 First stable release of the Snyk API & Web MCP Server. This version marks the tool as
 production-ready for connecting AI coding assistants to Snyk API & Web to onboard DAST
 scan targets, configure authentication, and triage findings — all through natural language.
-Works with Cursor, Claude Code, Devin, Windsurf, and any MCP-compatible client.
+Works with Cursor, Claude Code, Devin, and any MCP-compatible client.
 
 ### Added
 
