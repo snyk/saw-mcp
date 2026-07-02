@@ -189,7 +189,7 @@ def build_server() -> FastMCP:
 
             Requirements:
             - First, read the skill file at `/<basedir>/saw-mcp/config/skills/saw-web-target-configuration/SKILL.md` and follow it exactly.
-            - Use a login sequence when Playwright is available. Do not use form login unless Playwright is unavailable.
+            - Prefer login sequence via `playwright-cli` (Shell). If unavailable, use Playwright MCP browser tools. Use form login only when neither is available.
             - Derive the target name in this order if needed: user-provided name, then site `<title>`, then FQDN.
             - If labels are `default`, do not pass a `labels` parameter.
             - Create a new target; do not search for or reuse an existing one.
@@ -745,7 +745,9 @@ def build_server() -> FastMCP:
         password: str,
         check_pattern: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Configure form-based login authentication. Only use this as a fallback when Playwright is NOT available. When Playwright IS available, always record a login sequence instead (probely_create_sequence).
+        """Configure form-based login authentication. Only use as a fallback when neither
+        `playwright-cli` nor Playwright MCP browser tools are available. When browser
+        automation IS available, always record a login sequence instead (probely_create_sequence).
 
         To reference saved credentials, use URI format 'credentials://<credential_id>' (e.g., 'credentials://4DY4qGohso1r').
         Get credential URIs from probely_list_credentials or probely_create_credential."""
@@ -805,7 +807,8 @@ def build_server() -> FastMCP:
     def probely_generate_totp(
         secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30
     ) -> Dict[str, Any]:
-        """Generate a TOTP code from a secret/seed. Use this when recording login sequences that require 2FA.
+        """Generate a TOTP code from a secret/seed. Use when recording login sequences that
+        require 2FA (via `playwright-cli` or Playwright MCP).
         Returns the current TOTP code and its remaining validity in seconds."""
         return _generate_totp(
             secret, algorithm=algorithm, digits=digits, period=period
