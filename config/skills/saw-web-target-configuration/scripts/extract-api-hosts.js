@@ -7,7 +7,7 @@
     if (matches) matches.forEach(u => {
       try {
         const h = new URL(u).hostname;
-        if (h !== targetHost && h.endsWith(targetHost.replace(/^www\./, '').replace(/^[^.]+\./, '')))
+        if (h !== targetHost)
           found.add(h);
       } catch {}
     });
