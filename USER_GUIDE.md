@@ -2,7 +2,7 @@
 
 ## What it is
 
-The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Windsurf, Claude Code, etc.) interact with the Snyk API & Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
+The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Claude Code, etc.) interact with the Snyk API & Web security testing platform through natural language. You can manage targets, run scans, view findings, generate reports, and configure authentication — all via prompts.
 
 > **Naming note:** Snyk API & Web was formerly known as Probely. The API endpoints (`api.probely.com`), web console (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy domain and prefix. Environment variables and config sections use the new `SAW` / `saw` naming.
 
@@ -27,6 +27,8 @@ The AI will:
 4. Detect and add extra hosts (e.g. `api.taintedport.com` if the app calls it)
 
 The target is ready for scanning.
+
+> **Prerequisite for web targets:** The SAW MCP server does not include a browser. Login sequences are recorded via **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)**, which must be installed alongside SAW. Without it, the AI cannot navigate the app and may produce an incorrect sequence format. See the [Cursor installation guide](docs/installation-guides/install-cursor.md#web-target-configuration-playwright-mcp) for setup. If Playwright is unavailable, the AI falls back to form login for simple login pages.
 
 > **More examples:** See **[prompts.md](prompts.md)** for a full catalog of prompts covering targets, scans, findings, credentials, reports, and multi-step workflows.
 
@@ -104,9 +106,8 @@ This covers every write operation: creating targets/credentials/sequences, updat
 
 ## Supported IDEs
 
-- **Cursor** — Full support with example config
-- **Devin** — Full support
-- **Windsurf** — Compatible
+- **Cursor** — Full support; install from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web) or follow [install-cursor.md](docs/installation-guides/install-cursor.md)
+- **Devin** — Full support; install from Devin's MCP Marketplace by going to **Settings → Configuration → MCP servers → Open MCP Marketplace** and searching for **Snyk API & Web**
 - **Any MCP-compatible IDE** — Standard protocol
 
 ## Links
