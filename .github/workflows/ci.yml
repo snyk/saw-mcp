@@ -39,3 +39,15 @@ jobs:
         run: ruff check .
       - name: Check formatting
         run: ruff format --check .
+
+  playwright-cli-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install playwright-cli and Chromium
+        run: ./scripts/setup-playwright.sh
+      - name: Smoke test browser automation
+        run: ./scripts/smoke-test-playwright.sh

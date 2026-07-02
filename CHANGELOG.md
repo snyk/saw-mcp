@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
-- **Dual-path browser automation for web targets**: `playwright-cli` (preferred for coding agents with Shell) with Playwright MCP as fallback. New `./scripts/setup-playwright.sh` installs `@playwright/cli` and Chromium. Updated skill, rules, install guides, and docs.
+- **Dual-path browser automation for web targets**: `playwright-cli` (preferred for coding agents with Shell) with Playwright MCP as fallback. New `./scripts/setup-playwright.sh` installs `@playwright/cli` and Chromium. CI smoke test verifies install and basic browser session. Updated skill, rules, install guides, and docs.
 - **Cursor Marketplace install**: restored documentation for one-click installation from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web) now that the plugin is published.
 - **Devin MCP Marketplace install**: updated documentation for the current Devin product and marketplace flow, replacing the old product references.
 
