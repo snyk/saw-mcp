@@ -77,7 +77,7 @@ When you finish adding/configuring a target, always summarize it with a table, a
 
 | Browser path | Subagent concurrency |
 |---|---|
-| **`playwright-cli`** | Subagents **may run in parallel** — each MUST use a unique session: `playwright-cli -s=<domain>` |
+| **`playwright-cli`** | Subagents **may run in parallel** — each MUST use a **globally unique** session name: `playwright-cli -s=<session>`. Do NOT use the bare domain, since multiple targets can share one hostname (duplicate-URL flows, multiple accounts on one app) and would collide into a shared browser context. Use `<domain>-<targetIndex>` (e.g. `app.example.com-1`, `app.example.com-2`), appending the account/username when several targets share a domain. |
 | **Playwright MCP** | Subagents **must run one at a time** — Playwright MCP uses a single shared browser instance |
 
 Each subagent prompt should be short — just the target details and an instruction to read the skill file:
@@ -90,7 +90,7 @@ Configure a Snyk API & Web web target:
 - Username: <user>
 - Password: <pass>
 - 2FA TOTP seed: <seed or "none">
-- Browser session name: <domain> (playwright-cli only — use with `playwright-cli -s=<domain>` for ALL browser commands)
+- Browser session name: <session> (playwright-cli only — a globally unique name such as `<domain>-<targetIndex>`, plus the account/username when targets share a domain; use with `playwright-cli -s=<session>` for ALL browser commands)
 
 First read the skill file at <ABSOLUTE_PATH_TO_THIS_SKILL_FILE> and follow the full workflow.
 Return a summary with: target ID, name, URL, login sequence status, logout detection status, extra hosts, Snyk API & Web link (https://plus.probely.app/targets/{targetId}).
@@ -131,7 +131,7 @@ Get credential URIs from `probely_list_credentials` or `probely_create_credentia
 
 ### Browser Session Isolation (`playwright-cli` only)
 
-Each target MUST use a **named session** (`-s=<domain>`) for fully isolated browser context (separate cookies, storage, network logs).
+Each target MUST use a **globally unique named session** (`-s=<session>`) for fully isolated browser context (separate cookies, storage, network logs). Never reuse the bare `<domain>` as the session name: multiple targets can share a hostname (duplicate-URL flows, multiple accounts on one app), and colliding names make parallel subagents share one browser context. Build the name from the domain plus a discriminator, e.g. `<domain>-<targetIndex>` or `<domain>-<username>` (such as `app.example.com-alice`, `app.example.com-bob`).
 
 ### Shell Timeout (`playwright-cli` only)
 
