@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **Web target configuration skill**: dual-path workflow (`playwright-cli` first, Playwright MCP fallback, form login last). Broader extra-host detection includes cross-domain application hosts.
 
+### Fixed
+
+- **Version coherence**: `.cursor-plugin/plugin.json` version synced to `1.1.3` to match `pyproject.toml`, `server.json`, and `snyk_apiweb/__init__.py`.
+- **`.env.example`**: documents optional `MCP_SAW_CONFIG_PATH` and `MCP_SAW_LOG_LEVEL` env vars.
+
 ## [1.1.3] - 2026-05-13
 
 ### Added
