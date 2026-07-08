@@ -15,8 +15,8 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 ## Requirements
 
 - Python 3.10+
+- Node.js 18+ and npm (for web target login recording via `playwright-cli`; optional if using Playwright MCP instead)
 - Snyk API & Web API key
-- **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** (Node.js 18+) — required for web target onboarding with login sequences; see [Web target prerequisites](#web-target-prerequisites)
 
 ## Quick Start
 
@@ -126,7 +126,20 @@ Or pipe from a secret manager: `op read 'op://vault/item/key' | ./scripts/setup-
 
 This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup.
 
-### 4. Configure Your IDE
+### 4. Install Browser Automation (web targets with login)
+
+Web target onboarding records login sequences in a real browser. **Preferred for coding agents:** [`playwright-cli`](https://www.npmjs.com/package/@playwright/cli) via Shell:
+
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli install-browser chromium
+```
+
+Or run `./scripts/setup-playwright.sh` from a cloned repo.
+
+**Alternative:** install [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) as a second MCP server (better for MCP-only clients without Shell). See [Web target prerequisites](#web-target-prerequisites).
+
+### 5. Configure Your IDE
 
 If you installed from the Cursor or Devin marketplace, configuration is automatic. For other clients, add to your MCP client configuration:
 
@@ -155,7 +168,7 @@ For host-specific setup see the [Installation Guides](docs/installation-guides/)
 
 </details>
 
-### 5. Start Using
+### 6. Start Using
 
 Ask your AI assistant to:
 
@@ -166,15 +179,22 @@ See **[prompts.md](prompts.md)** for a full catalog of example prompts — from 
 
 ### Web target prerequisites
 
-The SAW MCP server talks to the Snyk API & Web platform — it does not include a browser. To onboard **web targets with login sequences**, the AI also needs **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** installed alongside SAW:
+The SAW MCP server talks to the Snyk API & Web platform — it does not include a browser. To onboard **web targets with login sequences**, the AI needs browser automation via one of:
 
-1. Install [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) in your IDE (Node.js 18+ required).
-2. Use a natural-language prompt with the target URL and credentials — for example: *"Add target example.com with credentials user@example.com / password123"*.
-3. The AI uses Playwright to navigate the app, inspect the login form, and record selectors, then uses SAW MCP tools to create the target and upload the sequence in the [Probely sequence-recorder format](https://github.com/Probely/sequence-recorder).
+| Path | Best for | Setup |
+|---|---|---|
+| **`playwright-cli`** (preferred) | Cursor, Devin, Claude Code, Cloud Agents with Shell | `npm install -g @playwright/cli@latest && playwright-cli install-browser chromium` |
+| **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** (fallback) | MCP-only clients without Shell (e.g. Claude Desktop) | Add Playwright MCP to your IDE's MCP config |
 
-Without Playwright MCP, the AI cannot record a login flow and may produce an incorrect sequence JSON. In that case it falls back to **form login** (`probely_configure_form_login`), which works for simple login pages but not multi-step flows or 2FA.
+**Workflow:**
 
-See the [Cursor installation guide](docs/installation-guides/install-cursor.md#web-target-configuration-playwright-mcp) for setup details.
+1. Prompt with the target URL and credentials — e.g. *"Add target example.com with credentials user@example.com / password123"*.
+2. The AI records the login in a browser (`playwright-cli` or Playwright MCP).
+3. SAW MCP tools create the target and upload the sequence in the [Probely sequence-recorder format](https://github.com/Probely/sequence-recorder).
+
+Without browser automation, the AI falls back to **form login** (`probely_configure_form_login`) — simple single-page login only; no multi-step flows or 2FA.
+
+See the [Cursor installation guide](docs/installation-guides/install-cursor.md#browser-automation-for-web-targets) for setup details.
 
 ## IDE Integration
 

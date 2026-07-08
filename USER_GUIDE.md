@@ -10,7 +10,7 @@ The Snyk API & Web MCP Server lets AI assistants (Cursor, Devin, Claude Code, et
 
 **Agentic target onboarding.** The server is built so the AI can create and fully configure scan targets automatically. Instead of manually setting up targets in the Snyk UI, you describe what you want and the AI handles:
 
-- **Authentication** — Login sequences (recorded via Playwright), form login
+- **Authentication** — Login sequences (recorded via `playwright-cli` or Playwright MCP), form login fallback
 - **2FA** — TOTP configuration for multi-factor authentication
 - **Logout detection** — Session checks and logout detectors
 - **Extra hosts** — Automatic detection and configuration of API hosts
@@ -28,7 +28,7 @@ The AI will:
 
 The target is ready for scanning.
 
-> **Prerequisite for web targets:** The SAW MCP server does not include a browser. Login sequences are recorded via **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)**, which must be installed alongside SAW. Without it, the AI cannot navigate the app and may produce an incorrect sequence format. See the [Cursor installation guide](docs/installation-guides/install-cursor.md#web-target-configuration-playwright-mcp) for setup. If Playwright is unavailable, the AI falls back to form login for simple login pages.
+> **Prerequisite for web targets:** The SAW MCP server does not include a browser. Login sequences are recorded via **`playwright-cli`** (preferred for coding agents with Shell) or **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** (fallback for MCP-only clients). Without either, the AI cannot navigate the app and may produce an incorrect sequence format. See the [Cursor installation guide](docs/installation-guides/install-cursor.md#browser-automation-for-web-targets) for setup. If browser automation is unavailable, the AI falls back to form login for simple login pages.
 
 > **More examples:** See **[prompts.md](prompts.md)** for a full catalog of prompts covering targets, scans, findings, credentials, reports, and multi-step workflows.
 
@@ -38,7 +38,7 @@ You can onboard several targets at once. For example:
 
 *"Add these targets: app1.example.com (user1@example.com / pass1), app2.example.com (user2@example.com / pass2 / TOTP seed 34566424343)"*
 
-The AI creates a **subagent per target** and configures them sequentially (one at a time), since Playwright uses a single browser instance that cannot be shared across parallel sessions.
+The AI creates a **subagent per target**. With **`playwright-cli`**, subagents may run in parallel using distinct `-s=<session>` names. With **Playwright MCP**, subagents must run sequentially (one at a time) because Playwright MCP uses a single shared browser instance.
 
 ## What's available
 
