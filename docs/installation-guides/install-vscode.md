@@ -4,6 +4,23 @@ VS Code supports MCP servers via the GitHub Copilot extension (requires Copilot 
 
 Replace `/<basedir>/saw-mcp` with the absolute path to this repo.
 
+## Browser Automation for Web Targets
+
+Web targets with login sequences require browser automation. From a cloned repo:
+
+```bash
+./scripts/setup-playwright.sh
+```
+
+Or install globally (Node.js 18+):
+
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli install-browser chromium
+```
+
+Alternatively, add [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) to your MCP configuration.
+
 ## Option A: Workspace config (recommended)
 
 Create `.vscode/mcp.json` at the root of your project:

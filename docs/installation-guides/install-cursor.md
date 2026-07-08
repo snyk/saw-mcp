@@ -12,6 +12,52 @@ Install directly from the [Cursor Marketplace](https://cursor.com/marketplace/sn
 
 The plugin automatically registers the MCP server, rules, and skills. No manual configuration needed.
 
+## Browser Automation for Web Targets
+
+Web target configuration records login sequences in a real browser. SAW MCP does not include a browser — install one of:
+
+### Option A: `playwright-cli` (preferred for Cursor / Cloud Agents)
+
+Requires Node.js 18+. No second MCP server needed — the agent runs CLI commands via Shell:
+
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli install-browser chromium
+```
+
+Or, from a cloned repo: `./scripts/setup-playwright.sh`
+
+### Option B: Playwright MCP (fallback)
+
+For environments without Shell access, add [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) as a second MCP server (**Settings → Tools & MCP → New MCP Server**):
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+You can also install Playwright MCP from the [Cursor Marketplace](https://cursor.com/marketplace) by searching for **Playwright**.
+
+### Prompting for web targets
+
+Provide the target URL and credentials in natural language — do not ask for a specific sequence format:
+
+```
+Add target shop.example.com with credentials admin@shop.com / s3cretPass
+```
+
+The AI records the login in the browser, then uses SAW MCP tools to create the target and upload the sequence.
+
+### Fallback without browser automation
+
+If neither `playwright-cli` nor Playwright MCP is available, the AI falls back to **form login** (`probely_configure_form_login`). This works for simple single-page login forms but not multi-step flows or 2FA.
+
 ## Manual Configuration
 
 If you prefer manual setup, open **Settings → Tools & MCP → New MCP Server** and paste one of the blocks below.
@@ -85,44 +131,6 @@ Clone the repo, run `./scripts/setup-env.sh` once, then use this config. Replace
   }
 }
 ```
-
-## Web Target Configuration: Playwright MCP
-
-The SAW MCP server does not include a browser. To onboard **web targets with login sequences**, you must also install **[Playwright MCP](https://playwright.dev/docs/getting-started-mcp)** alongside SAW.
-
-**Why:** Login sequences require the AI to navigate the application, inspect form elements, and capture CSS/XPath selectors in the [Probely sequence-recorder format](https://github.com/Probely/sequence-recorder). Without Playwright MCP, the AI cannot record a login flow and may produce an incorrect sequence JSON.
-
-### Install Playwright MCP
-
-Requires Node.js 18+. Add to your MCP configuration (**Settings → Tools & MCP → New MCP Server**, or edit `~/.cursor/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
-    }
-  }
-}
-```
-
-Playwright downloads browser binaries on first run. You can also install Playwright MCP from the [Cursor Marketplace](https://cursor.com/marketplace) by searching for **Playwright**.
-
-### Prompting for web targets
-
-Provide the target URL and credentials in natural language — do not ask for a specific sequence format:
-
-```
-Add target shop.example.com with credentials admin@shop.com / s3cretPass
-```
-
-The AI uses Playwright to record the login, then SAW MCP tools to create the target and upload the sequence.
-
-### Fallback without Playwright
-
-If Playwright MCP is not available, the AI falls back to **form login** (`probely_configure_form_login`). This works for simple single-page login forms but not multi-step flows or 2FA.
-
 ## Optional Environment Variables
 
 Add these to the `env` block in any of the options above:
@@ -153,4 +161,4 @@ ln /<basedir>/saw-mcp/config/skills/saw-api-target-configuration/SKILL.md ~/.cur
 - **`python: command not found`**: Ensure Python 3.10+ is on your PATH. On macOS: `brew install python@3.12`.
 - **MCP server not appearing**: Restart Cursor after saving the config. Check **Output → MCP Logs** for errors.
 - **`PermissionError` on log file**: The server writes to `~/saw-mcp.log`. Ensure write access to your home directory.
-- **Login sequence has wrong format**: Ensure Playwright MCP is installed and enabled. Prompt with URL + credentials rather than asking for a specific JSON format. See [Web Target Configuration: Playwright MCP](#web-target-configuration-playwright-mcp) above.
+- **Login sequence has wrong format**: Ensure browser automation is installed (`playwright-cli` or Playwright MCP). Prompt with URL + credentials rather than asking for a specific JSON format. See [Browser Automation for Web Targets](#browser-automation-for-web-targets) above.
