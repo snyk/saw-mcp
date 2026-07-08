@@ -6,8 +6,11 @@ from unittest.mock import patch
 import pytest
 
 from snyk_apiweb.tools import (
+    UnsafeURLError,
+    _assert_url_is_safe,
     _generate_totp,
     _parse_list_of_dicts,
+    _safe_get,
     build_server,
 )
 
@@ -137,3 +140,164 @@ def test_build_server_registers_prompts(monkeypatch):
 
     assert "saw_web_target_configuration" in prompt_names
     assert "saw_api_target_configuration" in prompt_names
+
+
+# --- SSRF protection: _assert_url_is_safe ---
+
+
+def test_assert_url_rejects_non_https():
+    with pytest.raises(UnsafeURLError, match="https"):
+        _assert_url_is_safe("http://example.com/schema.json")
+
+
+def test_assert_url_rejects_file_scheme():
+    with pytest.raises(UnsafeURLError, match="https"):
+        _assert_url_is_safe("file:///etc/passwd")
+
+
+def test_assert_url_rejects_missing_hostname():
+    with pytest.raises(UnsafeURLError, match="hostname"):
+        _assert_url_is_safe("https:///no-host")
+
+
+def test_assert_url_rejects_aws_metadata_endpoint():
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://169.254.169.254/latest/meta-data/")
+
+
+def test_assert_url_rejects_localhost_ip():
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://127.0.0.1/schema.json")
+
+
+def test_assert_url_rejects_private_ip():
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://10.0.0.5/schema.json")
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://192.168.1.10/schema.json")
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://172.16.0.1/schema.json")
+
+
+def test_assert_url_rejects_ipv4_mapped_ipv6_metadata():
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://[::ffff:169.254.169.254]/latest/")
+
+
+def test_assert_url_rejects_hostname_resolving_to_private(monkeypatch):
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", ("10.0.0.5", port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _assert_url_is_safe("https://internal.evil.example/schema.json")
+
+
+def test_assert_url_rejects_unresolvable_host(monkeypatch):
+    import socket as _socket
+
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        raise _socket.gaierror("nodename nor servname provided")
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+    with pytest.raises(UnsafeURLError, match="resolve"):
+        _assert_url_is_safe("https://does-not-exist.example/schema.json")
+
+
+def test_assert_url_allows_public_host(monkeypatch):
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", ("93.184.216.34", port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+    # Should not raise for a public address.
+    _assert_url_is_safe("https://example.com/schema.json")
+
+
+def test_assert_url_allowlist_blocks_unlisted_host(monkeypatch):
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", ("93.184.216.34", port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+    with pytest.raises(UnsafeURLError, match="allow-list"):
+        _assert_url_is_safe(
+            "https://example.com/schema.json",
+            allowlist=["trusted.example"],
+        )
+
+
+def test_assert_url_allowlist_permits_subdomain(monkeypatch):
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", ("93.184.216.34", port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+    _assert_url_is_safe(
+        "https://raw.trusted.example/schema.json",
+        allowlist=["trusted.example"],
+    )
+
+
+# --- SSRF protection: _safe_get redirect handling ---
+
+
+class _FakeResponse:
+    def __init__(self, status_code, headers=None):
+        self.status_code = status_code
+        self.headers = headers or {}
+
+    @property
+    def is_redirect(self):
+        return self.status_code in (301, 302, 303, 307, 308)
+
+    @property
+    def is_permanent_redirect(self):
+        return self.status_code in (308,)
+
+    def raise_for_status(self):
+        return None
+
+
+def test_safe_get_revalidates_redirect_target(monkeypatch):
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", ("93.184.216.34", port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+
+    # First hop redirects to the AWS metadata endpoint, which must be blocked
+    # when _safe_get re-validates the redirect target.
+    def fake_get(url, timeout=60, allow_redirects=False):
+        return _FakeResponse(
+            302, {"Location": "https://169.254.169.254/latest/meta-data/"}
+        )
+
+    monkeypatch.setattr("requests.get", fake_get)
+    with pytest.raises(UnsafeURLError, match="non-public"):
+        _safe_get("https://example.com/schema.json")
+
+
+def test_safe_get_returns_ok_response(monkeypatch):
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", ("93.184.216.34", port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+
+    ok = _FakeResponse(200, {"Content-Type": "application/json"})
+
+    def fake_get(url, timeout=60, allow_redirects=False):
+        return ok
+
+    monkeypatch.setattr("requests.get", fake_get)
+    assert _safe_get("https://example.com/schema.json") is ok
