@@ -6,11 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Security
+
+- **SSRF protection for API-target schema fetches**: `_fetchjson_or_url` (used by `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`) now validates user-supplied URLs before fetching. Only `https://` is permitted, hostnames are resolved and any address in a private, loopback, link-local, reserved, multicast, or unspecified range is rejected (blocking cloud-metadata endpoints like `169.254.169.254` and `localhost`), redirects are re-validated on every hop, and an optional host allow-list can be configured via the `MCP_SAW_URL_ALLOWLIST` environment variable.
+
 ### Added
 
+- **Dual-path browser automation for web targets**: `playwright-cli` (preferred for coding agents with Shell) with Playwright MCP as fallback. New `./scripts/setup-playwright.sh` installs `@playwright/cli` and Chromium. CI smoke test verifies install and basic browser session. Updated skill, rules, install guides, and docs.
 - **Cursor Marketplace install**: restored documentation for one-click installation from the [Cursor Marketplace](https://cursor.com/marketplace/snyk/snyk-api-web) now that the plugin is published.
-- **Playwright MCP prerequisite**: documented that web target onboarding with login sequences requires [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) installed alongside SAW. Updated `README.md`, `USER_GUIDE.md`, and `install-cursor.md`.
 - **Devin MCP Marketplace install**: updated documentation for the current Devin product and marketplace flow, replacing the old product references.
+
+### Changed
+
+- **Web target configuration skill**: dual-path workflow (`playwright-cli` first, Playwright MCP fallback, form login last). Broader extra-host detection includes cross-domain application hosts.
 
 ### Fixed
 

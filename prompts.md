@@ -6,7 +6,7 @@ A collection of ready-to-use prompts, from quick one-liners to detailed multi-ta
 
 ## Target Creation
 
-> **Web targets with authentication** require [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) installed alongside SAW. Prompt with the target URL and credentials — the AI records the login automatically. Do not ask for a specific sequence JSON format.
+> **Web targets with authentication** require browser automation: **`playwright-cli`** (preferred) or [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) (fallback). Prompt with the target URL and credentials — the AI records the login automatically. Do not ask for a specific sequence JSON format.
 
 ### Simple
 
