@@ -22,16 +22,22 @@ _configured = False
 
 
 def _configure_audit_logger() -> None:
-    """Attach a dedicated file handler once if ``MCP_SAW_AUDIT_LOG`` is set."""
+    """Attach a dedicated file handler once if ``MCP_SAW_AUDIT_LOG`` is set.
+
+    The configured flag is only latched once setup has definitively succeeded
+    (handler attached or no log path configured). If opening the audit file
+    fails, the flag stays unset so a later call retries once the environment or
+    filesystem is fixed.
+    """
     global _configured
     if _configured:
         return
-    _configured = True
 
     audit_logger.setLevel(logging.INFO)
 
     log_path = os.environ.get(AUDIT_LOG_ENV, "").strip()
     if not log_path:
+        _configured = True
         return
 
     target = os.path.abspath(log_path)
@@ -40,13 +46,17 @@ def _configure_audit_logger() -> None:
             isinstance(handler, logging.FileHandler)
             and getattr(handler, "baseFilename", None) == target
         ):
+            _configured = True
             return
 
     try:
         file_handler = logging.FileHandler(target, encoding="utf-8")
         file_handler.setFormatter(logging.Formatter("%(message)s"))
         audit_logger.addHandler(file_handler)
+        _configured = True
     except OSError:
+        # Leave _configured unset so setup is retried on the next call once the
+        # path/permissions are fixed; log via the standard logger meanwhile.
         audit_logger.warning(
             "Could not open audit log file %s; falling back to default logging",
             target,
