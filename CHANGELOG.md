@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Security
 
+- **Destructive tools disabled by default (DAST-1174)**: `probelyrequest` (the raw "call any API" passthrough), `probely_delete_target`, `probely_delete_credential`, and `probely_bulk_update_findings` are now blocked out of the box via a built-in `DEFAULT_DISABLED_TOOLS` list that applies even in env-only mode (no config file). Using one requires explicitly opting in through the `tools.enabled` whitelist. This also fixes the safe-default config, which previously blocked the non-existent name `probely_request` instead of the real tool name `probelyrequest`, leaving the raw passthrough enabled.
+- **Per-tool-call audit trail (DAST-1174)**: every MCP tool invocation now emits one structured audit line (tool name, UTC timestamp, outcome — `success` / `api_error` / `error` — and duration). Lines go to the standard log by default; set `MCP_SAW_AUDIT_LOG` to also append them to a dedicated, SIEM-ingestible file.
 - **SSRF protection for API-target schema fetches**: `_fetchjson_or_url` (used by `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`) now validates user-supplied URLs before fetching. Only `https://` is permitted, hostnames are resolved and any address in a private, loopback, link-local, reserved, multicast, or unspecified range is rejected (blocking cloud-metadata endpoints like `169.254.169.254` and `localhost`), redirects are re-validated on every hop, and an optional host allow-list can be configured via the `MCP_SAW_URL_ALLOWLIST` environment variable.
 
 ### Added

@@ -23,6 +23,23 @@ DEFAULT_CONFIG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
 )
 
+# Destructive / high-impact tools that are disabled out of the box so a
+# manipulated or compromised AI session cannot invoke them silently. They must
+# be opted in explicitly via the ``tools.enabled`` whitelist in the config
+# file. This safe default applies even in env-only mode (no config file), so it
+# cannot be bypassed by simply omitting the config.
+#
+# - probelyrequest: raw "call any API" passthrough that bypasses every
+#   per-tool validation (note: the real tool name has no underscore).
+# - probely_delete_target / probely_delete_credential: irreversible deletes.
+# - probely_bulk_update_findings: can mass-resolve findings as false positives.
+DEFAULT_DISABLED_TOOLS = [
+    "probelyrequest",
+    "probely_delete_target",
+    "probely_delete_credential",
+    "probely_bulk_update_findings",
+]
+
 # Allowed base directories for config paths (prevents path traversal)
 _ALLOWED_CONFIG_BASES = (
     os.path.realpath(os.path.dirname(DEFAULT_CONFIG_PATH)),
@@ -163,12 +180,21 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     If enabled_tools is set, only those tools are available.
     If disabled_tools is set, all tools except those are available.
     If both are set, enabled_tools takes precedence.
+
+    The built-in ``DEFAULT_DISABLED_TOOLS`` are always merged into the blacklist
+    so destructive tools stay off unless the operator opts in via the
+    ``enabled`` whitelist.
     """
     tools_cfg = cfg.get("tools") or {}
+
+    disabled_tools = list(DEFAULT_DISABLED_TOOLS)
+    for name in tools_cfg.get("disabled") or []:
+        if name not in disabled_tools:
+            disabled_tools.append(name)
+
     return {
         "enabled_tools": tools_cfg.get("enabled"),  # None means all enabled
-        "disabled_tools": tools_cfg.get("disabled")
-        or [],  # Empty means none disabled
+        "disabled_tools": disabled_tools,
     }
 
 

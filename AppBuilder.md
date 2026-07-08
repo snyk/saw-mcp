@@ -178,12 +178,16 @@ tools:
   #   - probely_list_targets
   #   - probely_create_web_target
 
-  # Blacklist mode:
+  # Blacklist mode (on top of the built-in destructive defaults):
   disabled:
     - probely_delete_sequence
     - probely_delete_extra_host
-    - probely_request
 ```
+
+> **Built-in safe defaults:** `probelyrequest`, `probely_delete_target`,
+> `probely_delete_credential`, and `probely_bulk_update_findings` are always
+> disabled (see `DEFAULT_DISABLED_TOOLS` in `config.py`) unless explicitly added
+> to the `enabled` whitelist.
 
 ### 5.2 API Key Resolution
 
@@ -481,6 +485,8 @@ def probely_tool_name(param1: str, param2: Optional[str] = None) -> Dict[str, An
 
 If the tool is disabled by config, the function is returned without registration (undecorated).
 
+Registered tools are wrapped so that each invocation emits a per-call audit line via `record_tool_call` (`snyk_apiweb/audit.py`) recording the tool name, UTC timestamp, outcome (`success` / `api_error` / `error`), and duration. Set `MCP_SAW_AUDIT_LOG` to append the trail to a dedicated file.
+
 ### 6.5 Server Entry Point (`server.py`)
 
 ```python
@@ -505,7 +511,7 @@ All tool names are prefixed with `probely_` for namespacing.
 ### Generic
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `probely_request` | `method`, `path`, `params?`, `json?`, `data?` | Raw API request to any endpoint |
+| `probelyrequest` | `method`, `path`, `params?`, `json?`, `data?` | Raw API request to any endpoint (disabled by default) |
 
 ### User Management (read-only in tools layer)
 | Tool | Parameters | Description |

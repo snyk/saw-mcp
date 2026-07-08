@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from snyk_apiweb.config import (
+    DEFAULT_DISABLED_TOOLS,
     get_probely_api_key,
     get_probely_base_url,
     get_target_defaults,
@@ -204,23 +205,62 @@ def test_tool_filter_whitelist_only():
     result = get_tool_filter(cfg)
 
     assert result["enabled_tools"] == ["probely_list_targets"]
-    assert result["disabled_tools"] == []
+    # Built-in destructive defaults are always present in the blacklist.
+    assert result["disabled_tools"] == DEFAULT_DISABLED_TOOLS
 
 
-def test_tool_filter_blacklist_only():
-    cfg = {"tools": {"disabled": ["probely_delete_target"]}}
+def test_tool_filter_blacklist_merges_with_defaults():
+    cfg = {"tools": {"disabled": ["probely_delete_sequence"]}}
 
     result = get_tool_filter(cfg)
 
     assert result["enabled_tools"] is None
-    assert result["disabled_tools"] == ["probely_delete_target"]
+    assert "probely_delete_sequence" in result["disabled_tools"]
+    for tool in DEFAULT_DISABLED_TOOLS:
+        assert tool in result["disabled_tools"]
 
 
-def test_tool_filter_no_config():
+def test_tool_filter_no_config_still_disables_destructive_defaults():
     result = get_tool_filter({})
 
     assert result["enabled_tools"] is None
-    assert result["disabled_tools"] == []
+    assert result["disabled_tools"] == DEFAULT_DISABLED_TOOLS
+
+
+def test_tool_filter_does_not_duplicate_default_entries():
+    cfg = {"tools": {"disabled": ["probely_delete_target"]}}
+
+    result = get_tool_filter(cfg)
+
+    assert result["disabled_tools"].count("probely_delete_target") == 1
+
+
+def test_default_disabled_tools_use_real_raw_passthrough_name():
+    # The raw passthrough tool is registered as "probelyrequest" (no
+    # underscore); the safe default must block that exact name.
+    assert "probelyrequest" in DEFAULT_DISABLED_TOOLS
+    assert "probely_request" not in DEFAULT_DISABLED_TOOLS
+
+
+def test_destructive_tools_disabled_by_default_via_is_tool_enabled():
+    tf = get_tool_filter({})
+
+    assert is_tool_enabled("probelyrequest", tf) is False
+    assert is_tool_enabled("probely_delete_target", tf) is False
+    assert is_tool_enabled("probely_delete_credential", tf) is False
+    assert is_tool_enabled("probely_bulk_update_findings", tf) is False
+    # A normal read tool stays enabled.
+    assert is_tool_enabled("probely_list_targets", tf) is True
+
+
+def test_destructive_tool_opt_in_via_whitelist():
+    cfg = {"tools": {"enabled": ["probely_delete_target"]}}
+    tf = get_tool_filter(cfg)
+
+    # Whitelist takes precedence, so an explicitly enabled destructive tool runs.
+    assert is_tool_enabled("probely_delete_target", tf) is True
+    # Everything not on the whitelist stays off.
+    assert is_tool_enabled("probelyrequest", tf) is False
 
 
 def test_is_tool_enabled_whitelist_allows_listed_tool():
