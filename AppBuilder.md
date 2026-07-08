@@ -544,11 +544,11 @@ All tool names are prefixed with `probely_` for namespacing.
 ### Authentication
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `probely_configure_form_login` | `targetId`, `login_url`, `username_field`, `password_field`, `username`, `password`, `check_pattern?` | Configure form-based login (fallback for no Playwright) |
+| `probely_configure_form_login` | `targetId`, `login_url`, `username_field`, `password_field`, `username`, `password`, `check_pattern?` | Configure form-based login (fallback when browser automation unavailable) |
 | `probely_configure_sequence_login` | `targetId`, `enabled?` | Enable/disable sequence login (mutually exclusive with form login) |
 | `probely_configure_2fa_totp` | `targetId`, `otp_secret`, `otp_algorithm?`, `otp_digits?` | Configure TOTP 2FA. Auto-generates OTP code and returns it in `otp_code` field |
 | `probely_disable_2fa` | `targetId` | Disable 2FA |
-| `probely_generate_totp` | `secret`, `algorithm?`, `digits?`, `period?` | Generate a TOTP code from a seed (standalone, for use during Playwright recording) |
+| `probely_generate_totp` | `secret`, `algorithm?`, `digits?`, `period?` | Generate a TOTP code from a seed (standalone, for use during login sequence recording) |
 
 ### Logout Detection
 | Tool | Parameters | Description |
@@ -690,7 +690,7 @@ All paths are relative to the base URL (`https://api.probely.com`). All paths en
 
 The server includes a pure-Python TOTP implementation (no external library like `pyotp`). This is used in two places:
 1. **`probely_configure_2fa_totp`** — generates a TOTP code, configures 2FA on the target, and returns the code so it can be hardcoded in the login sequence.
-2. **`probely_generate_totp`** — standalone tool for generating TOTP codes during Playwright-based login recording.
+2. **`probely_generate_totp`** — standalone tool for generating TOTP codes during login sequence recording (`playwright-cli` or Playwright MCP).
 
 The implementation follows RFC 6238:
 - Base32-decode the secret (with padding normalization).
@@ -777,27 +777,30 @@ Skills are Cursor Agent Skills stored in `config/skills/` and hard-linked to `~/
 **Frontmatter:**
 ```yaml
 name: saw-web-target-configuration
-description: Configure Snyk API & Web web application targets with authentication, login sequences, 2FA, and logout detection. Use when creating web app targets with form-based or sequence-based authentication.
+description: DEFAULT skill for creating Snyk API & Web targets. Handles web application targets with login sequences, 2FA, logout detection, and extra hosts via playwright-cli (preferred) or Playwright MCP (fallback).
 ```
 
 **Key Sections:**
 
-1. **Multiple Targets — Sequential Subagents:** When the user provides multiple targets, launch subagents ONE at a time, waiting for each to complete before launching the next. Playwright uses a single browser instance — parallel subagents would conflict. Each subagent prompt should be short — just target details + instruction to read the skill file. Do NOT embed full skill text.
+1. **Browser Automation — Dual Path:** Detect `playwright-cli` first (preferred for coding agents with Shell). Fall back to Playwright MCP browser tools. If neither is available, prompt the user to install one; form login is last resort.
 
-2. **Step 1: Gather Information:** Collect target URL, name (priority: user-provided > page `<title>` > FQDN), labels (user-specified only, or omit for default), credentials, 2FA requirements. Prefer login sequence (Playwright) over form login.
+2. **Multiple Targets — Subagent Strategy:** With `playwright-cli`, subagents may run in parallel using unique `-s=<session>` names. With Playwright MCP, subagents must run one at a time (single shared browser).
 
-3. **Step 2: Login Sequence (Playwright Available):**
-   - Navigate to target, find login page.
-   - **Inspect form elements** using a specific JavaScript snippet that auto-detects single-page vs. multi-step login. This script identifies username field, password field, and submit button with proper CSS selectors.
-   - Fill credentials and submit. For 2FA, use `probely_generate_totp` for live code, then `probely_configure_2fa_totp` for the target config.
-   - Verify login success, record post-login URL.
-   - **Check if login selectors exist post-login** (for logout detection accuracy).
-   - **Detect extra hosts** using a multi-layered approach:
-     - **Layer 1:** Network request capture (`browser_network_requests()`) at two checkpoints (before login, after login). Retry up to 3 times on failure.
-     - **Layer 2:** JavaScript introspection via `browser_evaluate` to find API base URLs in `__NEXT_DATA__`, env/config globals, inline scripts, meta tags.
-   - Generate sequence JSON with `[CUSTOM_USERNAME]`/`[CUSTOM_PASSWORD]` placeholders.
+3. **Step 1: Gather Information:** Collect target URL, name (priority: user-provided > page `<title>` > FQDN), labels (user-specified only, or omit for default), credentials, 2FA requirements. Prefer login sequence over form login.
 
-4. **Tool Call Order:**
+4. **Step 2A: Login Sequence (`playwright-cli`):**
+   - `playwright-cli -s=SESSION open <url>`, `snapshot`, `fill`, `click`, `eval`, `requests`, `close`.
+   - Inspect form elements via `scripts/inspect-login-form.js` through `eval`.
+   - Network capture via `requests` (not `network` — that command does not exist).
+
+5. **Step 2B: Login Sequence (Playwright MCP fallback):**
+   - Navigate via `browser_navigate`, inspect via `browser_evaluate`, network via `browser_network_requests()`.
+
+6. **Extra hosts (both paths):**
+   - **Layer 1:** Network request capture at two checkpoints (before login, after login). CLI: `playwright-cli -s=SESSION requests`. MCP: `browser_network_requests()`.
+   - **Layer 2:** JavaScript introspection via `eval` / `browser_evaluate` with `scripts/extract-api-hosts.js`. Include cross-domain application hosts; exclude vendor CDNs only.
+
+7. **Tool Call Order (Step 3):**
    1. `probely_create_web_target(name, url, desc?, labels?)`
    2. `probely_configure_2fa_totp(targetId, otp_secret)` (if 2FA needed, BEFORE sequence)
    3. `probely_create_sequence(targetId, name, content, custom_field_mappings=[...])`
@@ -805,17 +808,11 @@ description: Configure Snyk API & Web web application targets with authenticatio
    5. `probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=..., logout_condition=...)`
    6. `probely_create_extra_host(targetId, hostname, ip_address="")` (for each detected host)
 
-5. **Logout Detection Configuration:**
-   - `check_session_url`: Full absolute URL of post-login page (or different page if login selectors persist).
-   - Logout detector: CSS selector from login form that only exists when logged out.
-   - If selector exists on post-login page, use a more specific scoped selector (e.g., `#formlogin input[name='username']`).
-   - `logout_condition`: `"any"` (default, OR) or `"all"` (AND fallback when selectors aren't unique to login page).
+8. **Step 4: Form Login (no browser automation):** `probely_configure_form_login()` fallback only.
 
-6. **Login Sequence JSON Format:** Array of step objects with `type`, `timestamp`, `css`, `xpath`, `value`, `frame` fields. Supported types: `goto`, `click`, `dblclick`, `fill_value`, `fill_otp`, `change`, `press_key`, `mouseover`.
+9. **Setup script:** `./scripts/setup-playwright.sh` installs `@playwright/cli` globally and runs `playwright-cli install-browser chromium`.
 
-7. **Step 3: Form Login (No Playwright):** Simple `probely_configure_form_login()` as fallback.
-
-8. **Summary Table:** Always ends with a table including target ID, name, URL, login sequence status, logout detection, extra hosts, and Snyk API & Web link (`https://plus.probely.app/targets/{targetId}`).
+10. **Summary Table:** Always ends with a table including target ID, name, URL, login sequence status, logout detection, extra hosts, and Snyk API & Web link (`https://plus.probely.app/targets/{targetId}`).
 
 ### 10.2 API Target Configuration Skill
 
@@ -897,7 +894,7 @@ Check progress every 5 minutes. Show progress delta, ETA, new vulnerabilities, s
 Mark findings as `fixed`, `false_positive`, or `accepted_risk` using update tools.
 
 **9. Multiple Targets: Sequential Subagents**
-Launch separate `generalPurpose` subagents for each target, one at a time. Wait for each to complete before launching the next (Playwright uses a single browser instance). Keep prompts short. Subagents must NOT search the workspace (it's unrelated to target config).
+Launch separate `generalPurpose` subagents for each target. With `playwright-cli`, parallel subagents are allowed when each uses a unique `-s=<session>`. With Playwright MCP, launch one at a time. Keep prompts short. Subagents must NOT search the workspace (it's unrelated to target config).
 
 **10. Reporting**
 Generate reports when multiple vulnerabilities are fixed, before major releases, or for compliance documentation.
@@ -1058,7 +1055,7 @@ Note: `config/config.yaml` (runtime, with real API key) and `.env` are gitignore
 
 ## Appendix A: Form Element Inspection Script
 
-This JavaScript snippet (used in the web target configuration skill) is run via Playwright's `browser_evaluate` to auto-detect login form elements. It handles both single-page and multi-step login flows:
+This JavaScript snippet (used in the web target configuration skill) is run via `playwright-cli eval` or Playwright MCP's `browser_evaluate` to auto-detect login form elements. It handles both single-page and multi-step login flows:
 
 ```javascript
 () => {

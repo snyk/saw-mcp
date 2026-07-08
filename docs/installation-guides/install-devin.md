@@ -11,6 +11,17 @@ The Snyk API & Web MCP Server is available from Devin's MCP Marketplace and can 
 
 Devin handles the MCP server setup automatically — no manual configuration needed.
 
+## Browser Automation for Web Targets
+
+Web targets with login sequences require browser automation. **`playwright-cli`** is preferred for Devin (Shell access):
+
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli install-browser chromium
+```
+
+Alternatively, install [Playwright MCP](https://playwright.dev/docs/getting-started-mcp) from Devin's MCP Marketplace.
+
 ## Option 2: `uvx`
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) installed. No local clone needed.

@@ -10,6 +10,7 @@ __pycache__
 *.egg-info/
 .ruff_cache
 .pytest_cache
+.playwright-cli/
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .cursor/rules/snyk_rules.mdc

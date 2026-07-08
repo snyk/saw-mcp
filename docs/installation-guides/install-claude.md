@@ -20,6 +20,32 @@ Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) installed
 }
 ```
 
+## Browser Automation for Web Targets
+
+Web targets with login sequences require browser automation. SAW MCP does not include a browser.
+
+**Preferred (coding agents with Shell):**
+
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli install-browser chromium
+```
+
+**Fallback (MCP-only clients such as Claude Desktop):** add [Playwright MCP](https://playwright.dev/docs/getting-started-mcp):
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+Without either, the AI falls back to form login for simple login pages only.
+
 ## Option B: Local clone
 
 Replace `/<basedir>/saw-mcp` with the absolute path to this repo. Run `./scripts/setup-env.sh` once to store your API key, then add:
