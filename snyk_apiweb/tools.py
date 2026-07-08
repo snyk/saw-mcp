@@ -4,11 +4,15 @@ import base64
 import functools
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
+import os
 import re
+import socket
 import struct
 import time
+import urllib.parse
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
@@ -69,6 +73,136 @@ def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
         return [value]
     raise ValueError(
         f"Expected a JSON array (list of objects), got: {type(value).__name__}. Value: {repr(value)[:200]}"
+    )
+
+
+# --- SSRF protection ----------------------------------------------------------
+
+# Comma-separated allow-list of permitted hostnames for outbound schema fetches
+# (e.g. "raw.githubusercontent.com,api.example.com"). Matching is
+# case-insensitive and covers the exact host plus its subdomains. When unset,
+# any public host is permitted as long as it passes the private-range checks.
+URL_ALLOWLIST_ENV = "MCP_SAW_URL_ALLOWLIST"
+
+# Maximum number of redirects to follow while re-validating each hop.
+_MAX_FETCH_REDIRECTS = 5
+
+
+class UnsafeURLError(ValueError):
+    """Raised when a user-supplied URL fails SSRF safety validation."""
+
+
+def _get_url_allowlist() -> Optional[List[str]]:
+    """Return the configured host allow-list, or None when not configured."""
+    raw = os.environ.get(URL_ALLOWLIST_ENV, "").strip()
+    if not raw:
+        return None
+    hosts = [h.strip().lower() for h in raw.split(",") if h.strip()]
+    return hosts or None
+
+
+def _host_is_allowlisted(hostname: str, allowlist: List[str]) -> bool:
+    """Check whether hostname matches an allow-list entry or a subdomain of it."""
+    host = hostname.lower().rstrip(".")
+    for entry in allowlist:
+        if host == entry or host.endswith("." + entry):
+            return True
+    return False
+
+
+def _assert_ip_is_public(ip_str: str) -> None:
+    """Reject IP addresses that point at private / internal infrastructure."""
+    ip = ipaddress.ip_address(ip_str)
+    # IPv4-mapped / compatible IPv6 addresses (e.g. ::ffff:169.254.169.254)
+    # must be unwrapped so the underlying v4 address is checked too.
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        _assert_ip_is_public(str(mapped))
+        return
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    ):
+        raise UnsafeURLError(f"SSRF: blocked non-public address {ip}")
+
+
+def _assert_url_is_safe(
+    url: str, allowlist: Optional[List[str]] = None
+) -> None:
+    """Validate a user-supplied URL before it is fetched.
+
+    Enforces HTTPS-only, an optional host allow-list, and blocks any URL whose
+    hostname resolves to a private, loopback, link-local, reserved, multicast,
+    or unspecified address (defends against SSRF to cloud-metadata / internal
+    endpoints such as ``169.254.169.254`` or ``localhost``).
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise UnsafeURLError(
+            f"Only https:// URLs are permitted, got scheme {parsed.scheme!r}"
+        )
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("URL is missing a hostname")
+
+    if allowlist is not None and not _host_is_allowlisted(hostname, allowlist):
+        raise UnsafeURLError(
+            f"Host {hostname!r} is not in the permitted allow-list"
+        )
+
+    # A literal IP host must be checked directly; otherwise resolve every
+    # address the hostname maps to and require all of them to be public.
+    try:
+        ipaddress.ip_address(hostname)
+        addresses = [hostname]
+    except ValueError:
+        try:
+            addrinfo = socket.getaddrinfo(hostname, parsed.port or 443)
+        except socket.gaierror as exc:
+            raise UnsafeURLError(
+                f"Could not resolve host {hostname!r}: {exc}"
+            ) from exc
+        addresses = [info[4][0] for info in addrinfo]
+
+    if not addresses:
+        raise UnsafeURLError(
+            f"Host {hostname!r} did not resolve to any address"
+        )
+    for addr in addresses:
+        _assert_ip_is_public(addr)
+
+
+def _safe_get(
+    url: str,
+    timeout: int = 60,
+    allowlist: Optional[List[str]] = None,
+) -> "Any":
+    """Perform an SSRF-safe HTTP GET, re-validating every redirect hop."""
+    import requests
+
+    if allowlist is None:
+        allowlist = _get_url_allowlist()
+
+    current = url
+    for _ in range(_MAX_FETCH_REDIRECTS + 1):
+        _assert_url_is_safe(current, allowlist)
+        r = requests.get(current, timeout=timeout, allow_redirects=False)
+        if r.is_redirect or r.is_permanent_redirect:
+            location = r.headers.get("Location")
+            if not location:
+                return r
+            # Resolve relative redirects against the current URL, then loop to
+            # re-validate the new target before following it.
+            current = urllib.parse.urljoin(current, location)
+            continue
+        r.raise_for_status()
+        return r
+    raise UnsafeURLError(
+        f"Exceeded maximum of {_MAX_FETCH_REDIRECTS} redirects while fetching URL"
     )
 
 
@@ -1062,10 +1196,7 @@ def build_server() -> FastMCP:
         if json_body is not None:
             return json_body
         if url:
-            import requests as requests
-
-            r = requests.get(url, timeout=60)
-            r.raise_for_status()
+            r = _safe_get(url, timeout=60)
             content_type = r.headers.get("Content-Type", "")
             if "yaml" in content_type or url.endswith((".yaml", ".yml")):
                 import yaml
@@ -1099,9 +1230,12 @@ def build_server() -> FastMCP:
         ``site.id`` (the site ID). Always use the top-level ``id`` as the ``targetId``
         parameter for all subsequent tool calls (update_target, start_scan, etc.).
         Do NOT use the nested ``site.id`` field for target operations."""
-        collection = _fetchjson_or_url(
-            postman_collection_url, postman_collectionjson
-        )
+        try:
+            collection = _fetchjson_or_url(
+                postman_collection_url, postman_collectionjson
+            )
+        except UnsafeURLError as exc:
+            return {"error": {"message": str(exc)}}
         if not collection:
             return {
                 "error": {
