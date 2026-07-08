@@ -1,6 +1,13 @@
 # Snyk API & Web MCP Server Configuration
 saw:
   base_url: "https://api.probely.com"
+  # RECOMMENDED: do NOT put a plaintext key here. Set the MCP_SAW_API_KEY
+  # environment variable instead (see .env.example). config/config.yaml is
+  # gitignored, but a plaintext key can still leak via backups, screen shares,
+  # or an accidental commit with -f. If you must reference it from this file,
+  # use a secret reference resolved at runtime rather than a literal value:
+  #   api_key: "op://vault/saw-mcp/api-key"   # resolved via the 1Password CLI
+  #   api_key: "env:MY_SAW_KEY"               # read from another env var
   api_key: "CHANGEME"
 
 server:
