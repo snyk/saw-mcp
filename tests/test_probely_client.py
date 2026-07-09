@@ -97,6 +97,116 @@ def test_request_enriches_body_on_non_ok_status(client, mock_response):
     assert "api.example.com" in body["error"]["url"]
 
 
+# --- _redact_for_log ---
+
+
+def test_redact_masks_top_level_sensitive_keys():
+    from snyk_apiweb.probely_client import _REDACTED, _redact_for_log
+
+    redacted = _redact_for_log(
+        {"name": "cred", "value": "s3cret", "password": "hunter2"}
+    )
+
+    assert redacted == {
+        "name": "cred",
+        "value": _REDACTED,
+        "password": _REDACTED,
+    }
+
+
+def test_redact_is_case_insensitive_for_keys():
+    from snyk_apiweb.probely_client import _REDACTED, _redact_for_log
+
+    redacted = _redact_for_log({"Authorization": "JWT abc", "OTP_Secret": "x"})
+
+    assert redacted == {"Authorization": _REDACTED, "OTP_Secret": _REDACTED}
+
+
+def test_redact_recurses_into_nested_lists_and_dicts():
+    from snyk_apiweb.probely_client import _REDACTED, _redact_for_log
+
+    payload = {
+        "site": {
+            "form_login_url": "https://app.test/login",
+            "form_login": [
+                {"name": "user", "value": "alice@test"},
+                {"name": "pass", "value": "hunter2"},
+            ],
+        },
+        "custom_field_mappings": [
+            {"name": "[CUSTOM_PASSWORD]", "value": "hunter2", "enabled": True}
+        ],
+    }
+
+    redacted = _redact_for_log(payload)
+
+    assert redacted["site"]["form_login_url"] == "https://app.test/login"
+    assert redacted["site"]["form_login"][0]["value"] == _REDACTED
+    assert redacted["site"]["form_login"][1]["value"] == _REDACTED
+    assert redacted["custom_field_mappings"][0]["value"] == _REDACTED
+    assert redacted["custom_field_mappings"][0]["enabled"] is True
+
+
+def test_redact_leaves_non_sensitive_data_untouched():
+    from snyk_apiweb.probely_client import _redact_for_log
+
+    payload = {
+        "id": "t1",
+        "name": "Target",
+        "urls": ["https://a", "https://b"],
+    }
+
+    assert _redact_for_log(payload) == payload
+
+
+def test_redact_handles_non_container_values():
+    from snyk_apiweb.probely_client import _redact_for_log
+
+    assert _redact_for_log("plain") == "plain"
+    assert _redact_for_log(None) is None
+    assert _redact_for_log(42) == 42
+
+
+def test_request_redacts_sensitive_body_in_debug_log(client, mock_response):
+    resp = mock_response(
+        status_code=201,
+        json_data={"id": "c1", "value": "returned-secret"},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    with patch("snyk_apiweb.probely_client.logger") as mock_logger:
+        client.request(
+            "POST", "/credentials/", json={"name": "db", "value": "hunter2"}
+        )
+
+    logged = " ".join(
+        str(arg)
+        for call in mock_logger.debug.call_args_list
+        for arg in call.args
+    )
+    assert "hunter2" not in logged
+    assert "returned-secret" not in logged
+    assert "***REDACTED***" in logged
+
+
+def test_request_skips_debug_logging_when_debug_disabled(
+    client, mock_response
+):
+    resp = mock_response(
+        status_code=200,
+        json_data={"id": "t1"},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    with patch("snyk_apiweb.probely_client.logger") as mock_logger:
+        mock_logger.isEnabledFor.return_value = False
+        client.request("GET", "/targets/t1/")
+
+    mock_logger.debug.assert_not_called()
+
+
 # --- resolve_labels ---
 
 
