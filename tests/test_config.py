@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from snyk_apiweb.config import (
+    _is_secret_reference,
+    _resolve_secret_reference,
     get_probely_api_key,
     get_probely_base_url,
     get_target_defaults,
@@ -148,20 +152,121 @@ def test_get_api_key_raises_when_missing(monkeypatch):
         get_probely_api_key({})
 
 
-def test_get_api_key_raises_for_saw_placeholder(monkeypatch):
+def test_get_api_key_raises_for_changeme_placeholder(monkeypatch):
     monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
-    cfg = {"saw": {"api_key": "REPLACE_WITH_YOUR_SAW_API_KEY"}}
+    cfg = {"saw": {"api_key": "CHANGEME"}}
 
     with pytest.raises(RuntimeError):
         get_probely_api_key(cfg)
 
 
-def test_get_api_key_raises_for_probely_placeholder(monkeypatch):
-    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
-    cfg = {"probely": {"api_key": "REPLACE_WITH_YOUR_PROBELY_API_KEY"}}
+# --- secret references (op:// / env:) ---
 
-    with pytest.raises(RuntimeError):
+
+def test_is_secret_reference():
+    assert _is_secret_reference("op://vault/item/field") is True
+    assert _is_secret_reference("env:MY_KEY") is True
+    assert _is_secret_reference("literal-plaintext-key") is False
+
+
+def test_resolve_env_reference(monkeypatch):
+    monkeypatch.setenv("MY_SAW_KEY", "resolved-from-env-var")
+
+    assert (
+        _resolve_secret_reference("env:MY_SAW_KEY") == "resolved-from-env-var"
+    )
+
+
+def test_resolve_env_reference_missing_raises(monkeypatch):
+    monkeypatch.delenv("MY_SAW_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="not set"):
+        _resolve_secret_reference("env:MY_SAW_KEY")
+
+
+def test_resolve_op_reference_uses_1password_cli(monkeypatch):
+    monkeypatch.setattr(
+        "snyk_apiweb.config.shutil.which", lambda _: "/usr/bin/op"
+    )
+    run_mock = MagicMock(
+        return_value=MagicMock(stdout="op-resolved-secret-value\n")
+    )
+    monkeypatch.setattr("snyk_apiweb.config.subprocess.run", run_mock)
+
+    result = _resolve_secret_reference("op://vault/saw-mcp/api-key")
+
+    assert result == "op-resolved-secret-value"
+    args = run_mock.call_args[0][0]
+    assert args == ["/usr/bin/op", "read", "op://vault/saw-mcp/api-key"]
+
+
+def test_resolve_op_reference_missing_cli_raises(monkeypatch):
+    monkeypatch.setattr("snyk_apiweb.config.shutil.which", lambda _: None)
+
+    with pytest.raises(RuntimeError, match="1Password CLI"):
+        _resolve_secret_reference("op://vault/saw-mcp/api-key")
+
+
+def test_resolve_chained_env_to_op_reference(monkeypatch):
+    # env:A -> op://... -> literal (multiple hops).
+    monkeypatch.setenv("MY_SAW_KEY", "op://vault/saw-mcp/api-key")
+    monkeypatch.setattr(
+        "snyk_apiweb.config.shutil.which", lambda _: "/usr/bin/op"
+    )
+    monkeypatch.setattr(
+        "snyk_apiweb.config.subprocess.run",
+        MagicMock(return_value=MagicMock(stdout="final-literal-secret\n")),
+    )
+
+    assert (
+        _resolve_secret_reference("env:MY_SAW_KEY") == "final-literal-secret"
+    )
+
+
+def test_resolve_detects_circular_reference(monkeypatch):
+    monkeypatch.setenv("MY_SAW_KEY", "env:MY_SAW_KEY")
+
+    with pytest.raises(RuntimeError, match="[Cc]ircular"):
+        _resolve_secret_reference("env:MY_SAW_KEY")
+
+
+def test_get_api_key_resolves_config_op_reference(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
+    monkeypatch.setattr(
+        "snyk_apiweb.config.shutil.which", lambda _: "/usr/bin/op"
+    )
+    monkeypatch.setattr(
+        "snyk_apiweb.config.subprocess.run",
+        MagicMock(
+            return_value=MagicMock(
+                stdout="a-real-looking-api-key-1234567890\n"
+            )
+        ),
+    )
+    cfg = {"saw": {"api_key": "op://vault/saw-mcp/api-key"}}
+
+    assert get_probely_api_key(cfg) == "a-real-looking-api-key-1234567890"
+
+
+def test_get_api_key_plaintext_config_logs_warning(monkeypatch, caplog):
+    monkeypatch.delenv("MCP_SAW_API_KEY", raising=False)
+    cfg = {"saw": {"api_key": "a-real-looking-api-key-1234567890"}}
+
+    with caplog.at_level("WARNING", logger="snyk_apiweb.config"):
         get_probely_api_key(cfg)
+
+    assert any("plaintext" in r.getMessage() for r in caplog.records)
+
+
+def test_get_api_key_env_reference_no_plaintext_warning(monkeypatch, caplog):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "env:MY_SAW_KEY")
+    monkeypatch.setenv("MY_SAW_KEY", "a-real-looking-api-key-1234567890")
+
+    with caplog.at_level("WARNING", logger="snyk_apiweb.config"):
+        result = get_probely_api_key({})
+
+    assert result == "a-real-looking-api-key-1234567890"
+    assert not any("plaintext" in r.getMessage() for r in caplog.records)
 
 
 # --- get_target_defaults ---

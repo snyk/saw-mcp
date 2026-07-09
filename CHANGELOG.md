@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Security
 
+- **Secrets management for the API key**: the API key may now be provided as a secret reference instead of a plaintext value, so it never has to sit in `config/config.yaml`. `MCP_SAW_API_KEY` and the config `api_key` field accept `op://vault/item/field` (resolved at runtime via the 1Password CLI) and `env:OTHER_VAR` (indirection to another environment variable). A plaintext key read from the config file now logs a warning recommending the env var / secret reference, and `config/config.yaml.dist`, `.env.example`, and the user guide document `MCP_SAW_API_KEY` as the supported path (`config/config.yaml` is already gitignored).
 - **SSRF protection for API-target schema fetches**: `_fetchjson_or_url` (used by `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`) now validates user-supplied URLs before fetching. Only `https://` is permitted, hostnames are resolved and any address in a private, loopback, link-local, reserved, multicast, or unspecified range is rejected (blocking cloud-metadata endpoints like `169.254.169.254` and `localhost`), redirects are re-validated on every hop, and an optional host allow-list can be configured via the `MCP_SAW_URL_ALLOWLIST` environment variable.
 
 ### Added
