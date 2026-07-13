@@ -7,8 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from snyk_apiweb.probely_client import ProbelyClient
-from snyk_apiweb.probely_client import current_tool_name
+from snyk_apiweb.probely_client import ProbelyClient, current_tool_name
 
 # --- __init__ ---
 
