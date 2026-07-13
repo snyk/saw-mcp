@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import requests
 from tenacity import (
@@ -21,6 +21,192 @@ logger = logging.getLogger(__name__)
 current_tool_name: contextvars.ContextVar[Optional[str]] = (
     contextvars.ContextVar("current_tool_name", default=None)
 )
+
+_Redactable = Union[Dict[str, Any], list[Any], str, int, float, bool, None]
+
+_SENSITIVE_EXACT_KEYS = frozenset(
+    {
+        "password",
+        "otp_secret",
+        "api_key",
+        "secret",
+        "token",
+        "credential",
+        "bearer",
+    }
+)
+
+_SENSITIVE_KEYWORDS = (
+    "cred",
+    "token",
+    "secret",
+    "password",
+    "jwt",
+)
+
+_SENSITIVE_PARENT_KEYWORDS = (
+    # Higher-signal parent keys that justify redacting nested string leaves.
+    "cred",
+    "credential",
+    "secret",
+    "token",
+    "password",
+)
+
+_CONTAINER_KEYS_REDACT_VALUE = frozenset(
+    {
+        # These often contain {"name": "...", "value": "..."} pairs or auth blobs.
+        "cookies",
+        "headers",
+        "form_login",
+        "basic_auth",
+        "api_auth_headers",
+        "api_auth_cookies",
+    }
+)
+
+
+def _tool_forces_redact_value(tool_name: str) -> bool:
+    """This function is used if we should redact fields with generic `value` key for some specific credentials-related tools"""
+    # Credential CRUD must never log plaintext field with `value` key, even if is_sensitive=False.
+    if "credential" in tool_name:
+        return True
+    # Form login uses generic {"name": "...", "value": "..."} pairs - so we redact everything named `value`
+    if tool_name == "probely_configure_form_login":
+        return True
+    return False
+
+
+def _key_is_sensitive_signal(key: str) -> bool:
+    k = key.lower()
+    if k in _SENSITIVE_EXACT_KEYS:
+        return True
+    return any(word in k for word in _SENSITIVE_KEYWORDS)
+
+
+def _parent_key_is_sensitive_signal(key: str) -> bool:
+    k = key.lower()
+    if k in _SENSITIVE_EXACT_KEYS:
+        return True
+    return any(word in k for word in _SENSITIVE_PARENT_KEYWORDS)
+
+
+def _redact_string(v: Any) -> Any:
+    if not isinstance(v, str):
+        return v
+    # Preserve empty strings: they usually mean "unset" and carry no secret.
+    if v == "":
+        return v
+    return "[REDACTED]"
+
+
+def _redact_for_logs(
+    obj: _Redactable,
+    *,
+    tool_name: str,
+    redact_generic_value_fields: bool = False,
+) -> _Redactable:
+    """Redact sensitive data from JSON-like objects for logging.
+
+    Rules (high-level):
+    - Redact explicit sensitive keys (e.g. password, token, otp_secret).
+    - Some payloads use generic {"name": "...", "value": "..."} pairs. In certain
+      contexts we treat key "value" as sensitive (credential CRUD, form login, and
+      selected container subtrees).
+    - Parent keyword signals apply only to *container keys* (dict/list values) and
+      expand redaction to generic "value" fields in that subtree.
+    - Only redact non-empty strings; keep non-string values and empty strings.
+    """
+
+    def is_container(v: Any) -> bool:
+        return isinstance(v, (dict, list))
+
+    def should_redact_value_key(key_lower: str, inherited_flag: bool) -> bool:
+        # "value" is treated as sensitive in some tool contexts and container
+        # subtrees, but not globally.
+        return (
+            (_tool_forces_redact_value(tool_name) or inherited_flag)
+            and key_lower == "value"
+        )
+
+    def next_redact_generic_value_fields(
+        *,
+        inherited_flag: bool,
+        key_lower: str,
+        key: str,
+        value: Any,
+    ) -> bool:
+        # Container keys that commonly carry secret values.
+        flag = inherited_flag or key_lower in _CONTAINER_KEYS_REDACT_VALUE
+        # Parent-key sensitivity expands generic "value" redaction only for
+        # nested dict/list subtrees.
+        if is_container(value) and _parent_key_is_sensitive_signal(key):
+            flag = True
+        return flag
+
+    if isinstance(obj, dict):
+        redacted: Dict[str, Any] = {}
+        for k, v in obj.items():
+            if not isinstance(k, str):
+                redacted[k] = _redact_for_logs(
+                    v,
+                    tool_name=tool_name,
+                    redact_generic_value_fields=redact_generic_value_fields,
+                )
+                continue
+
+            k_lower = k.lower()
+            next_flag = next_redact_generic_value_fields(
+                inherited_flag=redact_generic_value_fields,
+                key_lower=k_lower,
+                key=k,
+                value=v,
+            )
+
+            if should_redact_value_key(k_lower, next_flag):
+                redacted[k] = _redact_string(v)
+                continue
+
+            if _key_is_sensitive_signal(k):
+                if is_container(v):
+                    redacted[k] = _redact_for_logs(
+                        v,
+                        tool_name=tool_name,
+                        # If the key itself is sensitive (or looks sensitive),
+                        # treat this as a container where generic "value" fields
+                        # must be redacted, but do not blanket-redact all strings.
+                        redact_generic_value_fields=True,
+                    )
+                else:
+                    redacted[k] = _redact_string(v)
+                continue
+
+            redacted[k] = _redact_for_logs(
+                v,
+                tool_name=tool_name,
+                redact_generic_value_fields=next_flag,
+            )
+        return redacted
+
+    if isinstance(obj, list):
+        return [
+            _redact_for_logs(
+                i,
+                tool_name=tool_name,
+                redact_generic_value_fields=redact_generic_value_fields,
+            )
+            for i in obj
+        ]
+
+    return obj
+
+
+def _safe_debug_body_summary(body: Dict[str, Any]) -> Dict[str, Any]:
+    # Avoid logging raw response bodies (they can contain secrets in free-form text).
+    raw = body.get("raw")
+    if isinstance(raw, str):
+        return {"raw": f"<{len(raw)} bytes>"}
+    return body
 
 
 class ProbelyClient:
@@ -61,8 +247,9 @@ class ProbelyClient:
     ) -> Tuple[int, Dict[str, Any]]:
         url = self._url(path)
         tool_name = current_tool_name.get() or ""
+        redacted_json = _redact_for_logs(json, tool_name=tool_name)
         logger.debug(
-            "[%s] %s %s %s", tool_name, method.upper(), url, str(json)
+            "[%s] %s %s %s", tool_name, method.upper(), url, redacted_json
         )
         resp = self._session.request(
             method=method.upper(),
@@ -100,8 +287,10 @@ class ProbelyClient:
                 resp.status_code,
                 resp.reason,
             )
+        debug_body = _safe_debug_body_summary(body)
+        redacted_body = _redact_for_logs(debug_body, tool_name=tool_name)
         logger.debug(
-            "[%s] Response: %s %s", tool_name, resp.status_code, str(body)
+            "[%s] Response: %s %s", tool_name, resp.status_code, redacted_body
         )
         return resp.status_code, body
 

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import logging
 from unittest.mock import patch
 
+import pytest
+
 from snyk_apiweb.probely_client import ProbelyClient
+from snyk_apiweb.probely_client import current_tool_name
 
 # --- __init__ ---
 
@@ -38,6 +43,211 @@ def test_url_preserves_existing_slash(client):
 
 
 # --- request ---
+
+_MARKER = "DAST1177_SHOULD_NOT_APPEAR"
+
+
+@contextlib.contextmanager
+def _tool(name: str):
+    token = current_tool_name.set(name)
+    try:
+        yield
+    finally:
+        current_tool_name.reset(token)
+
+
+def _set_probely_client_debug_logs(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.DEBUG, logger="snyk_apiweb.probely_client")
+
+
+def test_request_debug_does_not_leak_credential_value_marker(
+    client, mock_response, caplog
+):
+    """Core regression: credential value must not hit logs at DEBUG."""
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    with _tool("probely_create_credential"):
+        client.request("POST", "/credentials/", json={"value": _MARKER})
+
+    assert _MARKER not in caplog.text
+    assert "POST" in caplog.text
+
+
+def test_request_debug_redacts_when_parent_key_is_sensitive(
+    client, mock_response, caplog
+):
+    """Parent-key-driven redaction: {"someCredKey": {"value": ...}} should redact."""
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    client.request("POST", "/any/", json={"someCredKey": {"value": _MARKER}})
+
+    assert _MARKER not in caplog.text
+
+
+def test_request_debug_parent_key_does_not_blanket_redact_strings(
+    client, mock_response, caplog
+):
+    """Parent-key-driven mode should redact generic 'value', not every string."""
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    client.request(
+        "POST",
+        "/any/",
+        json={"someCredKey": {"value": _MARKER, "label": "keepme"}},
+    )
+
+    assert _MARKER not in caplog.text
+    assert "label': 'keepme'" in caplog.text
+
+
+def test_request_debug_always_redacts_credential_value_even_if_not_sensitive(
+    client, mock_response, caplog
+):
+    """Credential CRUD exception: redact values even when is_sensitive is false."""
+    resp = mock_response(
+        status_code=200,
+        json_data={"id": "c1", "value": _MARKER, "is_sensitive": False},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    with _tool("probely_create_credential"):
+        client.request(
+            "POST",
+            "/credentials/",
+            json={"name": "x", "value": _MARKER, "is_sensitive": False},
+        )
+
+    assert _MARKER not in caplog.text
+
+
+def test_request_debug_redacts_form_login_values(
+    client, mock_response, caplog
+):
+    """Form login payload contains secrets under generic 'value' keys."""
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    payload = {
+        "site": {
+            "has_form_login": True,
+            "form_login": [
+                {"name": "email", "value": "user@test.com"},
+                {"name": "pass", "value": _MARKER},
+            ],
+            "auth_enabled": True,
+        }
+    }
+
+    _set_probely_client_debug_logs(caplog)
+    with _tool("probely_configure_form_login"):
+        client.request("PATCH", "/targets/t1/", json=payload)
+
+    assert _MARKER not in caplog.text
+    # Non-string values should not be redacted.
+    assert "auth_enabled': True" in caplog.text
+
+
+def test_request_debug_redacts_otp_secret(client, mock_response, caplog):
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    with _tool("probely_configure_2fa_totp"):
+        client.request("PATCH", "/targets/t1/", json={"otp_secret": _MARKER})
+
+    assert _MARKER not in caplog.text
+
+
+def test_request_debug_does_not_redact_empty_strings(client, mock_response, caplog):
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    with _tool("probely_configure_2fa_totp"):
+        client.request("PATCH", "/targets/t1/", json={"otp_secret": ""})
+
+    assert "otp_secret': ''" in caplog.text
+
+
+def test_request_debug_does_not_redact_otp_algorithm(client, mock_response, caplog):
+    """OTP algorithm is not a secret; keep it for debuggability."""
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    with _tool("probely_configure_2fa_totp"):
+        client.request("PATCH", "/targets/t1/", json={"otp_algorithm": "SHA1"})
+
+    assert "otp_algorithm': 'SHA1'" in caplog.text
+
+
+def test_request_debug_redacts_case_insensitive_password_key(
+    client, mock_response, caplog
+):
+    resp = mock_response(
+        status_code=200,
+        json_data={"ok": True},
+        content_type="application/json",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    client.request("POST", "/any/", json={"Password": _MARKER})
+
+    assert _MARKER not in caplog.text
+
+
+def test_request_debug_does_not_log_raw_response_body_text(
+    client, mock_response, caplog
+):
+    """Non-JSON responses should not dump raw bodies into logs."""
+    resp = mock_response(
+        status_code=200,
+        text=f"<html>{_MARKER}</html>",
+        content_type="text/html",
+    )
+    client._session.request.return_value = resp
+
+    _set_probely_client_debug_logs(caplog)
+    client.request("GET", "/page")
+
+    assert _MARKER not in caplog.text
 
 
 def test_request_returns_status_and_body_for_json(client, mock_response):

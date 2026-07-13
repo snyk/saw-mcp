@@ -87,7 +87,11 @@ def test_load_config_env_only_still_loads_when_config_exists(
 # --- get_probely_base_url ---
 
 
-def test_get_base_url_prefers_saw_section():
+def test_get_base_url_prefers_saw_section(monkeypatch):
+    # Ensure env doesn't affect config precedence.
+    # Some dev environments set MCP_SAW_BASE_URL globally.
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
     cfg = {
         "saw": {"base_url": "https://saw.example.com"},
         "probely": {"base_url": "https://probely.example.com"},
@@ -96,13 +100,17 @@ def test_get_base_url_prefers_saw_section():
     assert get_probely_base_url(cfg) == "https://saw.example.com"
 
 
-def test_get_base_url_falls_back_to_probely_section():
+def test_get_base_url_falls_back_to_probely_section(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
     cfg = {"probely": {"base_url": "https://probely.example.com"}}
 
     assert get_probely_base_url(cfg) == "https://probely.example.com"
 
 
-def test_get_base_url_defaults_when_no_section():
+def test_get_base_url_defaults_when_no_section(monkeypatch):
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
     assert get_probely_base_url({}) == "https://api.probely.com"
 
 
