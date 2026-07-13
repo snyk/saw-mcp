@@ -185,7 +185,9 @@ def test_request_debug_redacts_otp_secret(client, mock_response, caplog):
     assert _MARKER not in caplog.text
 
 
-def test_request_debug_does_not_redact_empty_strings(client, mock_response, caplog):
+def test_request_debug_does_not_redact_empty_strings(
+    client, mock_response, caplog
+):
     resp = mock_response(
         status_code=200,
         json_data={"ok": True},
@@ -200,7 +202,9 @@ def test_request_debug_does_not_redact_empty_strings(client, mock_response, capl
     assert "otp_secret': ''" in caplog.text
 
 
-def test_request_debug_does_not_redact_otp_algorithm(client, mock_response, caplog):
+def test_request_debug_does_not_redact_otp_algorithm(
+    client, mock_response, caplog
+):
     """OTP algorithm is not a secret; keep it for debuggability."""
     resp = mock_response(
         status_code=200,

@@ -125,9 +125,8 @@ def _redact_for_logs(
         # "value" is treated as sensitive in some tool contexts and container
         # subtrees, but not globally.
         return (
-            (_tool_forces_redact_value(tool_name) or inherited_flag)
-            and key_lower == "value"
-        )
+            _tool_forces_redact_value(tool_name) or inherited_flag
+        ) and key_lower == "value"
 
     def next_redact_generic_value_fields(
         *,
