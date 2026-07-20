@@ -292,16 +292,24 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """Get tool filtering configuration.
 
     Returns a dict with:
-    - enabled_tools: list of tool names to enable (whitelist), or None for all
+    - enabled_tools: list of tool names to enable, or None for all
     - disabled_tools: list of tool names to disable (blacklist), or empty list
-
-    If enabled_tools is set, only those tools are available.
-    If disabled_tools is set, all tools except those are available.
-    If both are set, enabled_tools takes precedence.
+    - enabled_overrides_blacklist: whether ``enabled`` acts as a re-enable
+      override (blacklist mode) rather than a strict whitelist
 
     The built-in ``DEFAULT_DISABLED_TOOLS`` are always merged into the blacklist
-    so destructive tools stay off unless the operator opts in via the
-    ``enabled`` whitelist.
+    so destructive tools stay off unless the operator opts in explicitly.
+
+    How ``enabled`` is interpreted depends on whether a ``disabled`` section is
+    present, so both mental models are consistent:
+
+    - ``enabled`` alone → strict whitelist: only those tools are available.
+    - ``enabled`` together with ``disabled`` → blacklist mode: ``enabled`` is a
+      set of overrides that re-enable specific tools *on top of* the blacklist
+      (including the built-in destructive defaults) without turning every other
+      tool off. This keeps blacklist behavior symmetric: to bring a default-off
+      tool back you simply list it under ``enabled``, and everything else stays
+      available.
     """
     tools_cfg = cfg.get("tools") or {}
 
@@ -313,17 +321,31 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "enabled_tools": tools_cfg.get("enabled"),  # None means all enabled
         "disabled_tools": disabled_tools,
+        "enabled_overrides_blacklist": "disabled" in tools_cfg,
     }
 
 
 def is_tool_enabled(tool_name: str, tool_filter: Dict[str, Any]) -> bool:
-    """Check if a tool should be enabled based on the filter configuration."""
+    """Check if a tool should be enabled based on the filter configuration.
+
+    ``enabled`` entries always win (they can re-enable a built-in destructive
+    default). When ``enabled_overrides_blacklist`` is set, a tool that is not
+    listed in ``enabled`` falls back to the blacklist check instead of being
+    rejected, so ``enabled`` behaves as a re-enable override rather than a
+    strict whitelist.
+    """
     enabled_tools = tool_filter.get("enabled_tools")
     disabled_tools = tool_filter.get("disabled_tools", [])
+    overrides_blacklist = tool_filter.get("enabled_overrides_blacklist", False)
 
-    # If whitelist is defined, only those tools are enabled
     if enabled_tools is not None:
-        return tool_name in enabled_tools
+        # Explicitly enabled tools always run (overriding the blacklist).
+        if tool_name in enabled_tools:
+            return True
+        # Blacklist mode: unlisted tools still follow the blacklist. Strict
+        # whitelist mode: unlisted tools are rejected.
+        if not overrides_blacklist:
+            return False
 
-    # Otherwise, check blacklist
+    # Blacklist check (also the path when no whitelist is defined).
     return tool_name not in disabled_tools

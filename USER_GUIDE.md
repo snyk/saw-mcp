@@ -88,19 +88,37 @@ tools:
     - probely_delete_sequence
 ```
 
-If `enabled` is set, it takes precedence. If neither is set, all tools except the
-built-in disabled defaults are available.
+How `enabled` is interpreted depends on whether a `disabled` section is present:
+
+- **`enabled` on its own** is a strict whitelist — only the tools you list are available.
+- **`enabled` alongside a `disabled` section** is a re-enable override: the listed
+  tools are opted back in *on top of* the blacklist, and every other tool stays
+  available.
+
+If neither is set, all tools except the built-in disabled defaults are available.
 
 ### Destructive tools disabled by default
 
 For safety, the following destructive tools are **disabled out of the box**
-(even with no config file). To use one, add it to the `enabled` whitelist —
-that is the only way to opt in:
+(even with no config file):
 
 - `probelyrequest` — raw "call any API" passthrough that bypasses per-tool validation
 - `probely_delete_target`
 - `probely_delete_credential`
 - `probely_bulk_update_findings`
+
+To use one, opt it back in explicitly. To keep every other tool available (plain
+blacklist behavior), list it under `enabled` and keep a `disabled` section:
+
+```yaml
+tools:
+  enabled:
+    - probely_delete_target   # opt this default-off tool back in
+  disabled: []                # keep blacklist mode; everything else stays on
+```
+
+Alternatively, if you want to lock the server down to a small set, use `enabled`
+on its own as a strict whitelist (only those tools run).
 
 ## Audit trail
 

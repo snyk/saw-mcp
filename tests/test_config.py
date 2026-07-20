@@ -368,6 +368,50 @@ def test_destructive_tool_opt_in_via_whitelist():
     assert is_tool_enabled("probelyrequest", tf) is False
 
 
+def test_enabled_alone_is_strict_whitelist():
+    cfg = {"tools": {"enabled": ["probely_list_targets"]}}
+    tf = get_tool_filter(cfg)
+
+    assert tf["enabled_overrides_blacklist"] is False
+    assert is_tool_enabled("probely_list_targets", tf) is True
+    # An unrelated, non-destructive tool stays off in strict whitelist mode.
+    assert is_tool_enabled("probely_get_target", tf) is False
+
+
+def test_default_reenabled_via_override_keeps_other_tools_on():
+    # Presence of a `disabled` section switches `enabled` to override mode:
+    # the built-in default is re-enabled without turning everything else off.
+    cfg = {
+        "tools": {
+            "enabled": ["probely_delete_target"],
+            "disabled": [],
+        }
+    }
+    tf = get_tool_filter(cfg)
+
+    assert tf["enabled_overrides_blacklist"] is True
+    # The default-off tool listed under `enabled` is opted back in.
+    assert is_tool_enabled("probely_delete_target", tf) is True
+    # Non-listed tools remain available (not a strict whitelist).
+    assert is_tool_enabled("probely_get_target", tf) is True
+    # Other built-in destructive defaults stay off.
+    assert is_tool_enabled("probelyrequest", tf) is False
+
+
+def test_override_mode_still_honors_user_blacklist():
+    cfg = {
+        "tools": {
+            "enabled": ["probely_delete_target"],
+            "disabled": ["probely_delete_sequence"],
+        }
+    }
+    tf = get_tool_filter(cfg)
+
+    assert is_tool_enabled("probely_delete_target", tf) is True
+    assert is_tool_enabled("probely_delete_sequence", tf) is False
+    assert is_tool_enabled("probely_list_targets", tf) is True
+
+
 def test_is_tool_enabled_whitelist_allows_listed_tool():
     tf = {
         "enabled_tools": ["probely_list_targets"],
