@@ -126,6 +126,17 @@ Or pipe from a secret manager: `op read 'op://vault/item/key' | ./scripts/setup-
 
 This writes a `.env` file in the project root (gitignored). The server loads it automatically at startup.
 
+**Option C: Secret reference** (avoids storing the key in plaintext anywhere)
+
+`MCP_SAW_API_KEY` and the config `api_key` field also accept a reference that is resolved at runtime, so the literal key never sits in a file:
+
+```bash
+export MCP_SAW_API_KEY="op://vault/saw-mcp/api-key"   # resolved via the 1Password CLI (`op`)
+export MCP_SAW_API_KEY="env:MY_SAW_KEY"               # read from another environment variable
+```
+
+> Avoid committing a plaintext key. `config/config.yaml` is gitignored, and a plaintext key read from it logs a warning at startup.
+
 ### 4. Install Browser Automation (web targets with login)
 
 Web target onboarding records login sequences in a real browser. **Preferred for coding agents:** [`playwright-cli`](https://www.npmjs.com/package/@playwright/cli) via Shell:

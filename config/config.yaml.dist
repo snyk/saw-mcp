@@ -1,7 +1,13 @@
 # Snyk API & Web MCP Server Configuration
 saw:
   base_url: "https://api.probely.com"
-  api_key: "CHANGEME"
+  # Set your API key via the MCP_SAW_API_KEY environment variable (see .env.example).
+  # It accepts a plaintext key, a 1Password reference ("op://vault/saw-mcp/api-key"),
+  # or indirection to another env var ("env:MY_SAW_KEY").
+  #
+  # DEPRECATED: the `api_key` field below is still read (and supports the same
+  # secret references) but is no longer recommended. Prefer MCP_SAW_API_KEY.
+  # api_key: "op://vault/saw-mcp/api-key"
 
 server:
   name: "Snyk API & Web"

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
+import subprocess
 import tempfile
 from typing import Any, Dict
 
@@ -116,27 +118,143 @@ def get_probely_base_url(cfg: Dict[str, Any]) -> str:
     return base_url
 
 
+_API_KEY_PLACEHOLDERS = ("CHANGEME",)
+
+
+def _is_secret_reference(value: str) -> bool:
+    """Return True if the value points at a secret store instead of a literal.
+
+    Supported reference schemes:
+    - ``op://vault/item/field`` — resolved via the 1Password CLI (``op read``).
+    - ``env:OTHER_VAR`` — indirection to another environment variable.
+    """
+    return value.startswith("op://") or value.startswith("env:")
+
+
+def _read_1password_secret(ref: str) -> str:
+    """Resolve an ``op://`` reference using the 1Password CLI.
+
+    Uses ``op read`` with argument-list invocation (no shell) so the reference
+    cannot be used for command injection.
+    """
+    op_path = shutil.which("op")
+    if not op_path:
+        raise RuntimeError(
+            "1Password CLI ('op') not found on PATH; cannot resolve the "
+            f"secret reference {ref!r}. Install the 1Password CLI or provide "
+            f"the key directly via {API_KEY_ENV}."
+        )
+    try:
+        result = subprocess.run(
+            [op_path, "read", ref],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"Timed out resolving 1Password secret reference {ref!r}."
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or "").strip()
+        raise RuntimeError(
+            f"Failed to resolve 1Password secret reference {ref!r}: {detail}"
+        ) from exc
+    return result.stdout.strip()
+
+
+# Maximum number of chained secret-reference hops (e.g. env: -> env: -> op://)
+# before giving up. Guards against runaway or circular references.
+_MAX_SECRET_REFERENCE_HOPS = 5
+
+
+def _resolve_secret_reference_once(value: str) -> str:
+    """Resolve a single secret-reference hop, or pass a literal through.
+
+    ``op://`` references are read from 1Password; ``env:VAR`` references read
+    another environment variable. Anything else is returned unchanged.
+    """
+    if value.startswith("op://"):
+        return _read_1password_secret(value)
+    if value.startswith("env:"):
+        var_name = value[len("env:") :].strip()
+        resolved = (os.environ.get(var_name) or "").strip()
+        if not resolved:
+            raise RuntimeError(
+                f"Secret reference {value!r} points at environment variable "
+                f"{var_name!r}, which is not set."
+            )
+        return resolved
+    return value
+
+
+def _resolve_secret_reference(value: str) -> str:
+    """Resolve a (possibly chained) secret reference to its literal value.
+
+    References may point at other references (e.g. ``env:A`` resolving to
+    ``op://...``). Resolution repeats until a literal value is reached, up to
+    ``_MAX_SECRET_REFERENCE_HOPS`` hops, raising if the limit is exceeded
+    (which also catches circular references such as ``env:A`` -> ``env:A``).
+    """
+    seen: list[str] = []
+    resolved = value
+    for _ in range(_MAX_SECRET_REFERENCE_HOPS):
+        if not _is_secret_reference(resolved):
+            return resolved
+        if resolved in seen:
+            raise RuntimeError(
+                f"Circular secret reference detected while resolving {value!r}."
+            )
+        seen.append(resolved)
+        resolved = _resolve_secret_reference_once(resolved).strip()
+    if _is_secret_reference(resolved):
+        raise RuntimeError(
+            f"Secret reference {value!r} exceeded the maximum of "
+            f"{_MAX_SECRET_REFERENCE_HOPS} resolution hops (possible loop)."
+        )
+    return resolved
+
+
 def get_probely_api_key(cfg: Dict[str, Any]) -> str:
     """Get the Snyk API & Web API key from env or config.
 
     Precedence: MCP_SAW_API_KEY env var → saw.api_key → probely.api_key.
     Supports both 'saw' (new) and 'probely' (legacy) config sections.
+
+    The resolved value may be a literal key or a secret reference
+    (``op://vault/item/field`` for the 1Password CLI, or ``env:OTHER_VAR``),
+    so the key never has to be stored in plaintext in the config file. A
+    plaintext key read from the config file is discouraged and logs a warning;
+    prefer MCP_SAW_API_KEY or a secret reference.
     """
     key = (os.environ.get(API_KEY_ENV) or "").strip()
+    source = "env"
     if not key:
         saw_cfg = cfg.get("saw", {})
         probely_cfg = cfg.get("probely", {})
         key = (
             saw_cfg.get("api_key") or probely_cfg.get("api_key") or ""
         ).strip()
-    if not key or key in (
-        "REPLACE_WITH_YOUR_SAW_API_KEY",
-        "REPLACE_WITH_YOUR_PROBELY_API_KEY",
-        "CHANGEME",
-    ):
+        source = "config"
+    if not key or key in _API_KEY_PLACEHOLDERS:
         raise RuntimeError(
             f"Snyk API & Web API key not set. Set {API_KEY_ENV} or update "
             "config/config.yaml 'saw.api_key' / 'probely.api_key'."
+        )
+
+    if source == "config" and not _is_secret_reference(key):
+        logger.warning(
+            "Snyk API & Web API key was loaded as plaintext from the config "
+            "file. Prefer %s or a secret reference (e.g. 'op://vault/item/"
+            "field') so the key is not stored in plaintext.",
+            API_KEY_ENV,
+        )
+
+    key = _resolve_secret_reference(key).strip()
+    if not key or key in _API_KEY_PLACEHOLDERS:
+        raise RuntimeError(
+            "Snyk API & Web API key resolved to an empty or placeholder value."
         )
     if len(key) < 20:
         logger.warning(

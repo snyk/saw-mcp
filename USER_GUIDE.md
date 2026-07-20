@@ -118,8 +118,8 @@ This covers every write operation: creating targets/credentials/sequences, updat
 
 ## Security best practices
 
-- **API key** — Store only in `config/config.yaml` (field `saw.api_key` or `probely.api_key`). Do not put it in `~/.cursor/mcp.json`.
-- **Config file** — Keep `config/config.yaml` out of version control. Use `chmod 600` on the file.
+- **API key** — Prefer the `MCP_SAW_API_KEY` environment variable (or `.env`). Avoid storing a plaintext key in `config/config.yaml`, and do not put it in `~/.cursor/mcp.json`. If you must reference the key from config, use a secret reference — `op://vault/item/field` (resolved via the [1Password CLI](https://developer.1password.com/docs/cli/)) or `env:OTHER_VAR` — so the key never sits in plaintext. `MCP_SAW_API_KEY` also accepts these reference schemes. A plaintext key read from the config file logs a warning at startup.
+- **Config file** — `config/config.yaml` is gitignored; keep it out of version control and use `chmod 600` on the file.
 - **Target discovery** — On loading a project, the AI can match it to existing targets via `probely_list_targets`.
 - **Findings** — Use the findings tools to prioritize fixes when vulnerabilities exist.
 
