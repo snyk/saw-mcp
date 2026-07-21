@@ -193,7 +193,7 @@ The API key is resolved in this priority (12-factor):
 
 When `MCP_SAW_API_KEY` is set, the config file is optional. The server loads `.env` from the project root at startup via `load_dotenv(override=False)` — real env vars always take precedence over `.env`.
 
-All key values are stripped of leading/trailing whitespace. Placeholder values `"REPLACE_WITH_YOUR_SAW_API_KEY"`, `"REPLACE_WITH_YOUR_PROBELY_API_KEY"`, and `"CHANGEME"` are rejected. Keys shorter than 20 characters produce a warning (likely a key ID, not the actual key).
+All key values are stripped of leading/trailing whitespace. The placeholder value `"CHANGEME"` (shipped in `config.yaml.dist`) is rejected. Keys shorter than 20 characters produce a warning (likely a key ID, not the actual key).
 
 ### 5.2.1 Base URL Resolution
 
@@ -251,7 +251,7 @@ __all__ = ["config", "probely_client", "tools", "server"]
 
 Implements the configuration system described in Section 5. Key design decisions:
 - Calls `load_dotenv(os.path.join(_project_root, ".env"), override=False)` at module load so `MCP_SAW_API_KEY` can live in `.env` (gitignored, persists across sessions). Real env vars always take precedence.
-- `get_probely_api_key()` checks `os.environ.get(API_KEY_ENV)` first; env overrides config (12-factor). Strips whitespace, rejects placeholder values (`CHANGEME`, `REPLACE_WITH_YOUR_*`), warns on keys shorter than 20 chars.
+- `get_probely_api_key()` checks `os.environ.get(API_KEY_ENV)` first; env overrides config (12-factor). Strips whitespace, rejects the `CHANGEME` placeholder, resolves `op://` / `env:` secret references, warns on keys shorter than 20 chars.
 - `get_probely_base_url()` checks `MCP_SAW_BASE_URL` env var first, then config, then defaults to `https://api.probely.com`. Enables staging/QA use without a config file.
 - When `MCP_SAW_API_KEY` is set and the config file is absent, `load_config()` returns `{}` (no config file needed).
 - Uses `os.path.dirname(__file__)` twice to locate the project root for the default config path and `.env` location.
@@ -1025,7 +1025,7 @@ Hard links ensure a single source of truth. Updates via `git pull` propagate aut
 3. **Setup script security:** `setup-env.sh` reads the key via silent `read -rs` prompt (recommended), piped stdin (for secret managers like 1Password), or argument (warns about shell history). Empty keys are rejected.
 4. **Config file:** Gitignored (`config/config.yaml`). Only the template (`config.yaml.dist`) is committed.
 5. **File permissions:** `.env` is created with `chmod 600` by the setup script. Recommend the same for `config/config.yaml`.
-6. **Key validation:** Placeholder values (`CHANGEME`, `REPLACE_WITH_YOUR_*`) are rejected at startup. Keys shorter than 20 characters produce a warning.
+6. **Key validation:** The placeholder value `CHANGEME` is rejected at startup. Keys shorter than 20 characters produce a warning.
 7. **Packaging:** The `package.sh` script redacts the API key before creating the tarball.
 8. **Auth header:** `Authorization: JWT {api_key}` — no Bearer prefix, uses JWT format.
 9. **HTTPS:** All API calls use HTTPS via the Probely base URL.

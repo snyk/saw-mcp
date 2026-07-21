@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from snyk_apiweb.tools import (
+    _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
     _assert_url_is_safe,
     _generate_totp,
@@ -67,6 +68,22 @@ def test_parse_raises_for_int():
 def test_parse_raises_for_random_string():
     with pytest.raises(ValueError, match="Expected a JSON array"):
         _parse_list_of_dicts("not valid at all")
+
+
+def test_parse_raises_for_oversized_string():
+    oversized = "[" + ("0," * _MAX_PARSE_INPUT_LEN) + "0]"
+
+    with pytest.raises(ValueError, match="Input too large"):
+        _parse_list_of_dicts(oversized)
+
+
+def test_parse_accepts_string_at_size_limit():
+    # A valid JSON array padded with whitespace to exactly the limit still parses.
+    base = '[{"name": "Prod"}]'
+    raw = base + " " * (_MAX_PARSE_INPUT_LEN - len(base))
+
+    assert len(raw) == _MAX_PARSE_INPUT_LEN
+    assert _parse_list_of_dicts(raw) == [{"name": "Prod"}]
 
 
 # --- _generate_totp ---
