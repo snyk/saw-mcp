@@ -6,11 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-20
+
 ### Security
 
 - **Data classification and debug-log redaction (DAST-1178)**: recorded the data-classification level of everything the tool handles — the Snyk API & Web API key, customer web-application login credentials, TOTP/2FA seeds, and DAST findings (up to DCL6). `catalog-info.yaml` now has a concrete `lifecycle` (`production`) plus classification annotations/`dclTags`, and a new "Data handling and classification" section in `SECURITY.md` documents each data source and its DCL level. Debug logging in `ProbelyClient` now redacts secret-bearing fields (passwords, credential values, TOTP seeds, tokens, API keys, `Authorization`, login-sequence content) from request/response bodies before they are written, so DCL4+ data no longer lands in `~/saw-mcp.log`.
-- **Secrets management for the API key**: the API key may now be provided as a secret reference instead of a plaintext value, so it never has to sit in `config/config.yaml`. `MCP_SAW_API_KEY` and the config `api_key` field accept `op://vault/item/field` (resolved at runtime via the 1Password CLI) and `env:OTHER_VAR` (indirection to another environment variable). A plaintext key read from the config file now logs a warning recommending the env var / secret reference, and `config/config.yaml.dist`, `.env.example`, and the user guide document `MCP_SAW_API_KEY` as the supported path (`config/config.yaml` is already gitignored).
-- **SSRF protection for API-target schema fetches**: `_fetchjson_or_url` (used by `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`) now validates user-supplied URLs before fetching. Only `https://` is permitted, hostnames are resolved and any address in a private, loopback, link-local, reserved, multicast, or unspecified range is rejected (blocking cloud-metadata endpoints like `169.254.169.254` and `localhost`), redirects are re-validated on every hop, and an optional host allow-list can be configured via the `MCP_SAW_URL_ALLOWLIST` environment variable.
+- **Bound caller-supplied input size**: `_parse_list_of_dicts` now rejects strings over 64 KiB before parsing with `json.loads` or `ast.literal_eval`, preventing memory exhaustion attacks via oversized or deeply nested payloads in configuration (DAST-1181).
+- **Secrets management for the API key**: the API key may now be provided as a secret reference instead of a plaintext value, so it never has to sit in `config/config.yaml`. `MCP_SAW_API_KEY` and the config `api_key` field accept `op://vault/item/field` (resolved at runtime via the 1Password CLI) and `env:OTHER_VAR` (indirection to another environment variable). A plaintext key read from the config file now logs a warning recommending the env var / secret reference, and `config/config.yaml.dist`, `.env.example`, and the user guide document `MCP_SAW_API_KEY` as the supported path (`config/config.yaml` is already gitignored) (DAST-1176).
+- **SSRF protection for API-target schema fetches**: `_fetchjson_or_url` (used by `probely_create_api_target_from_postman` / `probely_create_api_target_from_openapi`) now validates user-supplied URLs before fetching. Only `https://` is permitted, hostnames are resolved and any address in a private, loopback, link-local, reserved, multicast, or unspecified range is rejected (blocking cloud-metadata endpoints like `169.254.169.254` and `localhost`), redirects are re-validated on every hop, and an optional host allow-list can be configured via the `MCP_SAW_URL_ALLOWLIST` environment variable (DAST-1173).
 
 ### Added
 
@@ -24,7 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
-- **Version coherence**: `.cursor-plugin/plugin.json` version synced to `1.1.3` to match `pyproject.toml`, `server.json`, and `snyk_apiweb/__init__.py`.
+- **Version coherence**: `.cursor-plugin/plugin.json` version synced to `1.2.0` to match `pyproject.toml`, `server.json`, and `snyk_apiweb/__init__.py`.
 - **`.env.example`**: documents optional `MCP_SAW_CONFIG_PATH` and `MCP_SAW_LOG_LEVEL` env vars.
 
 ## [1.1.3] - 2026-05-13
