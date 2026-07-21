@@ -32,6 +32,13 @@ from .probely_client import ProbelyClient, current_tool_name
 
 logger = logging.getLogger(__name__)
 
+# Maximum length (in characters) of a caller-supplied string we will attempt to
+# parse into a list of dicts. Guards against a very large or deeply nested
+# payload exhausting memory in json.loads / ast.literal_eval. The strings here
+# are small config structures (header/cookie lists, credential mappings), so
+# 64 KiB is comfortably generous while still bounding worst-case memory use.
+_MAX_PARSE_INPUT_LEN = 65536
+
 
 def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
     """Parse a value that should be a list of dicts.
@@ -47,6 +54,11 @@ def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
     if isinstance(value, list):
         return value
     if isinstance(value, str):
+        if len(value) > _MAX_PARSE_INPUT_LEN:
+            raise ValueError(
+                f"Input too large to parse ({len(value)} characters; limit is "
+                f"{_MAX_PARSE_INPUT_LEN}). Provide a smaller JSON array."
+            )
         # Try standard JSON first
         try:
             parsed = json.loads(value)
