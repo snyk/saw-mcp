@@ -88,8 +88,30 @@ tools:
     # - probely_update_target_settings
 
   # Blacklist: Disable specific tools (uncomment to use)
+  #
+  # The following destructive tools are ALWAYS disabled by default (built in,
+  # even without a config file):
+  #   - probelyrequest             (raw "call any API" passthrough)
+  #   - probely_delete_target
+  #   - probely_delete_credential
+  #   - probely_bulk_update_findings
+  #
+  # Add extra tools here to disable them on top of the built-in defaults:
    disabled:
      - probely_delete_sequence
      - probely_delete_extra_host
-     - probely_request
+  #
+  # To re-enable one of the built-in defaults while keeping every other tool
+  # available, list only that default-off tool under 'enabled' above AND keep
+  # this 'disabled' section present. When every 'enabled' entry is already on
+  # the blacklist, 'enabled' acts as a re-enable override instead of a strict
+  # whitelist, e.g.:
+  #
+  #   tools:
+  #     enabled:
+  #       - probely_delete_target   # opt this default-off tool back in
+  #     disabled: []                # keep blacklist mode (everything else on)
+  #
+  # (Used on its own, without a 'disabled' section, 'enabled' is a strict
+  # whitelist: only the tools you list are available.)
 

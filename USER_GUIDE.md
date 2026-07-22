@@ -67,7 +67,7 @@ The AI creates a **subagent per target**. With **`playwright-cli`**, subagents m
 - `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials are used by default for sensitive values (passwords, tokens, secrets) and linked to sequence custom fields for passwords
 - `probely_configure_form_login(...)`, `probely_configure_2fa(...)`
 - `probely_create_api_target_from_postman(...)`, `probely_create_api_target_from_openapi(...)`
-- `probely_request(method, path, ...)` for any endpoint
+- `probelyrequest(method, path, ...)` for any endpoint (disabled by default — see below)
 
 ## Tool filtering
 
@@ -82,14 +82,54 @@ tools:
     - probely_start_scan
     - probely_list_findings
 
-# Blacklist (disable these)
+# Blacklist (disable these on top of the built-in defaults)
 tools:
   disabled:
-    - probely_delete_target
-    - probely_request
+    - probely_delete_sequence
 ```
 
-If `enabled` is set, it takes precedence. If neither is set, all tools are available.
+How `enabled` is interpreted depends on whether a `disabled` section is present:
+
+- **`enabled` on its own** is a strict whitelist — only the tools you list are available.
+- **`enabled` alongside a `disabled` section** is a re-enable override: the listed
+  tools are opted back in *on top of* the blacklist, and every other tool stays
+  available.
+
+If neither is set, all tools except the built-in disabled defaults are available.
+
+### Destructive tools disabled by default
+
+For safety, the following destructive tools are **disabled out of the box**
+(even with no config file):
+
+- `probelyrequest` — raw "call any API" passthrough that bypasses per-tool validation
+- `probely_delete_target`
+- `probely_delete_credential`
+- `probely_bulk_update_findings`
+
+To use one, opt it back in explicitly. To keep every other tool available (plain
+blacklist behavior), list only that default-off tool under `enabled` and keep a
+`disabled` section:
+
+```yaml
+tools:
+  enabled:
+    - probely_delete_target   # opt this default-off tool back in
+  disabled: []                # keep blacklist mode; everything else stays on
+```
+
+Alternatively, if you want to lock the server down to a small set, use `enabled`
+on its own as a strict whitelist (only those tools run). The same strict
+whitelist applies when `enabled` lists any tool that is not already on the
+blacklist, even if a `disabled` section is also present.
+
+## Audit trail
+
+Every tool invocation emits one structured audit line recording the tool name,
+UTC timestamp, outcome (`success` / `api_error` / `error`), and duration. These
+lines are written to the standard log (`~/saw-mcp.log`). Set `MCP_SAW_AUDIT_LOG`
+to a file path to also append the trail to a dedicated, greppable /
+SIEM-ingestible file.
 
 ## Confirmation prompts
 

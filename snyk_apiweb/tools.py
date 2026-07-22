@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional
 from fastmcp import FastMCP
 from pydantic import Field
 
+from .audit import record_tool_call
 from .config import (
     get_probely_api_key,
     get_probely_base_url,
@@ -266,12 +267,28 @@ def build_server() -> FastMCP:
         def decorator(func: Callable) -> Callable:
             if is_tool_enabled(name, tool_filter):
                 # Wrap the function to set the tool name context before calling
+                # and emit a per-call audit line (tool, timestamp, outcome).
                 @functools.wraps(func)
                 def wrapper(*args: Any, **kwargs: Any) -> Any:
                     token = current_tool_name.set(name)
+                    start = time.perf_counter()
+                    outcome = "success"
+                    error_summary: Optional[str] = None
                     try:
-                        return func(*args, **kwargs)
+                        result = func(*args, **kwargs)
+                        if isinstance(result, dict) and result.get("error"):
+                            outcome = "api_error"
+                            error_summary = str(result.get("error"))
+                        return result
+                    except Exception as exc:
+                        outcome = "error"
+                        error_summary = f"{type(exc).__name__}: {exc}"
+                        raise
                     finally:
+                        duration_ms = (time.perf_counter() - start) * 1000
+                        record_tool_call(
+                            name, outcome, duration_ms, error_summary
+                        )
                         current_tool_name.reset(token)
 
                 return app.tool(name=name)(wrapper)

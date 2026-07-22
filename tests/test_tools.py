@@ -159,6 +159,22 @@ def test_build_server_registers_prompts(monkeypatch):
     assert "saw_api_target_configuration" in prompt_names
 
 
+def test_build_server_disables_destructive_tools_by_default(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+
+    app = build_server()
+    tool_names = {tool.name for tool in asyncio.run(app.list_tools())}
+
+    # Destructive tools are off by default (env-only mode, no config file).
+    assert "probelyrequest" not in tool_names
+    assert "probely_delete_target" not in tool_names
+    assert "probely_delete_credential" not in tool_names
+    assert "probely_bulk_update_findings" not in tool_names
+    # Ordinary read tools remain available.
+    assert "probely_list_targets" in tool_names
+
+
 # --- SSRF protection: _assert_url_is_safe ---
 
 
