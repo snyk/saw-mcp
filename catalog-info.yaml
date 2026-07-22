@@ -2,7 +2,27 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: saw-mcp
+  description: >-
+    Snyk API & Web MCP server. Connects AI coding assistants to Snyk API & Web
+    to onboard scan targets, configure authentication, run DAST scans, and
+    triage findings.
+  annotations:
+    # Highest data-classification level handled by this component. See
+    # SECURITY.md ("Data handling and classification") for the per-source
+    # breakdown and the logging/redaction controls that align with it.
+    snyk.io/data-classification-max: DCL6
+  tags:
+    - mcp
+    - dast
+    - dcl4
+    - dcl6
 spec:
   type: external-tooling
-  lifecycle: "-"
+  lifecycle: production
   owner: emerging-technologies-solutions_probely
+  # This is external tooling (run in the user's environment, not a hosted Snyk
+  # service), so Helm-style dclTags do not structurally apply. The data
+  # classification is recorded here and documented in full in SECURITY.md.
+  dclTags:
+    - dcl4 # Snyk API & Web API key (JWT), TOTP/2FA seeds, DAST scan findings
+    - dcl6 # customer web-application login credentials handled during onboarding
