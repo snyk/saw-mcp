@@ -22,6 +22,54 @@ current_tool_name: contextvars.ContextVar[Optional[str]] = (
     contextvars.ContextVar("current_tool_name", default=None)
 )
 
+# Keys whose values may carry DCL4+ data (credentials, tokens, TOTP seeds,
+# inline login-sequence content). Matched case-insensitively and used to
+# redact request/response bodies before they are written to the debug log, so
+# sensitive data never lands in log files. See SECURITY.md ("Logging and
+# redaction") for the data-classification rationale.
+_SENSITIVE_LOG_KEYS = frozenset(
+    {
+        "password",
+        "passwd",
+        "value",  # credential value / form-login field / header-cookie value
+        "secret",
+        "otp_secret",
+        "otp_seed",
+        "totp_seed",
+        "api_key",
+        "apikey",
+        "token",
+        "access_token",
+        "refresh_token",
+        "authorization",
+        "content",  # login-sequence steps may embed inline credentials
+    }
+)
+
+_REDACTED = "***REDACTED***"
+
+
+def _redact_for_log(obj: Any) -> Any:
+    """Return a copy of *obj* with secret-bearing values masked.
+
+    Recursively walks dicts/lists and replaces the value of any key in
+    ``_SENSITIVE_LOG_KEYS`` with ``_REDACTED``. Keeps DCL4+ data (API keys,
+    customer credentials, TOTP seeds, login-sequence content) out of the debug
+    log, per the service data-classification policy documented in SECURITY.md.
+    """
+    if isinstance(obj, dict):
+        return {
+            key: (
+                _REDACTED
+                if isinstance(key, str) and key.lower() in _SENSITIVE_LOG_KEYS
+                else _redact_for_log(value)
+            )
+            for key, value in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_redact_for_log(item) for item in obj]
+    return obj
+
 
 class ProbelyClient:
     def __init__(self, base_url: str, api_key: str, timeout: int = 60) -> None:
@@ -61,9 +109,15 @@ class ProbelyClient:
     ) -> Tuple[int, Dict[str, Any]]:
         url = self._url(path)
         tool_name = current_tool_name.get() or ""
-        logger.debug(
-            "[%s] %s %s %s", tool_name, method.upper(), url, str(json)
-        )
+        # Guard on level so we don't redact (deep-copy) bodies when DEBUG is off.
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "[%s] %s %s %s",
+                tool_name,
+                method.upper(),
+                url,
+                _redact_for_log(json),
+            )
         resp = self._session.request(
             method=method.upper(),
             url=url,
@@ -100,9 +154,13 @@ class ProbelyClient:
                 resp.status_code,
                 resp.reason,
             )
-        logger.debug(
-            "[%s] Response: %s %s", tool_name, resp.status_code, str(body)
-        )
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "[%s] Response: %s %s",
+                tool_name,
+                resp.status_code,
+                _redact_for_log(body),
+            )
         return resp.status_code, body
 
     # Convenience wrappers for common resources
