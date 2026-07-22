@@ -108,7 +108,8 @@ For safety, the following destructive tools are **disabled out of the box**
 - `probely_bulk_update_findings`
 
 To use one, opt it back in explicitly. To keep every other tool available (plain
-blacklist behavior), list it under `enabled` and keep a `disabled` section:
+blacklist behavior), list only that default-off tool under `enabled` and keep a
+`disabled` section:
 
 ```yaml
 tools:
@@ -118,7 +119,9 @@ tools:
 ```
 
 Alternatively, if you want to lock the server down to a small set, use `enabled`
-on its own as a strict whitelist (only those tools run).
+on its own as a strict whitelist (only those tools run). The same strict
+whitelist applies when `enabled` lists any tool that is not already on the
+blacklist, even if a `disabled` section is also present.
 
 ## Audit trail
 

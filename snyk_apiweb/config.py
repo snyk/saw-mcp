@@ -300,16 +300,15 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     The built-in ``DEFAULT_DISABLED_TOOLS`` are always merged into the blacklist
     so destructive tools stay off unless the operator opts in explicitly.
 
-    How ``enabled`` is interpreted depends on whether a ``disabled`` section is
-    present, so both mental models are consistent:
+    How ``enabled`` is interpreted:
 
-    - ``enabled`` alone → strict whitelist: only those tools are available.
-    - ``enabled`` together with ``disabled`` → blacklist mode: ``enabled`` is a
-      set of overrides that re-enable specific tools *on top of* the blacklist
-      (including the built-in destructive defaults) without turning every other
-      tool off. This keeps blacklist behavior symmetric: to bring a default-off
-      tool back you simply list it under ``enabled``, and everything else stays
-      available.
+    - ``enabled`` alone, or together with ``disabled`` when any ``enabled``
+      entry is not on the merged blacklist → strict whitelist: only those tools
+      are available.
+    - ``enabled`` together with ``disabled`` when *every* ``enabled`` entry is
+      already on the merged blacklist → re-enable override mode: ``enabled``
+      opts specific default-off tools back in without turning every other tool
+      off.
     """
     tools_cfg = cfg.get("tools") or {}
 
@@ -318,10 +317,17 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
         if name not in disabled_tools:
             disabled_tools.append(name)
 
+    enabled_list = tools_cfg.get("enabled")
+    enabled_overrides_blacklist = (
+        "disabled" in tools_cfg
+        and enabled_list is not None
+        and all(name in disabled_tools for name in enabled_list)
+    )
+
     return {
-        "enabled_tools": tools_cfg.get("enabled"),  # None means all enabled
+        "enabled_tools": enabled_list,  # None means all enabled
         "disabled_tools": disabled_tools,
-        "enabled_overrides_blacklist": "disabled" in tools_cfg,
+        "enabled_overrides_blacklist": enabled_overrides_blacklist,
     }
 
 

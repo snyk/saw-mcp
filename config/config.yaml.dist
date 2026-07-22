@@ -102,9 +102,10 @@ tools:
      - probely_delete_extra_host
   #
   # To re-enable one of the built-in defaults while keeping every other tool
-  # available, list it under 'enabled' above AND keep this 'disabled' section
-  # present. When a 'disabled' section exists, 'enabled' acts as a re-enable
-  # override on top of the blacklist instead of a strict whitelist, e.g.:
+  # available, list only that default-off tool under 'enabled' above AND keep
+  # this 'disabled' section present. When every 'enabled' entry is already on
+  # the blacklist, 'enabled' acts as a re-enable override instead of a strict
+  # whitelist, e.g.:
   #
   #   tools:
   #     enabled:

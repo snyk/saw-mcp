@@ -407,9 +407,28 @@ def test_override_mode_still_honors_user_blacklist():
     }
     tf = get_tool_filter(cfg)
 
+    assert tf["enabled_overrides_blacklist"] is True
     assert is_tool_enabled("probely_delete_target", tf) is True
     assert is_tool_enabled("probely_delete_sequence", tf) is False
     assert is_tool_enabled("probely_list_targets", tf) is True
+
+
+def test_enabled_with_non_blacklisted_tools_stays_strict_whitelist():
+    # Regression: a locked-down enabled set must not expose unlisted tools just
+    # because a disabled section is also present.
+    cfg = {
+        "tools": {
+            "enabled": ["probely_list_targets", "probely_get_target"],
+            "disabled": ["probely_delete_sequence"],
+        }
+    }
+    tf = get_tool_filter(cfg)
+
+    assert tf["enabled_overrides_blacklist"] is False
+    assert is_tool_enabled("probely_list_targets", tf) is True
+    assert is_tool_enabled("probely_get_target", tf) is True
+    assert is_tool_enabled("probely_create_web_target", tf) is False
+    assert is_tool_enabled("probely_delete_sequence", tf) is False
 
 
 def test_is_tool_enabled_whitelist_allows_listed_tool():
