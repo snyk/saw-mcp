@@ -1,4 +1,4 @@
-python-dotenv>=1.2.2
+python-dotenv>=1.2.3
 fastmcp>=2.0.0
 requests>=2.32.3
 urllib3>=2.6.3
