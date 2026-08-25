@@ -16,13 +16,13 @@ The best logout detectors are CSS selectors from the login form. But they **must
 
 - **If the selector does NOT exist on the post-login page** (the common case): use it directly.
   ```python
-  logout_detector_type="sel"
-  logout_detector_value="input[name='username']"
+  logout_detector_type = "sel"
+  logout_detector_value = "input[name='username']"
   ```
 - **If the selector DOES exist on the post-login page**: use a **more specific CSS selector** that includes a parent element unique to the login form. For example, if the login form has `id="formlogin"`:
   ```python
-  logout_detector_type="sel"
-  logout_detector_value="#formlogin input[name='username']"
+  logout_detector_type = "sel"
+  logout_detector_value = "#formlogin input[name='username']"
   ```
   Or scope via the form's action, a wrapping div, etc. The goal is a selector that **only matches the login form**, not the logged-in profile/settings page.
 
@@ -36,12 +36,12 @@ The best logout detectors are CSS selectors from the login form. But they **must
 
 ```python
 probely_configure_logout_detection(
-  targetId,
-  enabled=True,
-  check_session_url="https://app.example.com/dashboard",  # FULL absolute URL
-  logout_detector_type="sel",    # REQUIRED
-  logout_detector_value="#uid",  # REQUIRED — must NOT match when logged in
-  logout_condition="any"         # "any" (default) or "all"
+    targetId,
+    enabled=True,
+    check_session_url="https://app.example.com/dashboard",  # FULL absolute URL
+    logout_detector_type="sel",  # REQUIRED
+    logout_detector_value="#uid",  # REQUIRED — must NOT match when logged in
+    logout_condition="any",  # "any" (default) or "all"
 )
 ```
 

@@ -478,7 +478,9 @@ Each tool is defined as a nested function inside `build_server()` with closure a
 
 ```python
 @register_tool("probely_tool_name")
-def probely_tool_name(param1: str, param2: Optional[str] = None) -> Dict[str, Any]:
+def probely_tool_name(
+    param1: str, param2: Optional[str] = None
+) -> Dict[str, Any]:
     """Docstring becomes the tool description in MCP."""
     return client.some_method(param1=param1, param2=param2)
 ```
@@ -492,9 +494,11 @@ Registered tools are wrapped so that each invocation emits a per-call audit line
 ```python
 from .tools import build_server
 
+
 def main() -> None:
     app = build_server()
     app.run()
+
 
 if __name__ == "__main__":
     main()

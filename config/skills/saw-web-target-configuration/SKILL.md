@@ -161,9 +161,9 @@ To create a duplicate target (same URL as existing target), use `allow_duplicate
 
 ```python
 probely_create_web_target(
-  name="MyApp - Different Auth Method",
-  url="https://app.example.com",
-  allow_duplicate=True
+    name="MyApp - Different Auth Method",
+    url="https://app.example.com",
+    allow_duplicate=True,
 )
 ```
 
@@ -207,19 +207,35 @@ Then apply SAW configuration (Step 3).
 ### Step 3: Apply SAW Configuration (both browser paths)
 
 ```python
-target = probely_create_web_target(name=..., url=..., desc=..., labels=...)  # use target["id"] as targetId
+target = probely_create_web_target(
+    name=..., url=..., desc=..., labels=...
+)  # use target["id"] as targetId
 
 # If 2FA: call probely_configure_2fa_totp BEFORE creating the sequence (use otp_code in sequence JSON)
 
 probely_create_credential(...)  # password — link via custom_field_mappings
 
 # The first "goto" step of the sequence content MUST include "powered_by": "saw mcp"
-probely_create_sequence(targetId, name="Login Sequence", content="...", sequence_type="login", enabled=True, custom_field_mappings=[...])
+probely_create_sequence(
+    targetId,
+    name="Login Sequence",
+    content="...",
+    sequence_type="login",
+    enabled=True,
+    custom_field_mappings=[...],
+)
 
 probely_configure_sequence_login(targetId, enabled=True)
 
 # See references/logout-detection.md
-probely_configure_logout_detection(targetId, enabled=True, check_session_url=..., logout_detector_type=..., logout_detector_value=..., logout_condition=...)
+probely_configure_logout_detection(
+    targetId,
+    enabled=True,
+    check_session_url=...,
+    logout_detector_type=...,
+    logout_detector_value=...,
+    logout_condition=...,
+)
 
 # See references/extra-hosts.md
 probely_create_extra_host(targetId, hostname="...", ip_address="")
@@ -233,12 +249,12 @@ By default, store the password via credential manager and pass the credential UR
 
 ```python
 probely_configure_form_login(
-  targetId,
-  login_url="https://app.example.com/login",
-  username_field="email",
-  password_field="password",
-  username="user@example.com",
-  password="...",  # inline or cred URI
-  check_pattern="Welcome"
+    targetId,
+    login_url="https://app.example.com/login",
+    username_field="email",
+    password_field="password",
+    username="user@example.com",
+    password="...",  # inline or cred URI
+    check_pattern="Welcome",
 )
 ```
