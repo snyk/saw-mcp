@@ -99,18 +99,18 @@ To create a duplicate target (same URL as existing target), use `allow_duplicate
 ```python
 # For OpenAPI targets:
 probely_create_api_target_from_openapi(
-  name="MyAPI - Different Auth Method",
-  target_url="https://api.example.com",  # Same URL as existing target
-  openapi_schema_url="https://...",
-  allow_duplicate=True  # Bypass duplicate URL check
+    name="MyAPI - Different Auth Method",
+    target_url="https://api.example.com",  # Same URL as existing target
+    openapi_schema_url="https://...",
+    allow_duplicate=True,  # Bypass duplicate URL check
 )
 
 # For Postman targets:
 probely_create_api_target_from_postman(
-  name="MyAPI - Test Scenario 2",
-  target_url="https://api.example.com",  # Same URL as existing target
-  postman_collection_url="https://...",
-  allow_duplicate=True  # Bypass duplicate URL check
+    name="MyAPI - Test Scenario 2",
+    target_url="https://api.example.com",  # Same URL as existing target
+    postman_collection_url="https://...",
+    allow_duplicate=True,  # Bypass duplicate URL check
 )
 ```
 
