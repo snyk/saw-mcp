@@ -177,8 +177,8 @@ Use `playwright-cli` via the Shell tool. Set `block_until_ms: 60000` (or `90000`
 
 1. **Open session and navigate:** `playwright-cli -s=SESSION open <url>`
 2. **Find the login page** — use `snapshot` and `goto`.
-3. **Inspect form elements** — run `scripts/inspect-login-form.js` via `playwright-cli -s=SESSION eval '<js>'`. Repeat on every login step.
-4. **Fill credentials and submit** — use `snapshot` to get element refs, then `fill` and `click`. Refs (e.g. `e15`) or unique CSS selectors both work.
+3. **Inspect form elements** — run `scripts/inspect-login-form.js` via `playwright-cli -s=SESSION eval '<js>'`. Repeat on every login step. If it returns `step: "canvas"` (or a `canvas` field with `submit: null`), the fields/button are painted on a `<canvas>` (a canvas-rendered login, e.g. Flutter web) — read the page `<script>` or take a `screenshot` to find the field/button rectangles and use `bclick`/`bfill_value` with coordinates. See `references/sequence-format.md` → **Canvas-Rendered Logins**. If it returns `step: "shadow_dom"` (fields inside open shadow roots), use the **inner-element** `selector` it reports (e.g. `input[type="password"]`) with the attribute-based `xpath` it reports (a real XPath that pierces the shadow root, e.g. `//input[@type='password']`; `/html/node/shadow` is only a fallback) — never a `host input` piercing selector. Shadow roots are isolated scopes, so inner elements can share `id`/`name`/`type`: ensure each selector/XPath is **unique across all shadow roots** (heed any `ambiguous`/`warning` in the output). See `references/sequence-format.md` → **Shadow DOM Inputs**.
+4. **Fill credentials and submit** — use `snapshot` to get element refs, then `fill` and `click`. Refs (e.g. `e15`) or unique CSS selectors both work. If clicking the login trigger opens a **popup window** (a new tab appears — e.g. from `window.open(...)`), switch to it with `playwright-cli -s=SESSION tab-select <index>` before inspecting/filling, and add `"allow_popups": true` to the first `goto` step of the sequence. See `references/sequence-format.md` → **Popup-Based Logins**.
 5. **Handle 2FA if needed** — use `probely_generate_totp` for the live OTP, then fill the OTP field.
 6. **Verify login success** — record the absolute post-login URL (`eval '() => window.location.href'`).
 7. **Verify login selectors are absent post-login** — use `eval`.
@@ -194,8 +194,8 @@ Use when `playwright-cli` is unavailable but Playwright MCP tools exist.
 
 1. **Navigate to target URL** — `browser_navigate`
 2. **Find the login page** and record the URL.
-3. **Inspect form elements** — run `scripts/inspect-login-form.js` via `browser_evaluate` on every login step.
-4. **Fill credentials and submit** — record selectors for the sequence JSON.
+3. **Inspect form elements** — run `scripts/inspect-login-form.js` via `browser_evaluate` on every login step. If it returns `step: "canvas"` (or a `canvas` field with `submit: null`), the fields/button are painted on a `<canvas>` (a canvas-rendered login, e.g. Flutter web) — read the page `<script>` or take a screenshot to find the field/button rectangles and use `bclick`/`bfill_value` with coordinates. See `references/sequence-format.md` → **Canvas-Rendered Logins**. If it returns `step: "shadow_dom"` (fields inside open shadow roots), use the **inner-element** `selector` it reports (e.g. `input[type="password"]`) with the attribute-based `xpath` it reports (a real XPath that pierces the shadow root, e.g. `//input[@type='password']`; `/html/node/shadow` is only a fallback) — never a `host input` piercing selector. Shadow roots are isolated scopes, so inner elements can share `id`/`name`/`type`: ensure each selector/XPath is **unique across all shadow roots** (heed any `ambiguous`/`warning` in the output). See `references/sequence-format.md` → **Shadow DOM Inputs**.
+4. **Fill credentials and submit** — record selectors for the sequence JSON. If the login opens in a **popup window** (a new page/tab from `window.open(...)`), switch to it (`browser_tabs`/select the new page) before inspecting/filling, and add `"allow_popups": true` to the first `goto` step of the sequence. See `references/sequence-format.md` → **Popup-Based Logins**.
 5. **Handle 2FA if needed** — use `probely_generate_totp` for the live login.
 6. **Verify login success** — record the absolute post-login URL for logout detection.
 7. **Verify login selectors are NOT on the post-login page** — `browser_evaluate`.
@@ -213,6 +213,7 @@ target = probely_create_web_target(name=..., url=..., desc=..., labels=...)  # u
 
 probely_create_credential(...)  # password — link via custom_field_mappings
 
+# The first "goto" step of the sequence content MUST include "powered_by": "saw mcp"
 probely_create_sequence(targetId, name="Login Sequence", content="...", sequence_type="login", enabled=True, custom_field_mappings=[...])
 
 probely_configure_sequence_login(targetId, enabled=True)
