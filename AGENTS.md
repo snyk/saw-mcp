@@ -13,7 +13,7 @@ Marketplace (`.cursor-plugin/`), and the MCP registry (`server.json`).
 (`plus.probely.app`), and MCP tool names (`probely_*`) still use the legacy prefix. Config and
 env vars use `SAW` / `saw` / `MCP_SAW_*`.
 
-Owner: `@snyk/emerging-technologies-solutions_probely` (see `.github/CODEOWNERS`).
+Owner: `@snyk/saw_saw-frontend` (see `.github/CODEOWNERS`).
 
 ## Repo layout
 
@@ -77,8 +77,8 @@ Use these exact commands — don't invent alternatives.
 | Release tarball | `bash scripts/package.sh` → `dist/SnykAPIWeb-<version>.tgz` |
 | Playwright smoke test | `./scripts/setup-playwright.sh && ./scripts/smoke-test-playwright.sh` |
 
-For a quick inner loop: `pytest tests/ -v` and `ruff check .`. Run the full CI matrix locally
-when changing Python compatibility.
+For a quick inner loop: `pytest tests/ -v`, `ruff check .`, and `ruff format .`. Run the full CI
+matrix locally when changing Python compatibility.
 
 ## Testing rules
 
@@ -95,8 +95,8 @@ when changing Python compatibility.
 - **GitHub Actions** (`.github/workflows/ci.yml`): pytest on Python 3.10/3.11/3.12, ruff
   lint + format, playwright-cli smoke test.
 - **CircleCI** (`.circleci/config.yml`): pytest, ruff, prodsec security scans.
-- **Release** (`.github/workflows/release.yml`): triggered by `v*` tags; tag must match
-  `pyproject.toml` / `snyk_apiweb/__init__.py` / `server.json` / `.cursor-plugin/plugin.json`.
+- **Release** (`.github/workflows/release.yml`): triggered by `v*` tags; the `build` job checks
+  the tag against `pyproject.toml`. See *Version bumps and releases* for the other files.
 
 ## Version bumps and releases
 
@@ -118,9 +118,8 @@ When adding or changing tools:
 - Update `USER_GUIDE.md` and/or `prompts.md` when behavior is user-visible.
 - Update skills under `config/skills/` when onboarding workflows change.
 - Fill in the **MCP Impact** section of the PR template.
-- Destructive tools (`probely_delete_*`, `probelyrequest`, `probely_bulk_update_findings`) are
-  **disabled by default** in `config.py` (`DEFAULT_DISABLED_TOOLS`). Do not enable them globally
-  without an explicit opt-in story.
+- Destructive tools are **disabled by default** in `config.py` (`DEFAULT_DISABLED_TOOLS`). Do not
+  enable them globally without an explicit opt-in story.
 
 `config/saw_rules.mdc` is the canonical behavioral rules file for the Cursor plugin — keep it
 aligned with tool usage constraints (always use MCP tools, never call the REST API directly).
@@ -154,8 +153,8 @@ Do not commit secrets, customer credentials, or real scan findings in tests or f
 - `uv.lock` — only update deliberately when adopting uv-based workflows (CI uses pip).
 - `config/config.yaml.dist` — template for end users; avoid embedding real keys or instance URLs.
 - Test fixtures — keep tests hermetic; don't add network-dependent fixtures.
-- Legacy env names (`MCP_PROBELY_*`) — still supported for backward compatibility; don't remove
-  without a deprecation plan.
+- Legacy names — the `MCP_PROBELY_CONFIG_PATH` env var and the `probely:` config section, both
+  still read in `config.py`; don't remove without a deprecation plan.
 
 ## Commit and PR conventions
 
