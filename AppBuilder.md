@@ -602,9 +602,9 @@ All tool names are prefixed with `probely_` for namespacing.
 ### Reports
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `probely_create_scan_report` | `scanId`, `report_type?`, `format?` | Create report (types: default/executive/owasp/pci/hipaa/iso27001) |
-| `probely_download_report` | `reportId` | Download report content |
-| `probely_get_report` | `reportId` | Get report metadata/status |
+| `probely_create_scanreport` | `scanId`, `report_type?`, `format?` | Create report (types: default/executive/owasp/pci/hipaa/iso27001) |
+| `probely_downloadreport` | `reportId` | Download report content |
+| `probely_getreport` | `reportId` | Get report metadata/status |
 
 ### Scanning Agents
 | Tool | Parameters | Description |

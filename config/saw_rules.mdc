@@ -125,7 +125,7 @@ When high-risk or critical vulnerabilities are identified from scans:
    - Severity breakdown
 3. If scan completes, alert the user and offer to:
    - List all findings using `probely_list_findings`
-   - Generate a report using `probely_create_report`
+   - Generate a report using `probely_create_scanreport`
    - Analyze high-risk/critical vulnerabilities for remediation
 
 ## Finding Management
@@ -152,7 +152,7 @@ Subagents configuring SAW targets must NOT grep or search the local workspace fo
 
 ## Reporting
 
-Generate security reports using `probely_create_report` when:
+Generate security reports using `probely_create_scanreport` when:
 - Multiple vulnerabilities are fixed
 - Before major releases
 - For compliance documentation

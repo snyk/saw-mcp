@@ -65,7 +65,7 @@ The AI creates a **subagent per target**. With **`playwright-cli`**, subagents m
 - `probely_list_findings(targetId, severity?, state?)`, `probely_update_finding(targetId, findingId, state)`
 - `probely_create_sequence(...)`, `probely_configure_sequence_login(targetId, enabled)`
 - `probely_create_credential(name, value, is_sensitive?)`, `probely_list_credentials(...)` — credentials are used by default for sensitive values (passwords, tokens, secrets) and linked to sequence custom fields for passwords
-- `probely_configure_form_login(...)`, `probely_configure_2fa(...)`
+- `probely_configure_form_login(...)`, `probely_configure_2fa_totp(...)`
 - `probely_create_api_target_from_postman(...)`, `probely_create_api_target_from_openapi(...)`
 - `probelyrequest(method, path, ...)` for any endpoint (disabled by default — see below)
 
