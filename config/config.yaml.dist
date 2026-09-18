@@ -31,10 +31,11 @@ tools:
   # Uncomment 'enabled:' and list only the tools you want active (whitelist mode)
   # enabled:
     # Authentication Configuration
-    # - probely_configure_2fa
+    # - probely_configure_2fa_totp
     # - probely_configure_form_login
     # - probely_configure_sequence_login
     # - probely_disable_2fa
+    # - probely_generate_totp
     # Extra Hosts
     # - probely_create_extra_host
     # - probely_delete_extra_host
@@ -60,14 +61,18 @@ tools:
     # - probely_get_sequence
     # - probely_list_sequences
     # - probely_update_sequence
+    # Logout Detection
+    # - probely_configure_logout_detection
+    # - probely_create_logout_detector
+    # - probely_list_logout_detectors
     # Read-only (Users, Teams)
     # - probely_get_user
     # - probely_get_team
     # - probely_list_teams
     # Reports
-    # - probely_create_scan_report
-    # - probely_download_report
-    # - probely_get_report
+    # - probely_create_scanreport
+    # - probely_downloadreport
+    # - probely_getreport
     # Scanning Agents
     # - probely_list_scanning_agents
     # - probely_get_scanning_agent

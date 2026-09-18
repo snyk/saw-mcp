@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import re
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
@@ -173,6 +176,31 @@ def test_build_server_disables_destructive_tools_by_default(monkeypatch):
     assert "probely_bulk_update_findings" not in tool_names
     # Ordinary read tools remain available.
     assert "probely_list_targets" in tool_names
+
+
+def test_shipped_config_files_list_only_real_tool_names(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+
+    config_dir = Path(__file__).resolve().parents[1] / "config"
+    listed = set()
+    for name in ("config.yaml.dist", "saw_rules.mdc"):
+        text = (config_dir / name).read_text()
+        listed |= set(re.findall(r"\bprobely_[a-z0-9]+[a-z0-9_]*\b", text))
+    assert listed, "no tool names found in the shipped config files"
+
+    app = build_server()
+    # Destructive tools are absent from a default build but are still real.
+    registered = {tool.name for tool in asyncio.run(app.list_tools())} | set(
+        DEFAULT_DISABLED_TOOLS
+    )
+
+    unknown = sorted(listed - registered)
+    assert not unknown, (
+        "config/config.yaml.dist lists tool names that are not registered: "
+        f"{unknown}. Tool names are matched exactly, so a stale entry has no "
+        "effect. Update config.yaml.dist and saw_rules.mdc when renaming a tool."
+    )
 
 
 # --- SSRF protection: _assert_url_is_safe ---
