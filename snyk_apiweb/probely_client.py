@@ -165,68 +165,8 @@ class ProbelyClient:
 
     # Convenience wrappers for common resources
     # Users
-    def list_users(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request(
-            "GET", "/users/", params={"page": page} if page else None
-        )[1]
-
     def get_user(self, user_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/users/{user_id}/")[1]
-
-    def create_user(
-        self, email: str, name: str, role: Optional[str] = None
-    ) -> Dict[str, Any]:
-        payload = {"email": email, "name": name}
-        if role:
-            payload["role"] = role
-        return self.request("POST", "/users/", json=payload)[1]
-
-    def update_user(self, user_id: str, **fields: Any) -> Dict[str, Any]:
-        return self.request("PATCH", f"/users/{user_id}/", json=fields)[1]
-
-    def delete_user(self, user_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/users/{user_id}/")[1]
-
-    # API Users
-    def list_api_users(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request(
-            "GET", "/api-users/", params={"page": page} if page else None
-        )[1]
-
-    def get_api_user(self, api_user_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/api-users/{api_user_id}/")[1]
-
-    def create_api_user(
-        self, name: str, permissions: Optional[list[str]] = None
-    ) -> Dict[str, Any]:
-        payload = {"name": name}
-        if permissions is not None:
-            payload["permissions"] = permissions
-        return self.request("POST", "/api-users/", json=payload)[1]
-
-    def delete_api_user(self, api_user_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/api-users/{api_user_id}/")[1]
-
-    # Account
-    def get_account(self) -> Dict[str, Any]:
-        return self.request("GET", "/account/")[1]
-
-    def update_account(self, **fields: Any) -> Dict[str, Any]:
-        return self.request("PATCH", "/account/", json=fields)[1]
-
-    # Roles & Permissions
-    def list_roles(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request(
-            "GET", "/roles/", params={"page": page} if page else None
-        )[1]
-
-    def get_role(self, role_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/roles/{role_id}/")[1]
-
-    def list_permissions(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request(
-            "GET", "/permissions/", params={"page": page} if page else None
-        )[1]
 
     # Teams
     def list_teams(self, page: Optional[int] = None) -> Dict[str, Any]:
@@ -236,38 +176,6 @@ class ProbelyClient:
 
     def get_team(self, team_id: str) -> Dict[str, Any]:
         return self.request("GET", f"/teams/{team_id}/")[1]
-
-    def create_team(
-        self, name: str, description: Optional[str] = None
-    ) -> Dict[str, Any]:
-        payload = {"name": name}
-        if description:
-            payload["description"] = description
-        return self.request("POST", "/teams/", json=payload)[1]
-
-    def update_team(self, team_id: str, **fields: Any) -> Dict[str, Any]:
-        return self.request("PATCH", f"/teams/{team_id}/", json=fields)[1]
-
-    def delete_team(self, team_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/teams/{team_id}/")[1]
-
-    # Domains
-    def list_domains(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request(
-            "GET", "/domains/", params={"page": page} if page else None
-        )[1]
-
-    def get_domain(self, domain_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/domains/{domain_id}/")[1]
-
-    def create_domain(self, name: str) -> Dict[str, Any]:
-        return self.request("POST", "/domains/", json={"name": name})[1]
-
-    def verify_domain(self, domain_id: str) -> Dict[str, Any]:
-        return self.request("POST", f"/domains/{domain_id}/verify/")[1]
-
-    def delete_domain(self, domain_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/domains/{domain_id}/")[1]
 
     # Credentials
     def list_credentials(
@@ -327,14 +235,6 @@ class ProbelyClient:
         return body if status != 204 else {}
 
     # Labels
-    def list_labels(self, page: Optional[int] = None) -> Dict[str, Any]:
-        return self.request(
-            "GET", "/labels/", params={"page": page} if page else None
-        )[1]
-
-    def get_label(self, label_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/labels/{label_id}/")[1]
-
     def create_label(
         self, name: str, color: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -342,12 +242,6 @@ class ProbelyClient:
         if color:
             payload["color"] = color
         return self.request("POST", "/labels/", json=payload)[1]
-
-    def update_label(self, label_id: str, **fields: Any) -> Dict[str, Any]:
-        return self.request("PATCH", f"/labels/{label_id}/", json=fields)[1]
-
-    def delete_label(self, label_id: str) -> Dict[str, Any]:
-        return self.request("DELETE", f"/labels/{label_id}/")[1]
 
     def resolve_labels(self, label_names: list[str]) -> list[Dict[str, str]]:
         """Convert label name strings to API-compatible label objects.
@@ -524,9 +418,6 @@ class ProbelyClient:
 
     def delete_target(self, target_id: str) -> Dict[str, Any]:
         return self.request("DELETE", f"/targets/{target_id}/")[1]
-
-    def verify_target(self, target_id: str) -> Dict[str, Any]:
-        return self.request("POST", f"/targets/{target_id}/verify/")[1]
 
     # Login Sequences
     def list_sequences(
@@ -976,13 +867,6 @@ class ProbelyClient:
     def get_report(self, report_id: str) -> Dict[str, Any]:
         """Get report metadata/status by ID."""
         return self.request("GET", f"/report/{report_id}/")[1]
-
-    # Integrations (generic placeholders; exact endpoints may vary)
-    def list_integrations(self) -> Dict[str, Any]:
-        return self.request("GET", "/integrations/")[1]
-
-    def get_integration(self, integration_id: str) -> Dict[str, Any]:
-        return self.request("GET", f"/integrations/{integration_id}/")[1]
 
     # Scanning Agents
     def list_scanning_agents(

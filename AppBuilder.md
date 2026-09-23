@@ -296,47 +296,14 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
 #### Client Methods by Category
 
 **Users:**
-- `list_users(page?)` → `GET /users/`
 - `get_user(user_id)` → `GET /users/{id}/`
-- `create_user(email, name, role?)` → `POST /users/`
-- `update_user(user_id, **fields)` → `PATCH /users/{id}/`
-- `delete_user(user_id)` → `DELETE /users/{id}/`
-
-**API Users:**
-- `list_api_users(page?)` → `GET /api-users/`
-- `get_api_user(api_user_id)` → `GET /api-users/{id}/`
-- `create_api_user(name, permissions?)` → `POST /api-users/`
-- `delete_api_user(api_user_id)` → `DELETE /api-users/{id}/`
-
-**Account:**
-- `get_account()` → `GET /account/`
-- `update_account(**fields)` → `PATCH /account/`
-
-**Roles & Permissions:**
-- `list_roles(page?)` → `GET /roles/`
-- `get_role(role_id)` → `GET /roles/{id}/`
-- `list_permissions(page?)` → `GET /permissions/`
 
 **Teams:**
 - `list_teams(page?)` → `GET /teams/`
 - `get_team(team_id)` → `GET /teams/{id}/`
-- `create_team(name, description?)` → `POST /teams/`
-- `update_team(team_id, **fields)` → `PATCH /teams/{id}/`
-- `delete_team(team_id)` → `DELETE /teams/{id}/`
-
-**Domains:**
-- `list_domains(page?)` → `GET /domains/`
-- `get_domain(domain_id)` → `GET /domains/{id}/`
-- `create_domain(name)` → `POST /domains/`
-- `verify_domain(domain_id)` → `POST /domains/{id}/verify/`
-- `delete_domain(domain_id)` → `DELETE /domains/{id}/`
 
 **Labels:**
-- `list_labels(page?)` → `GET /labels/`
-- `get_label(label_id)` → `GET /labels/{id}/`
 - `create_label(name, color?)` → `POST /labels/`
-- `update_label(label_id, **fields)` → `PATCH /labels/{id}/`
-- `delete_label(label_id)` → `DELETE /labels/{id}/`
 - `resolve_labels(label_names)` → converts `["Name"]` to `[{"name": "Name"}]`
 
 **Targets:**
@@ -349,7 +316,6 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
   - Optionally sets `scanning_agent: {"id": "..."}`.
 - `update_target(target_id, **fields)` → `PATCH /targets/{id}/`
 - `delete_target(target_id)` → `DELETE /targets/{id}/`
-- `verify_target(target_id)` → `POST /targets/{id}/verify/`
 
 **Login Sequences:**
 - `list_sequences(target_id, page?)` → `GET /targets/{id}/sequences/`
@@ -417,10 +383,6 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
   - `report_format`: `"pdf"` or `"html"`
 - `download_report(report_id)` → `GET /report/{id}/download/`
 - `get_report(report_id)` → `GET /report/{id}/`
-
-**Integrations:**
-- `list_integrations()` → `GET /integrations/`
-- `get_integration(integration_id)` → `GET /integrations/{id}/`
 
 **Scanning Agents:**
 - `list_scanning_agents(page?, length?, status?, search?)` → `GET /scanning-agents/`
@@ -626,41 +588,15 @@ All paths are relative to the base URL (`https://api.probely.com`). All paths en
 
 | HTTP Method | Path | Client Method |
 |------------|------|---------------|
-| GET | `/users/` | `list_users` |
 | GET | `/users/{id}/` | `get_user` |
-| POST | `/users/` | `create_user` |
-| PATCH | `/users/{id}/` | `update_user` |
-| DELETE | `/users/{id}/` | `delete_user` |
-| GET | `/api-users/` | `list_api_users` |
-| GET | `/api-users/{id}/` | `get_api_user` |
-| POST | `/api-users/` | `create_api_user` |
-| DELETE | `/api-users/{id}/` | `delete_api_user` |
-| GET | `/account/` | `get_account` |
-| PATCH | `/account/` | `update_account` |
-| GET | `/roles/` | `list_roles` |
-| GET | `/roles/{id}/` | `get_role` |
-| GET | `/permissions/` | `list_permissions` |
 | GET | `/teams/` | `list_teams` |
 | GET | `/teams/{id}/` | `get_team` |
-| POST | `/teams/` | `create_team` |
-| PATCH | `/teams/{id}/` | `update_team` |
-| DELETE | `/teams/{id}/` | `delete_team` |
-| GET | `/domains/` | `list_domains` |
-| GET | `/domains/{id}/` | `get_domain` |
-| POST | `/domains/` | `create_domain` |
-| POST | `/domains/{id}/verify/` | `verify_domain` |
-| DELETE | `/domains/{id}/` | `delete_domain` |
-| GET | `/labels/` | `list_labels` |
-| GET | `/labels/{id}/` | `get_label` |
 | POST | `/labels/` | `create_label` |
-| PATCH | `/labels/{id}/` | `update_label` |
-| DELETE | `/labels/{id}/` | `delete_label` |
 | GET | `/targets/` | `list_targets` |
 | GET | `/targets/{id}/` | `get_target` |
 | POST | `/targets/` | `create_target` |
 | PATCH | `/targets/{id}/` | `update_target`, `configure_form_login`, `configure_sequence_login`, `configure_2fa`, `disable_2fa`, `configure_logout_detection` |
 | DELETE | `/targets/{id}/` | `delete_target` |
-| POST | `/targets/{id}/verify/` | `verify_target` |
 | GET | `/targets/{id}/sequences/` | `list_sequences` |
 | GET | `/targets/{id}/sequences/{sid}/` | `get_sequence` |
 | POST | `/targets/{id}/sequences/` | `create_sequence` |
@@ -687,8 +623,6 @@ All paths are relative to the base URL (`https://api.probely.com`). All paths en
 | POST | `/report/` | `create_scan_report` |
 | GET | `/report/{id}/` | `get_report` |
 | GET | `/report/{id}/download/` | `download_report` |
-| GET | `/integrations/` | `list_integrations` |
-| GET | `/integrations/{id}/` | `get_integration` |
 | GET | `/scanning-agents/` | `list_scanning_agents` |
 | GET | `/scanning-agents/{id}/` | `get_scanning_agent` |
 
