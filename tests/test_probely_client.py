@@ -655,3 +655,44 @@ def test_find_login_sequence_selector_returns_none_when_empty(
     result = client._find_login_sequence_selector("t1")
 
     assert result is None
+
+
+# --- extra hosts ---
+
+
+def test_create_extra_host_stores_ip_in_desc(client, mock_response):
+    client._session.request.return_value = mock_response(json_data={})
+
+    client.create_extra_host("t1", "cdn.example.com", "10.0.0.5")
+
+    sent = client._session.request.call_args.kwargs["json"]
+    assert sent == {
+        "host": "cdn.example.com",
+        "name": "cdn.example.com",
+        "desc": "IP: 10.0.0.5",
+    }
+
+
+def test_update_extra_host_uses_same_fields_as_create(client, mock_response):
+    client._session.request.return_value = mock_response(json_data={})
+
+    client.update_extra_host(
+        "t1", "h1", hostname="cdn.example.com", ip_address="10.0.0.6"
+    )
+
+    sent = client._session.request.call_args.kwargs["json"]
+    assert sent == {
+        "host": "cdn.example.com",
+        "name": "cdn.example.com",
+        "desc": "IP: 10.0.0.6",
+    }
+    assert "ip_address" not in sent
+
+
+def test_update_extra_host_ip_only(client, mock_response):
+    client._session.request.return_value = mock_response(json_data={})
+
+    client.update_extra_host("t1", "h1", ip_address="10.0.0.7")
+
+    sent = client._session.request.call_args.kwargs["json"]
+    assert sent == {"desc": "IP: 10.0.0.7"}

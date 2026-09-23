@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **`probely_update_extra_host`**: updating the IP address now writes it to the asset description (`IP: <address>`), the same way `probely_create_extra_host` stores it, instead of sending an `ip_address` field the API does not have. Updating the hostname now also updates the asset name.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

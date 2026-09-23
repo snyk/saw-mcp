@@ -1069,13 +1069,11 @@ def build_server() -> FastMCP:
         hostname: Optional[str] = None,
         ip_address: Optional[str] = None,
     ) -> Dict[str, Any]:
-        fields: Dict[str, Any] = {}
-        if hostname is not None:
-            fields["hostname"] = hostname
-        if ip_address is not None:
-            fields["ip_address"] = ip_address
         return client.update_extra_host(
-            target_id=targetId, extra_host_id=extraHostId, **fields
+            target_id=targetId,
+            extra_host_id=extraHostId,
+            hostname=hostname,
+            ip_address=ip_address,
         )
 
     @register_tool("probely_delete_extra_host")

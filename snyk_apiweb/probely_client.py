@@ -818,12 +818,26 @@ class ProbelyClient:
             "GET", f"/targets/{target_id}/assets/{extra_host_id}/"
         )[1]
 
+    @staticmethod
+    def _extra_host_payload(
+        hostname: Optional[str] = None, ip_address: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Map hostname/IP to the asset fields the API accepts.
+
+        The assets endpoint has no IP field, so the IP is kept in ``desc``.
+        """
+        payload: Dict[str, Any] = {}
+        if hostname is not None:
+            payload["host"] = hostname
+            payload["name"] = hostname
+        if ip_address:
+            payload["desc"] = f"IP: {ip_address}"
+        return payload
+
     def create_extra_host(
         self, target_id: str, hostname: str, ip_address: str = ""
     ) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {"host": hostname, "name": hostname}
-        if ip_address:
-            payload["desc"] = f"IP: {ip_address}"
+        payload = self._extra_host_payload(hostname, ip_address)
         return self.request(
             "POST",
             f"/targets/{target_id}/assets/",
@@ -832,15 +846,16 @@ class ProbelyClient:
         )[1]
 
     def update_extra_host(
-        self, target_id: str, extra_host_id: str, **fields: Any
+        self,
+        target_id: str,
+        extra_host_id: str,
+        hostname: Optional[str] = None,
+        ip_address: Optional[str] = None,
     ) -> Dict[str, Any]:
-        # Map 'hostname' to 'host' for the API
-        if "hostname" in fields:
-            fields["host"] = fields.pop("hostname")
         return self.request(
             "PATCH",
             f"/targets/{target_id}/assets/{extra_host_id}/",
-            json=fields,
+            json=self._extra_host_payload(hostname, ip_address),
         )[1]
 
     def delete_extra_host(
