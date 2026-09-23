@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **`probely_update_finding`**: calling it without `state` now returns a validation error instead of sending an empty PATCH to the API.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

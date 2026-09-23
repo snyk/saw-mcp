@@ -1133,6 +1133,8 @@ def build_server() -> FastMCP:
         findingId: str,
         state: Optional[str] = None,
     ) -> Dict[str, Any]:
+        if not state:
+            return {"error": {"message": "Provide a state to update to"}}
         return client.update_finding(
             target_id=targetId, finding_id=findingId, state=state
         )

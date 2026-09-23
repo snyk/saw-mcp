@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import re
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 
 from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
+from snyk_apiweb.probely_client import ProbelyClient
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
@@ -200,6 +201,40 @@ def test_shipped_config_files_list_only_real_tool_names(monkeypatch):
         "config/config.yaml.dist lists tool names that are not registered: "
         f"{unknown}. Tool names are matched exactly, so a stale entry has no "
         "effect. Update config.yaml.dist and saw_rules.mdc when renaming a tool."
+    )
+
+
+def _build_with_mock_client(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    mock_client = create_autospec(ProbelyClient, instance=True)
+    with patch("snyk_apiweb.tools.ProbelyClient", return_value=mock_client):
+        app = build_server()
+    return app, mock_client
+
+
+def test_update_finding_without_state_returns_error(monkeypatch):
+    app, mock_client = _build_with_mock_client(monkeypatch)
+    tool = asyncio.run(app.get_tool("probely_update_finding"))
+
+    result = asyncio.run(tool.run({"targetId": "t1", "findingId": "f1"}))
+
+    assert "error" in result.structured_content
+    mock_client.update_finding.assert_not_called()
+
+
+def test_update_finding_with_state_calls_client(monkeypatch):
+    app, mock_client = _build_with_mock_client(monkeypatch)
+    mock_client.update_finding.return_value = {"id": "f1", "state": "fixed"}
+    tool = asyncio.run(app.get_tool("probely_update_finding"))
+
+    result = asyncio.run(
+        tool.run({"targetId": "t1", "findingId": "f1", "state": "fixed"})
+    )
+
+    assert result.structured_content == {"id": "f1", "state": "fixed"}
+    mock_client.update_finding.assert_called_once_with(
+        target_id="t1", finding_id="f1", state="fixed"
     )
 
 
