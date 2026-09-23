@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Missing dependency**: `python-dotenv` is now declared in `pyproject.toml`. `snyk_apiweb.config` imports it at startup, but it was only installed indirectly through `fastmcp`.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security
