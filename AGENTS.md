@@ -121,6 +121,22 @@ When adding or changing tools:
 - Destructive tools are **disabled by default** in `config.py` (`DEFAULT_DISABLED_TOOLS`). Do not
   enable them globally without an explicit opt-in story.
 
+### Naming conventions for tools
+
+Tool names and parameters are part of the public MCP interface, so don't rename existing ones
+without a deprecation plan. New tools follow these rules (`tests/test_tools.py` enforces them):
+
+- **Tool names:** `probely_<verb>_<noun>` in snake_case, one underscore between words
+  (`probely_list_scanning_agents`, `probely_create_logout_detector`).
+- **ID of the resource the tool acts on:** camelCase `<resource>Id`, matching the existing
+  tools (`targetId`, `scanId`, `extraHostId`; a list is `findingIds`).
+- **Every other parameter:** snake_case, including IDs of related resources sent in the request
+  body (`scanning_agent_id`) and `*_json` payloads.
+
+Legacy names that break these rules and should not be copied: `probelyrequest`,
+`probely_create_scanreport`, `probely_downloadreport`, `probely_getreport`,
+`postman_collectionjson`, and `openapi_schemajson`.
+
 `config/saw_rules.mdc` is the canonical behavioral rules file for the Cursor plugin — keep it
 aligned with tool usage constraints (always use MCP tools, never call the REST API directly).
 

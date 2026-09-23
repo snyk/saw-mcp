@@ -203,6 +203,54 @@ def test_shipped_config_files_list_only_real_tool_names(monkeypatch):
     )
 
 
+# Names that predate the conventions in AGENTS.md ("Naming conventions for
+# tools"). Renaming them would break existing clients, so they are exempt.
+_LEGACY_TOOL_NAMES = {
+    "probelyrequest",
+    "probely_create_scanreport",
+    "probely_downloadreport",
+    "probely_getreport",
+}
+_LEGACY_PARAM_NAMES = {"postman_collectionjson", "openapi_schemajson"}
+_TOOL_NAME_RE = re.compile(r"^probely_[a-z0-9]+(?:_[a-z0-9]+)+$")
+_SNAKE_CASE_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
+_RESOURCE_ID_RE = re.compile(r"^[a-z]+(?:[A-Z][a-z]+)*Ids?$")
+
+
+def _all_tools(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    return asyncio.run(build_server().list_tools())
+
+
+def test_tool_names_follow_naming_convention(monkeypatch):
+    bad = [
+        t.name
+        for t in _all_tools(monkeypatch)
+        if t.name not in _LEGACY_TOOL_NAMES and not _TOOL_NAME_RE.match(t.name)
+    ]
+
+    assert not bad, (
+        f"Tool names must be probely_<verb>_<noun> in snake_case: {bad}"
+    )
+
+
+def test_tool_params_follow_naming_convention(monkeypatch):
+    bad = [
+        f"{t.name}.{param}"
+        for t in _all_tools(monkeypatch)
+        for param in t.parameters.get("properties", {})
+        if param not in _LEGACY_PARAM_NAMES
+        and not _SNAKE_CASE_RE.match(param)
+        and not _RESOURCE_ID_RE.match(param)
+    ]
+
+    assert not bad, (
+        "Parameters must be snake_case, or camelCase <resource>Id for the "
+        f"ID of the resource the tool acts on: {bad}"
+    )
+
+
 # --- SSRF protection: _assert_url_is_safe ---
 
 
