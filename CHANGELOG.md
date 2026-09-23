@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Security
+
+- **DNS-rebinding protection for schema fetches**: `_safe_get` (used when creating an API target from a Postman collection URL) now connects to the IP address it already validated instead of letting `requests` resolve the hostname again. A DNS server can no longer return a public address during validation and a private one when the connection is made. TLS SNI and certificate checks still use the original hostname.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

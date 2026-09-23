@@ -16,8 +16,10 @@ import urllib.parse
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
+import requests
 from fastmcp import FastMCP
 from pydantic import Field
+from requests.adapters import HTTPAdapter
 
 from .audit import record_tool_call
 from .config import (
@@ -145,13 +147,16 @@ def _assert_ip_is_public(ip_str: str) -> None:
 
 def _assert_url_is_safe(
     url: str, allowlist: Optional[List[str]] = None
-) -> None:
+) -> List[str]:
     """Validate a user-supplied URL before it is fetched.
 
     Enforces HTTPS-only, an optional host allow-list, and blocks any URL whose
     hostname resolves to a private, loopback, link-local, reserved, multicast,
     or unspecified address (defends against SSRF to cloud-metadata / internal
     endpoints such as ``169.254.169.254`` or ``localhost``).
+
+    Returns the validated addresses so the caller can connect to one of them
+    directly instead of resolving the hostname a second time.
     """
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme != "https":
@@ -187,6 +192,48 @@ def _assert_url_is_safe(
         )
     for addr in addresses:
         _assert_ip_is_public(addr)
+    return addresses
+
+
+class _PinnedHostAdapter(HTTPAdapter):
+    """Adapter for requests sent to an IP that stands in for *hostname*.
+
+    TLS SNI and certificate verification still use the original hostname, so
+    the connection is only accepted if the server at the pinned IP presents a
+    valid certificate for that hostname.
+    """
+
+    def __init__(self, hostname: str) -> None:
+        self._hostname = hostname
+        super().__init__()
+
+    def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
+        kwargs["server_hostname"] = self._hostname
+        kwargs["assert_hostname"] = self._hostname
+        super().init_poolmanager(*args, **kwargs)
+
+
+def _pinned_get(url: str, ip: str, timeout: int) -> requests.Response:
+    """GET *url* by connecting to the already-validated *ip*.
+
+    Connecting to the IP (rather than letting requests resolve the hostname
+    again) closes the DNS-rebinding window between validation and connect.
+    """
+    parsed = urllib.parse.urlparse(url)
+    host_header = parsed.hostname or ""
+    ip_host = f"[{ip}]" if ":" in ip else ip
+    netloc = ip_host if parsed.port is None else f"{ip_host}:{parsed.port}"
+    if parsed.port is not None:
+        host_header = f"{host_header}:{parsed.port}"
+    pinned_url = urllib.parse.urlunparse(parsed._replace(netloc=netloc))
+    with requests.Session() as session:
+        session.mount("https://", _PinnedHostAdapter(parsed.hostname or ""))
+        return session.get(
+            pinned_url,
+            headers={"Host": host_header},
+            timeout=timeout,
+            allow_redirects=False,
+        )
 
 
 def _safe_get(
@@ -195,15 +242,13 @@ def _safe_get(
     allowlist: Optional[List[str]] = None,
 ) -> "Any":
     """Perform an SSRF-safe HTTP GET, re-validating every redirect hop."""
-    import requests
-
     if allowlist is None:
         allowlist = _get_url_allowlist()
 
     current = url
     for _ in range(_MAX_FETCH_REDIRECTS + 1):
-        _assert_url_is_safe(current, allowlist)
-        r = requests.get(current, timeout=timeout, allow_redirects=False)
+        addresses = _assert_url_is_safe(current, allowlist)
+        r = _pinned_get(current, addresses[0], timeout)
         if r.is_redirect or r.is_permanent_redirect:
             location = r.headers.get("Location")
             if not location:

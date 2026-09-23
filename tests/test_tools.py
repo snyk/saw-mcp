@@ -14,6 +14,8 @@ from snyk_apiweb.tools import (
     _assert_url_is_safe,
     _generate_totp,
     _parse_list_of_dicts,
+    _pinned_get,
+    _PinnedHostAdapter,
     _safe_get,
     build_server,
 )
@@ -337,12 +339,12 @@ def test_safe_get_revalidates_redirect_target(monkeypatch):
 
     # First hop redirects to the AWS metadata endpoint, which must be blocked
     # when _safe_get re-validates the redirect target.
-    def fake_get(url, timeout=60, allow_redirects=False):
+    def fake_get(url, ip, timeout):
         return _FakeResponse(
             302, {"Location": "https://169.254.169.254/latest/meta-data/"}
         )
 
-    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("snyk_apiweb.tools._pinned_get", fake_get)
     with pytest.raises(UnsafeURLError, match="non-public"):
         _safe_get("https://example.com/schema.json")
 
@@ -357,8 +359,79 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     ok = _FakeResponse(200, {"Content-Type": "application/json"})
 
-    def fake_get(url, timeout=60, allow_redirects=False):
+    def fake_get(url, ip, timeout):
         return ok
 
-    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("snyk_apiweb.tools._pinned_get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+def test_safe_get_connects_to_the_validated_ip(monkeypatch):
+    """The hostname is resolved once; a rebinding second answer is unused."""
+    answers = iter(["93.184.216.34", "169.254.169.254"])
+
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        return [(2, 1, 6, "", (next(answers), port or 443))]
+
+    monkeypatch.setattr(
+        "snyk_apiweb.tools.socket.getaddrinfo", fake_getaddrinfo
+    )
+    calls = []
+
+    def fake_get(url, ip, timeout):
+        calls.append((url, ip))
+        return _FakeResponse(200)
+
+    monkeypatch.setattr("snyk_apiweb.tools._pinned_get", fake_get)
+    _safe_get("https://example.com/schema.json")
+
+    assert calls == [("https://example.com/schema.json", "93.184.216.34")]
+
+
+@pytest.mark.parametrize(
+    ("url", "ip", "expected_url", "expected_host"),
+    [
+        (
+            "https://example.com/a?b=1",
+            "93.184.216.34",
+            "https://93.184.216.34/a?b=1",
+            "example.com",
+        ),
+        (
+            "https://example.com:8443/a",
+            "93.184.216.34",
+            "https://93.184.216.34:8443/a",
+            "example.com:8443",
+        ),
+        (
+            "https://example.com/a",
+            "2606:2800:220:1::1",
+            "https://[2606:2800:220:1::1]/a",
+            "example.com",
+        ),
+    ],
+)
+def test_pinned_get_targets_ip_and_keeps_host(
+    url, ip, expected_url, expected_host
+):
+    with patch("snyk_apiweb.tools.requests.Session") as MockSession:
+        session = MockSession.return_value.__enter__.return_value
+        _pinned_get(url, ip, timeout=5)
+
+    session.get.assert_called_once_with(
+        expected_url,
+        headers={"Host": expected_host},
+        timeout=5,
+        allow_redirects=False,
+    )
+    adapter = session.mount.call_args.args[1]
+    assert isinstance(adapter, _PinnedHostAdapter)
+    assert adapter._hostname == "example.com"
+
+
+def test_pinned_adapter_verifies_tls_against_hostname():
+    adapter = _PinnedHostAdapter("example.com")
+    pool = adapter.poolmanager.connection_from_url("https://93.184.216.34/")
+
+    assert pool.conn_kw["server_hostname"] == "example.com"
+    assert pool.assert_hostname == "example.com"
