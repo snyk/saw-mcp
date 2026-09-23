@@ -39,6 +39,8 @@ jobs:
         run: ruff check .
       - name: Check formatting
         run: ruff format --check .
+      - name: Type check
+        run: mypy
 
   playwright-cli-smoke:
     runs-on: ubuntu-latest

@@ -199,7 +199,7 @@ class ProbelyClient:
     def create_api_user(
         self, name: str, permissions: Optional[list[str]] = None
     ) -> Dict[str, Any]:
-        payload = {"name": name}
+        payload: Dict[str, Any] = {"name": name}
         if permissions is not None:
             payload["permissions"] = permissions
         return self.request("POST", "/api-users/", json=payload)[1]

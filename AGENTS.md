@@ -72,6 +72,7 @@ Use these exact commands — don't invent alternatives.
 | Lint | `ruff check .` |
 | Format check | `ruff format --check .` |
 | Auto-format | `ruff format .` |
+| Type check | `mypy` |
 | Dev server (hot reload) | `./scripts/dev.sh` (requires `venv` and `fastmcp` dev extras) |
 | Standalone server | `python -m snyk_apiweb.server` |
 | Release tarball | `bash scripts/package.sh` → `dist/SnykAPIWeb-<version>.tgz` |
@@ -93,8 +94,8 @@ matrix locally when changing Python compatibility.
 ## CI
 
 - **GitHub Actions** (`.github/workflows/ci.yml`): pytest on Python 3.10/3.11/3.12, ruff
-  lint + format, playwright-cli smoke test.
-- **CircleCI** (`.circleci/config.yml`): pytest, ruff, prodsec security scans.
+  lint + format, mypy, playwright-cli smoke test.
+- **CircleCI** (`.circleci/config.yml`): pytest, ruff, mypy, prodsec security scans.
 - **Release** (`.github/workflows/release.yml`): triggered by `v*` tags; the `build` job checks
   the tag against `pyproject.toml`. See *Version bumps and releases* for the other files.
 

@@ -179,7 +179,7 @@ def _assert_url_is_safe(
             raise UnsafeURLError(
                 f"Could not resolve host {hostname!r}: {exc}"
             ) from exc
-        addresses = [info[4][0] for info in addrinfo]
+        addresses = [str(info[4][0]) for info in addrinfo]
 
     if not addresses:
         raise UnsafeURLError(

@@ -37,7 +37,13 @@ Repository = "https://github.com/snyk/saw-mcp"
 "Bug Tracker" = "https://github.com/snyk/saw-mcp/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0", "ruff>=0.8.0"]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.10",
+    "types-PyYAML",
+    "types-requests",
+]
 
 [tool.setuptools.packages.find]
 include = ["snyk_apiweb*"]
@@ -45,6 +51,12 @@ exclude = ["config*", "tests*", "scripts*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["snyk_apiweb"]
+warn_unused_ignores = true
+warn_redundant_casts = true
 
 [tool.ruff]
 line-length = 79

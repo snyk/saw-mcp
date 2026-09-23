@@ -48,6 +48,9 @@ jobs:
       - run:
           name: Check formatting
           command: ruff format --check .
+      - run:
+          name: Type check
+          command: mypy
 
   security-scans:
     <<: *defaults
