@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Prompt skill paths**: the `saw_web_target_configuration` and `saw_api_target_configuration` prompts now give the real path to the skill's `SKILL.md` when running from a source checkout. Otherwise they tell the agent to load the installed skill, with a GitHub link as a fallback, instead of a `/<basedir>/saw-mcp/...` placeholder the model had to guess.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

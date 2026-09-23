@@ -13,6 +13,7 @@ import socket
 import struct
 import time
 import urllib.parse
+from pathlib import Path
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
@@ -249,6 +250,22 @@ def _generate_totp(
     }
 
 
+# Present in a source checkout; not shipped in the wheel.
+_SKILLS_DIR = Path(__file__).resolve().parents[1] / "config" / "skills"
+_SKILLS_URL = "https://github.com/snyk/saw-mcp/blob/main/config/skills"
+
+
+def _skill_instruction(skill_name: str) -> str:
+    """Tell the agent where to read *skill_name*'s SKILL.md."""
+    skill_file = _SKILLS_DIR / skill_name / "SKILL.md"
+    if skill_file.is_file():
+        return f"First, read the skill file at `{skill_file}` and follow it exactly."
+    return (
+        f"First, load the `{skill_name}` skill and follow it exactly. If it "
+        f"is not installed, read `{_SKILLS_URL}/{skill_name}/SKILL.md`."
+    )
+
+
 def build_server() -> FastMCP:
     cfg = load_config()
     base_url = get_probely_base_url(cfg)
@@ -351,7 +368,7 @@ def build_server() -> FastMCP:
             - 2FA TOTP seed: `{totp_seed}`
 
             Requirements:
-            - First, read the skill file at `/<basedir>/saw-mcp/config/skills/saw-web-target-configuration/SKILL.md` and follow it exactly.
+            - {skill_instruction}
             - Prefer login sequence via `playwright-cli` (Shell). If unavailable, use Playwright MCP browser tools. Use form login only when neither is available.
             - Derive the target name in this order if needed: user-provided name, then site `<title>`, then FQDN.
             - If labels are `default`, do not pass a `labels` parameter.
@@ -375,6 +392,9 @@ def build_server() -> FastMCP:
             )
             .strip()
             .format(
+                skill_instruction=_skill_instruction(
+                    "saw-web-target-configuration"
+                ),
                 url=url,
                 name=name,
                 labels=labels,
@@ -464,7 +484,7 @@ def build_server() -> FastMCP:
             - Authentication details: `{authentication_details}`
 
             Requirements:
-            - First, read the skill file at `/<basedir>/saw-mcp/config/skills/saw-api-target-configuration/SKILL.md` and follow it exactly.
+            - {skill_instruction}
             - Derive the target name in this order if needed: user-provided name, then schema title or Postman collection name, then the domain from the base URL.
             - If labels are `default`, do not pass a `labels` parameter.
             - Create a new target; do not search for or reuse an existing one.
@@ -488,6 +508,9 @@ def build_server() -> FastMCP:
             )
             .strip()
             .format(
+                skill_instruction=_skill_instruction(
+                    "saw-api-target-configuration"
+                ),
                 base_url=base_url,
                 name=name,
                 labels=labels,

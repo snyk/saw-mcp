@@ -15,6 +15,7 @@ from snyk_apiweb.tools import (
     _generate_totp,
     _parse_list_of_dicts,
     _safe_get,
+    _skill_instruction,
     build_server,
 )
 
@@ -160,6 +161,55 @@ def test_build_server_registers_prompts(monkeypatch):
 
     assert "saw_web_target_configuration" in prompt_names
     assert "saw_api_target_configuration" in prompt_names
+
+
+def test_skill_instruction_points_at_checkout_file():
+    instruction = _skill_instruction("saw-web-target-configuration")
+
+    skill_file = (
+        Path(__file__).resolve().parents[1]
+        / "config"
+        / "skills"
+        / "saw-web-target-configuration"
+        / "SKILL.md"
+    )
+    assert f"`{skill_file}`" in instruction
+    assert "<basedir>" not in instruction
+
+
+def test_skill_instruction_falls_back_when_not_in_checkout(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("snyk_apiweb.tools._SKILLS_DIR", tmp_path)
+
+    instruction = _skill_instruction("saw-api-target-configuration")
+
+    assert "`saw-api-target-configuration` skill" in instruction
+    assert (
+        "https://github.com/snyk/saw-mcp/blob/main/config/skills/"
+        "saw-api-target-configuration/SKILL.md"
+    ) in instruction
+
+
+def test_prompts_embed_resolved_skill_path(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    app = build_server()
+
+    result = asyncio.run(
+        app.render_prompt(
+            "saw_web_target_configuration",
+            {
+                "url": "https://app.example.com",
+                "username": "u",
+                "password": "p",
+            },
+        )
+    )
+    text = result.messages[0].content.text
+
+    assert "<basedir>" not in text
+    assert "saw-web-target-configuration/SKILL.md" in text
 
 
 def test_build_server_disables_destructive_tools_by_default(monkeypatch):
