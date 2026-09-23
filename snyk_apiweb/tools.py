@@ -28,7 +28,11 @@ from .config import (
     is_tool_enabled,
     load_config,
 )
-from .probely_client import ProbelyClient, current_tool_name
+from .probely_client import (
+    ProbelyClient,
+    _redact_for_log,
+    current_tool_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +282,9 @@ def build_server() -> FastMCP:
                         result = func(*args, **kwargs)
                         if isinstance(result, dict) and result.get("error"):
                             outcome = "api_error"
-                            error_summary = str(result.get("error"))
+                            error_summary = str(
+                                _redact_for_log(result.get("error"))
+                            )
                         return result
                     except Exception as exc:
                         outcome = "error"

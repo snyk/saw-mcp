@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import re
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 
 from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
+from snyk_apiweb.probely_client import ProbelyClient
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
@@ -201,6 +202,27 @@ def test_shipped_config_files_list_only_real_tool_names(monkeypatch):
         f"{unknown}. Tool names are matched exactly, so a stale entry has no "
         "effect. Update config.yaml.dist and saw_rules.mdc when renaming a tool."
     )
+
+
+def test_audit_error_summary_is_redacted(monkeypatch):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    mock_client = create_autospec(ProbelyClient, instance=True)
+    mock_client.create_credential.return_value = {
+        "error": {"status": 400, "value": "hunter2", "token": "abc123"}
+    }
+    with patch("snyk_apiweb.tools.ProbelyClient", return_value=mock_client):
+        app = build_server()
+    tool = asyncio.run(app.get_tool("probely_create_credential"))
+
+    with patch("snyk_apiweb.tools.record_tool_call") as record:
+        asyncio.run(tool.run({"name": "pw", "value": "hunter2"}))
+
+    tool_name, outcome, _duration, error = record.call_args.args
+    assert (tool_name, outcome) == ("probely_create_credential", "api_error")
+    assert "400" in error
+    assert "hunter2" not in error
+    assert "abc123" not in error
 
 
 # --- SSRF protection: _assert_url_is_safe ---
