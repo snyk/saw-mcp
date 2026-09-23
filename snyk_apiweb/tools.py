@@ -1144,7 +1144,8 @@ def build_server() -> FastMCP:
         state: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Bulk update finding states (e.g. fixed, false_positive, accepted_risk).
-        This tool will automatically ask the user for confirmation."""
+        This tool does not ask for confirmation itself: confirm the finding
+        IDs and target state with the user before calling it."""
         return client.bulk_update_findings(
             target_id=targetId, finding_ids=findingIds, state=state
         )
