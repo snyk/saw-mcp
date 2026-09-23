@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import base64
 import functools
 import hashlib
@@ -16,6 +17,8 @@ import urllib.parse
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Optional
 
+import requests
+import yaml
 from fastmcp import FastMCP
 from pydantic import Field
 
@@ -71,8 +74,6 @@ def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
             pass
         # Fallback: MCP frameworks may deliver Python-repr strings (single
         # quotes, True/False instead of true/false).  Try ast.literal_eval.
-        import ast
-
         try:
             parsed = ast.literal_eval(value)
             if isinstance(parsed, list):
@@ -195,8 +196,6 @@ def _safe_get(
     allowlist: Optional[List[str]] = None,
 ) -> "Any":
     """Perform an SSRF-safe HTTP GET, re-validating every redirect hop."""
-    import requests
-
     if allowlist is None:
         allowlist = _get_url_allowlist()
 
@@ -1228,8 +1227,6 @@ def build_server() -> FastMCP:
             r = _safe_get(url, timeout=60)
             content_type = r.headers.get("Content-Type", "")
             if "yaml" in content_type or url.endswith((".yaml", ".yml")):
-                import yaml
-
                 return yaml.safe_load(r.text)
             return r.json()
         return None
