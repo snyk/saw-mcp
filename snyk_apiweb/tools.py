@@ -13,8 +13,9 @@ import socket
 import struct
 import time
 import urllib.parse
+from collections.abc import Callable
 from textwrap import dedent
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 from pydantic import Field
@@ -40,10 +41,10 @@ logger = logging.getLogger(__name__)
 _MAX_PARSE_INPUT_LEN = 65536
 
 
-def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
+def _parse_list_of_dicts(value: Any) -> list[dict[str, Any]] | None:
     """Parse a value that should be a list of dicts.
 
-    MCP tool parameters with complex types (e.g. list[Dict[str, Any]]) are
+    MCP tool parameters with complex types (e.g. list[dict[str, Any]]) are
     sometimes delivered as JSON strings instead of native Python objects because
     of how ``from __future__ import annotations`` interacts with FastMCP/Pydantic
     schema generation.  This helper normalises both representations so that tool
@@ -105,7 +106,7 @@ class UnsafeURLError(ValueError):
     """Raised when a user-supplied URL fails SSRF safety validation."""
 
 
-def _get_url_allowlist() -> Optional[List[str]]:
+def _get_url_allowlist() -> list[str] | None:
     """Return the configured host allow-list, or None when not configured."""
     raw = os.environ.get(URL_ALLOWLIST_ENV, "").strip()
     if not raw:
@@ -114,7 +115,7 @@ def _get_url_allowlist() -> Optional[List[str]]:
     return hosts or None
 
 
-def _host_is_allowlisted(hostname: str, allowlist: List[str]) -> bool:
+def _host_is_allowlisted(hostname: str, allowlist: list[str]) -> bool:
     """Check whether hostname matches an allow-list entry or a subdomain of it."""
     host = hostname.lower().rstrip(".")
     for entry in allowlist:
@@ -143,9 +144,7 @@ def _assert_ip_is_public(ip_str: str) -> None:
         raise UnsafeURLError(f"SSRF: blocked non-public address {ip}")
 
 
-def _assert_url_is_safe(
-    url: str, allowlist: Optional[List[str]] = None
-) -> None:
+def _assert_url_is_safe(url: str, allowlist: list[str] | None = None) -> None:
     """Validate a user-supplied URL before it is fetched.
 
     Enforces HTTPS-only, an optional host allow-list, and blocks any URL whose
@@ -192,8 +191,8 @@ def _assert_url_is_safe(
 def _safe_get(
     url: str,
     timeout: int = 60,
-    allowlist: Optional[List[str]] = None,
-) -> "Any":
+    allowlist: list[str] | None = None,
+) -> Any:
     """Perform an SSRF-safe HTTP GET, re-validating every redirect hop."""
     import requests
 
@@ -221,7 +220,7 @@ def _safe_get(
 
 def _generate_totp(
     secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate a TOTP code from a base32 secret.
 
     Returns dict with ``code``, ``remaining_seconds``, ``algorithm``, and ``digits``.
@@ -273,7 +272,7 @@ def build_server() -> FastMCP:
                     token = current_tool_name.set(name)
                     start = time.perf_counter()
                     outcome = "success"
-                    error_summary: Optional[str] = None
+                    error_summary: str | None = None
                     try:
                         result = func(*args, **kwargs)
                         if isinstance(result, dict) and result.get("error"):
@@ -506,10 +505,10 @@ def build_server() -> FastMCP:
     def probelyrequest(
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Make a raw request to Probely API (path relative to base).
 
         IMPORTANT: For authentication configuration, use probely_update_target instead:
@@ -528,26 +527,26 @@ def build_server() -> FastMCP:
 
     # User Management (read-only)
     @register_tool("probely_get_user")
-    def probely_get_user(userId: str) -> Dict[str, Any]:
+    def probely_get_user(userId: str) -> dict[str, Any]:
         return client.get_user(user_id=userId)
 
     # Teams (read-only)
     @register_tool("probely_list_teams")
-    def probely_list_teams(page: Optional[int] = None) -> Dict[str, Any]:
+    def probely_list_teams(page: int | None = None) -> dict[str, Any]:
         return client.list_teams(page=page)
 
     @register_tool("probely_get_team")
-    def probely_get_team(teamId: str) -> Dict[str, Any]:
+    def probely_get_team(teamId: str) -> dict[str, Any]:
         return client.get_team(team_id=teamId)
 
     # Credentials
     @register_tool("probely_list_credentials")
     def probely_list_credentials(
-        page: Optional[int] = None,
-        search: Optional[str] = None,
-        is_sensitive: Optional[bool] = None,
-        length: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        page: int | None = None,
+        search: str | None = None,
+        is_sensitive: bool | None = None,
+        length: int | None = None,
+    ) -> dict[str, Any]:
         """List credentials. Sensitive values are not returned.
 
         Returns credentials with their 'uri' field (e.g., 'credentials://4DY4qGohso1r').
@@ -561,7 +560,7 @@ def build_server() -> FastMCP:
         )
 
     @register_tool("probely_get_credential")
-    def probely_get_credential(credentialId: str) -> Dict[str, Any]:
+    def probely_get_credential(credentialId: str) -> dict[str, Any]:
         """Get a credential by ID. Value is null if sensitive.
 
         Returns the credential with its 'uri' field (e.g., 'credentials://4DY4qGohso1r').
@@ -573,9 +572,9 @@ def build_server() -> FastMCP:
         name: str,
         value: str,
         is_sensitive: bool = True,
-        description: Optional[str] = None,
-        team: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        description: str | None = None,
+        team: str | None = None,
+    ) -> dict[str, Any]:
         """Create a credential for secure storage. Use is_sensitive=True for passwords.
         Returns the credential with id and uri. Use the uri (e.g. "credentials://xxxx") as the value in custom_field_mappings to link it to a sequence."""
         return client.create_credential(
@@ -589,13 +588,13 @@ def build_server() -> FastMCP:
     @register_tool("probely_update_credential")
     def probely_update_credential(
         credentialId: str,
-        name: Optional[str] = None,
-        value: Optional[str] = None,
-        is_sensitive: Optional[bool] = None,
-        description: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        name: str | None = None,
+        value: str | None = None,
+        is_sensitive: bool | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
         """Update a credential (partial update)."""
-        fields: Dict[str, Any] = {}
+        fields: dict[str, Any] = {}
         if name is not None:
             fields["name"] = name
         if value is not None:
@@ -607,37 +606,37 @@ def build_server() -> FastMCP:
         return client.update_credential(credential_id=credentialId, **fields)
 
     @register_tool("probely_delete_credential")
-    def probely_delete_credential(credentialId: str) -> Dict[str, Any]:
+    def probely_delete_credential(credentialId: str) -> dict[str, Any]:
         return client.delete_credential(credential_id=credentialId)
 
     # Labels
     @register_tool("probely_create_label")
     def probely_create_label(
-        name: str, color: Optional[str] = None
-    ) -> Dict[str, Any]:
+        name: str, color: str | None = None
+    ) -> dict[str, Any]:
         return client.create_label(name=name, color=color)
 
     # Targets
     @register_tool("probely_list_targets")
     def probely_list_targets(
-        page: Optional[int] = None, search: Optional[str] = None
-    ) -> Dict[str, Any]:
+        page: int | None = None, search: str | None = None
+    ) -> dict[str, Any]:
         return client.list_targets(page=page, search=search)
 
     @register_tool("probely_get_target")
-    def probely_get_target(targetId: str) -> Dict[str, Any]:
+    def probely_get_target(targetId: str) -> dict[str, Any]:
         return client.get_target(target_id=targetId)
 
     @register_tool("probely_create_web_target")
     def probely_create_web_target(
         name: str,
         url: str,
-        desc: Optional[str] = None,
-        labels: Optional[list[str]] = None,
-        scanning_agent_id: Optional[str] = None,
+        desc: str | None = None,
+        labels: list[str] | None = None,
+        scanning_agent_id: str | None = None,
         allow_duplicate: bool = False,
         skip_reachability_check: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign a scanning agent for internal/private targets.
@@ -668,12 +667,12 @@ def build_server() -> FastMCP:
     @register_tool("probely_update_target")
     def probely_update_target(
         targetId: str,
-        name: Optional[str] = None,
-        url: Optional[str] = None,
-        desc: Optional[str] = None,
-        labels: Optional[list[str]] = None,
-        scanning_agent_id: Optional[str] = None,
-        headers: Optional[List[Dict[str, str]]] = Field(
+        name: str | None = None,
+        url: str | None = None,
+        desc: str | None = None,
+        labels: list[str] | None = None,
+        scanning_agent_id: str | None = None,
+        headers: list[dict[str, str]] | None = Field(
             default=None,
             description="Custom HTTP headers sent with every scan request (for general use, NOT for authentication). "
             'Each entry: {"name": "<header-name>", "value": "<header-value>"}. '
@@ -681,7 +680,7 @@ def build_server() -> FastMCP:
             "To reference saved credentials in header values, use URI format 'credentials://4DY4qGohso1r'. "
             "For API authentication using static headers, use api_auth_headers parameter instead.",
         ),
-        cookies: Optional[List[Dict[str, str]]] = Field(
+        cookies: list[dict[str, str]] | None = Field(
             default=None,
             description="Custom cookies sent with every scan request (for general use, NOT for authentication). "
             'Each entry: {"name": "<cookie-name>", "value": "<cookie-value>"}. '
@@ -689,31 +688,31 @@ def build_server() -> FastMCP:
             "To reference saved credentials in cookie values, use URI format 'credentials://4DY4qGohso1r'. "
             "For API authentication using static cookies, use api_auth_cookies parameter instead.",
         ),
-        basic_auth_username: Optional[str] = Field(
+        basic_auth_username: str | None = Field(
             default=None,
             description="Username for HTTP Basic Auth. Use credential URI format 'credentials://xxx' to reference saved credentials. "
             "When set, basic_auth_password must also be provided.",
         ),
-        basic_auth_password: Optional[str] = Field(
+        basic_auth_password: str | None = Field(
             default=None,
             description="Password for HTTP Basic Auth. Use credential URI format 'credentials://xxx' to reference saved credentials. "
             "When set, basic_auth_username must also be provided.",
         ),
-        api_auth_headers: Optional[List[Dict[str, Any]]] = Field(
+        api_auth_headers: list[dict[str, Any]] | None = Field(
             default=None,
             description="Authentication headers for API targets. Full structure with authentication flags. "
             'Each entry: {"name": "X-API-Key", "value": "credentials://xxx", "value_is_sensitive": false, '
             '"allow_testing": false, "authentication": true, "authentication_secondary": false}. '
             "Automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.",
         ),
-        api_auth_cookies: Optional[List[Dict[str, Any]]] = Field(
+        api_auth_cookies: list[dict[str, Any]] | None = Field(
             default=None,
             description="Authentication cookies for API targets. Full structure with authentication flags. "
             'Each entry: {"name": "session", "value": "credentials://xxx", "value_is_sensitive": false, '
             '"allow_testing": false, "authentication": true, "authentication_secondary": false}. '
             "Automatically sets api_login_enabled=true and api_login_method='headers_or_cookies'.",
         ),
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update a target. Use labels to assign label names (e.g. ["Agentic", "Production"]).
         Existing labels are reused; missing ones are created automatically.
         Use scanning_agent_id to assign or change the scanning agent. Pass "" to remove it.
@@ -756,8 +755,8 @@ def build_server() -> FastMCP:
 
         Reference saved credentials using URI format 'credentials://<credential_id>' (not {{cred-name}}).
         """
-        fields: Dict[str, Any] = {}
-        site_fields: Dict[str, Any] = {}
+        fields: dict[str, Any] = {}
+        site_fields: dict[str, Any] = {}
 
         if name is not None:
             site_fields["name"] = name
@@ -815,19 +814,19 @@ def build_server() -> FastMCP:
         return client.update_target(target_id=targetId, **fields)
 
     @register_tool("probely_delete_target")
-    def probely_delete_target(targetId: str) -> Dict[str, Any]:
+    def probely_delete_target(targetId: str) -> dict[str, Any]:
         return client.delete_target(target_id=targetId)
 
     # Login Sequences
     @register_tool("probely_list_sequences")
     def probely_list_sequences(
-        targetId: str, page: Optional[int] = None
-    ) -> Dict[str, Any]:
+        targetId: str, page: int | None = None
+    ) -> dict[str, Any]:
         """List all login sequences for a target."""
         return client.list_sequences(target_id=targetId, page=page)
 
     @register_tool("probely_get_sequence")
-    def probely_get_sequence(targetId: str, sequenceId: str) -> Dict[str, Any]:
+    def probely_get_sequence(targetId: str, sequenceId: str) -> dict[str, Any]:
         """Get details of a specific login sequence."""
         return client.get_sequence(target_id=targetId, sequence_id=sequenceId)
 
@@ -838,8 +837,8 @@ def build_server() -> FastMCP:
         content: str,
         sequence_type: str = "login",
         enabled: bool = True,
-        custom_field_mappings: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        custom_field_mappings: Any | None = None,
+    ) -> dict[str, Any]:
         """Create a login sequence. Content must be a JSON string of the sequence steps array. Use custom_field_mappings to configure credentials.
 
         IMPORTANT: After creating a login sequence, you MUST call probely_configure_sequence_login(targetId, enabled=True)
@@ -865,17 +864,17 @@ def build_server() -> FastMCP:
     def probely_update_sequence(
         targetId: str,
         sequenceId: str,
-        name: Optional[str] = None,
-        content: Optional[str] = None,
-        enabled: Optional[bool] = None,
-        custom_field_mappings: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        name: str | None = None,
+        content: str | None = None,
+        enabled: bool | None = None,
+        custom_field_mappings: Any | None = None,
+    ) -> dict[str, Any]:
         """Update a login sequence. Use custom_field_mappings to configure credentials instead of hardcoding them in the sequence content. Use credential URIs for sensitive values by default.
 
         custom_field_mappings should be a JSON array string, e.g.:
         [{"name": "[CUSTOM_USERNAME]", "value": "user@example.com", "value_is_sensitive": false, "enabled": true}]
         """
-        fields: Dict[str, Any] = {}
+        fields: dict[str, Any] = {}
         if name is not None:
             fields["name"] = name
         if content is not None:
@@ -892,7 +891,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_delete_sequence")
     def probely_delete_sequence(
         targetId: str, sequenceId: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return client.delete_sequence(
             target_id=targetId, sequence_id=sequenceId
         )
@@ -906,8 +905,8 @@ def build_server() -> FastMCP:
         password_field: str,
         username: str,
         password: str,
-        check_pattern: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        check_pattern: str | None = None,
+    ) -> dict[str, Any]:
         """Configure form-based login authentication. Only use as a fallback when neither
         `playwright-cli` nor Playwright MCP browser tools are available. When browser
         automation IS available, always record a login sequence instead (probely_create_sequence).
@@ -927,7 +926,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_configure_sequence_login")
     def probely_configure_sequence_login(
         targetId: str, enabled: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Enable or disable sequence-based login. Call this after creating a login sequence."""
         return client.configure_sequence_login(
             target_id=targetId, enabled=enabled
@@ -939,7 +938,7 @@ def build_server() -> FastMCP:
         otp_secret: str,
         otp_algorithm: str = "SHA1",
         otp_digits: int = 6,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Configure TOTP-based 2FA for a target. Automatically generates a TOTP code from the
         secret and configures it as the OTP placeholder for the login sequence.
 
@@ -962,14 +961,14 @@ def build_server() -> FastMCP:
         return result
 
     @register_tool("probely_disable_2fa")
-    def probely_disable_2fa(targetId: str) -> Dict[str, Any]:
+    def probely_disable_2fa(targetId: str) -> dict[str, Any]:
         """Disable 2FA/OTP for a target."""
         return client.disable_2fa(target_id=targetId)
 
     @register_tool("probely_generate_totp")
     def probely_generate_totp(
         secret: str, algorithm: str = "SHA1", digits: int = 6, period: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate a TOTP code from a secret/seed. Use when recording login sequences that
         require 2FA (via `playwright-cli` or Playwright MCP).
         Returns the current TOTP code and its remaining validity in seconds."""
@@ -978,14 +977,14 @@ def build_server() -> FastMCP:
         )
 
     @register_tool("probely_list_logout_detectors")
-    def probely_list_logout_detectors(targetId: str) -> Dict[str, Any]:
+    def probely_list_logout_detectors(targetId: str) -> dict[str, Any]:
         """List all logout detectors for a target."""
         return client.list_logout_detectors(target_id=targetId)
 
     @register_tool("probely_create_logout_detector")
     def probely_create_logout_detector(
         targetId: str, detector_type: str, value: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a logout detector for a target.
 
         Args:
@@ -1002,11 +1001,11 @@ def build_server() -> FastMCP:
     def probely_configure_logout_detection(
         targetId: str,
         enabled: bool = True,
-        check_session_url: Optional[str] = None,
-        logout_detector_type: Optional[str] = None,
-        logout_detector_value: Optional[str] = None,
-        logout_condition: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        check_session_url: str | None = None,
+        logout_detector_type: str | None = None,
+        logout_detector_value: str | None = None,
+        logout_condition: str | None = None,
+    ) -> dict[str, Any]:
         """Configure logout detection for a target. This helps the scanner detect when it needs to re-authenticate.
 
         The Probely API requires BOTH check_session_url AND at least one logout detector to be defined
@@ -1042,14 +1041,14 @@ def build_server() -> FastMCP:
     # Extra Hosts
     @register_tool("probely_list_extra_hosts")
     def probely_list_extra_hosts(
-        targetId: str, page: Optional[int] = None
-    ) -> Dict[str, Any]:
+        targetId: str, page: int | None = None
+    ) -> dict[str, Any]:
         return client.list_extra_hosts(target_id=targetId, page=page)
 
     @register_tool("probely_get_extra_host")
     def probely_get_extra_host(
         targetId: str, extraHostId: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return client.get_extra_host(
             target_id=targetId, extra_host_id=extraHostId
         )
@@ -1057,7 +1056,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_create_extra_host")
     def probely_create_extra_host(
         targetId: str, hostname: str, ip_address: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return client.create_extra_host(
             target_id=targetId, hostname=hostname, ip_address=ip_address
         )
@@ -1066,10 +1065,10 @@ def build_server() -> FastMCP:
     def probely_update_extra_host(
         targetId: str,
         extraHostId: str,
-        hostname: Optional[str] = None,
-        ip_address: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        fields: Dict[str, Any] = {}
+        hostname: str | None = None,
+        ip_address: str | None = None,
+    ) -> dict[str, Any]:
+        fields: dict[str, Any] = {}
         if hostname is not None:
             fields["hostname"] = hostname
         if ip_address is not None:
@@ -1081,7 +1080,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_delete_extra_host")
     def probely_delete_extra_host(
         targetId: str, extraHostId: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return client.delete_extra_host(
             target_id=targetId, extra_host_id=extraHostId
         )
@@ -1089,50 +1088,50 @@ def build_server() -> FastMCP:
     # Scans
     @register_tool("probely_list_scans")
     def probely_list_scans(
-        targetId: str, page: Optional[int] = None
-    ) -> Dict[str, Any]:
+        targetId: str, page: int | None = None
+    ) -> dict[str, Any]:
         return client.list_scans(target_id=targetId, page=page)
 
     @register_tool("probely_get_scan")
-    def probely_get_scan(targetId: str, scanId: str) -> Dict[str, Any]:
+    def probely_get_scan(targetId: str, scanId: str) -> dict[str, Any]:
         return client.get_scan(target_id=targetId, scan_id=scanId)
 
     @register_tool("probely_start_scan")
     def probely_start_scan(
-        targetId: str, profile: Optional[str] = None
-    ) -> Dict[str, Any]:
+        targetId: str, profile: str | None = None
+    ) -> dict[str, Any]:
         return client.start_scan(target_id=targetId, profile=profile)
 
     @register_tool("probely_stop_scan")
-    def probely_stop_scan(targetId: str, scanId: str) -> Dict[str, Any]:
+    def probely_stop_scan(targetId: str, scanId: str) -> dict[str, Any]:
         return client.stop_scan(target_id=targetId, scan_id=scanId)
 
     @register_tool("probely_cancel_scan")
-    def probely_cancel_scan(targetId: str, scanId: str) -> Dict[str, Any]:
+    def probely_cancel_scan(targetId: str, scanId: str) -> dict[str, Any]:
         return client.cancel_scan(target_id=targetId, scan_id=scanId)
 
     # Findings
     @register_tool("probely_list_findings")
     def probely_list_findings(
         targetId: str,
-        page: Optional[int] = None,
-        severity: Optional[str] = None,
-        state: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        page: int | None = None,
+        severity: str | None = None,
+        state: str | None = None,
+    ) -> dict[str, Any]:
         return client.list_findings(
             target_id=targetId, page=page, severity=severity, state=state
         )
 
     @register_tool("probely_get_finding")
-    def probely_get_finding(targetId: str, findingId: str) -> Dict[str, Any]:
+    def probely_get_finding(targetId: str, findingId: str) -> dict[str, Any]:
         return client.get_finding(target_id=targetId, finding_id=findingId)
 
     @register_tool("probely_update_finding")
     def probely_update_finding(
         targetId: str,
         findingId: str,
-        state: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        state: str | None = None,
+    ) -> dict[str, Any]:
         return client.update_finding(
             target_id=targetId, finding_id=findingId, state=state
         )
@@ -1141,8 +1140,8 @@ def build_server() -> FastMCP:
     def probely_bulk_update_findings(
         targetId: str,
         findingIds: list[str],
-        state: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        state: str | None = None,
+    ) -> dict[str, Any]:
         """Bulk update finding states (e.g. fixed, false_positive, accepted_risk).
         This tool will automatically ask the user for confirmation."""
         return client.bulk_update_findings(
@@ -1151,17 +1150,17 @@ def build_server() -> FastMCP:
 
     # Settings
     @register_tool("probely_get_target_settings")
-    def probely_get_target_settings(targetId: str) -> Dict[str, Any]:
+    def probely_get_target_settings(targetId: str) -> dict[str, Any]:
         return client.get_target_settings(target_id=targetId)
 
     @register_tool("probely_update_target_settings")
     def probely_update_target_settings(
         targetId: str,
-        excluded_paths: Optional[list[str]] = None,
-        max_scan_duration: Optional[int] = None,
-        scan_profile: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        fields: Dict[str, Any] = {}
+        excluded_paths: list[str] | None = None,
+        max_scan_duration: int | None = None,
+        scan_profile: str | None = None,
+    ) -> dict[str, Any]:
+        fields: dict[str, Any] = {}
 
         if excluded_paths is not None:
             fields["excluded_paths"] = excluded_paths
@@ -1177,7 +1176,7 @@ def build_server() -> FastMCP:
         scanId: str,
         report_type: str = "default",
         format: str = "pdf",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a report for a scan. Returns report metadata including the report ID.
 
         Args:
@@ -1190,37 +1189,37 @@ def build_server() -> FastMCP:
         )
 
     @register_tool("probely_downloadreport")
-    def probely_downloadreport(reportId: str) -> Dict[str, Any]:
+    def probely_downloadreport(reportId: str) -> dict[str, Any]:
         """Download a report by its ID."""
         status, body = client.downloadreport(report_id=reportId)
         return {"status": status, **body}
 
     @register_tool("probely_getreport")
-    def probely_getreport(reportId: str) -> Dict[str, Any]:
+    def probely_getreport(reportId: str) -> dict[str, Any]:
         """Get report metadata/status by ID."""
         return client.getreport(report_id=reportId)
 
     # Scanning Agents
     @register_tool("probely_list_scanning_agents")
     def probely_list_scanning_agents(
-        page: Optional[int] = None,
-        length: Optional[int] = None,
-        status: Optional[str] = None,
-        search: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        page: int | None = None,
+        length: int | None = None,
+        status: str | None = None,
+        search: str | None = None,
+    ) -> dict[str, Any]:
         """List scanning agents. Use status to filter: 'connected', 'connected_with_issues', 'disconnected'."""
         return client.list_scanning_agents(
             page=page, length=length, status=status, search=search
         )
 
     @register_tool("probely_get_scanning_agent")
-    def probely_get_scanning_agent(agentId: str) -> Dict[str, Any]:
+    def probely_get_scanning_agent(agentId: str) -> dict[str, Any]:
         """Get details of a specific scanning agent."""
         return client.get_scanning_agent(agent_id=agentId)
 
     def _fetchjson_or_url(
-        url: Optional[str], json_body: Optional[Dict[str, Any]]
-    ) -> Optional[Dict[str, Any]]:
+        url: str | None, json_body: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
         """Fetch JSON/YAML from a URL, or return the provided object as-is."""
         if json_body is not None:
             return json_body
@@ -1239,13 +1238,13 @@ def build_server() -> FastMCP:
     def probely_create_api_target_from_postman(
         name: str,
         target_url: str,
-        postman_collection_url: Optional[str] = None,
-        postman_collectionjson: Optional[Dict[str, Any]] = None,
-        desc: Optional[str] = None,
-        labels: Optional[list[str]] = None,
+        postman_collection_url: str | None = None,
+        postman_collectionjson: dict[str, Any] | None = None,
+        desc: str | None = None,
+        labels: list[str] | None = None,
         allow_duplicate: bool = False,
         skip_reachability_check: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create an API target from a Postman collection. Provide either postman_collection_url or postman_collectionjson.
 
         Set allow_duplicate=True to create a target even if another target with the same URL
@@ -1289,13 +1288,13 @@ def build_server() -> FastMCP:
     def probely_create_api_target_from_openapi(
         name: str,
         target_url: str,
-        openapi_schema_url: Optional[str] = None,
-        openapi_schemajson: Optional[Dict[str, Any]] = None,
-        desc: Optional[str] = None,
-        labels: Optional[list[str]] = None,
+        openapi_schema_url: str | None = None,
+        openapi_schemajson: dict[str, Any] | None = None,
+        desc: str | None = None,
+        labels: list[str] | None = None,
         allow_duplicate: bool = False,
         skip_reachability_check: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create an API target from an OpenAPI/Swagger schema. Provide either openapi_schema_url or openapi_schemajson. When the user provides openapi_schema_url, do not fetch the openapi_schemajson from that url.
 
         Set allow_duplicate=True to create a target even if another target with the same URL

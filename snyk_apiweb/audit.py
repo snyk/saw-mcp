@@ -12,7 +12,6 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
 
 AUDIT_LOG_ENV = "MCP_SAW_AUDIT_LOG"
 
@@ -67,7 +66,7 @@ def record_tool_call(
     tool_name: str,
     outcome: str,
     duration_ms: float,
-    error: Optional[str] = None,
+    error: str | None = None,
 ) -> None:
     """Write a single audit line for one tool invocation.
 

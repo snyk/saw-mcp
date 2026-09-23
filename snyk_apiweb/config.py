@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 import tempfile
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -62,7 +62,7 @@ def _resolve_and_validate_config_path(cfg_path: str) -> str:
     )
 
 
-def load_config(path: str | None = None) -> Dict[str, Any]:
+def load_config(path: str | None = None) -> dict[str, Any]:
     """Load configuration from YAML file.
 
     When MCP_SAW_API_KEY is set, the config file is optional. If absent,
@@ -84,7 +84,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
             return {}
         validated_path = _resolve_and_validate_config_path(cfg_path)
         logger.info("Loading config from %s", validated_path)
-        with open(validated_path, "r", encoding="utf-8") as f:
+        with open(validated_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     # No env key: require config file
     validated_path = _resolve_and_validate_config_path(cfg_path)
@@ -94,12 +94,12 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
             f"Set {API_KEY_ENV} or create a config file."
         )
     logger.info("Loading config from %s", validated_path)
-    with open(validated_path, "r", encoding="utf-8") as f:
+    with open(validated_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return data
 
 
-def get_probely_base_url(cfg: Dict[str, Any]) -> str:
+def get_probely_base_url(cfg: dict[str, Any]) -> str:
     """Get the Snyk API & Web base URL from env or config.
 
     Precedence: MCP_SAW_BASE_URL env var → saw.base_url → probely.base_url → default.
@@ -216,7 +216,7 @@ def _resolve_secret_reference(value: str) -> str:
     return resolved
 
 
-def get_probely_api_key(cfg: Dict[str, Any]) -> str:
+def get_probely_api_key(cfg: dict[str, Any]) -> str:
     """Get the Snyk API & Web API key from env or config.
 
     Precedence: MCP_SAW_API_KEY env var → saw.api_key → probely.api_key.
@@ -265,7 +265,7 @@ def get_probely_api_key(cfg: Dict[str, Any]) -> str:
     return key
 
 
-def get_target_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
+def get_target_defaults(cfg: dict[str, Any]) -> dict[str, Any]:
     """Get default settings auto-applied to new targets.
 
     Returns a dict that may contain:
@@ -288,7 +288,7 @@ def get_target_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
+def get_tool_filter(cfg: dict[str, Any]) -> dict[str, Any]:
     """Get tool filtering configuration.
 
     Returns a dict with:
@@ -331,7 +331,7 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def is_tool_enabled(tool_name: str, tool_filter: Dict[str, Any]) -> bool:
+def is_tool_enabled(tool_name: str, tool_filter: dict[str, Any]) -> bool:
     """Check if a tool should be enabled based on the filter configuration.
 
     ``enabled`` entries always win (they can re-enable a built-in destructive
