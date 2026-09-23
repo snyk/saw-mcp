@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+
+- **fastmcp version range**: the dependency is now `fastmcp>=3.0.0,<5` instead of an unbounded `>=2.0.0`. The test suite relies on fastmcp 3.x APIs and passes on 3.0.0 and 4.0.5; a future fastmcp major release will no longer be picked up without testing.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security
