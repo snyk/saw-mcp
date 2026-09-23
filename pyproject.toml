@@ -21,10 +21,11 @@ classifiers = [
 dependencies = [
     "fastmcp>=2.0.0",
     "requests>=2.32.3",
+    # Not imported directly: a floor on requests' transitive dependency to
+    # stay above versions with known vulnerabilities.
     "urllib3>=2.6.3",
     "pydantic>=2.8.2",
     "PyYAML>=6.0.2",
-    "typer>=0.12.5",
     "tenacity>=8.5.0",
 ]
 

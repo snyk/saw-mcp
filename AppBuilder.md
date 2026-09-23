@@ -139,7 +139,6 @@ fastmcp>=2.0.0
 requests>=2.32.3
 pydantic>=2.8.2
 PyYAML>=6.0.2
-typer>=0.12.5
 tenacity>=8.5.0
 ```
 
@@ -150,7 +149,6 @@ tenacity>=8.5.0
 | `requests` | HTTP client for Probely API calls |
 | `pydantic` | Schema validation (used internally by FastMCP for tool parameter schemas) |
 | `PyYAML` | Parse `config.yaml` |
-| `typer` | CLI framework (used internally by FastMCP) |
 | `tenacity` | Retry logic with exponential backoff for transient HTTP errors |
 
 ---

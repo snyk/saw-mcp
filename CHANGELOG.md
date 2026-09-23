@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Removed
+
+- **`typer` dependency**: it was declared but never imported, and current fastmcp releases don't depend on it.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security
