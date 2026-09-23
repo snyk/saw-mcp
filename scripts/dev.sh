@@ -12,4 +12,4 @@ source venv/bin/activate
 echo "Starting Snyk API & Web MCP Server in dev mode..."
 echo ""
 
-fastmcp dev snyk_apiweb/server.py
+fastmcp dev inspector -m snyk_apiweb.server
