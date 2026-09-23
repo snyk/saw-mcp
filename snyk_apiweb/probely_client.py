@@ -717,43 +717,44 @@ class ProbelyClient:
         ordering automatically.
         """
         if enabled:
-            # Step 1: Set check_session_url if provided
+            # Each step depends on the previous one, so stop at the first
+            # failure and return its error body instead of enabling anyway.
             if check_session_url is not None:
                 url_payload: Dict[str, Any] = {
                     "site": {"check_session_url": check_session_url}
                 }
-                self.request(
+                status, body = self.request(
                     "PATCH", f"/targets/{target_id}/", json=url_payload
                 )
+                if status >= 400:
+                    return body
 
-            # Step 2: Check if logout detectors exist, create one if needed
-            try:
-                detectors = self.list_logout_detectors(target_id)
-                detector_list = detectors.get("results", [])
-            except Exception:
-                detector_list = []
+            detectors = self.list_logout_detectors(target_id)
+            if detectors.get("error"):
+                return detectors
 
-            if not detector_list:
-                # No logout detectors exist, we need to create one
+            if not detectors.get("results"):
                 if logout_detector_type and logout_detector_value:
-                    self.create_logout_detector(
-                        target_id, logout_detector_type, logout_detector_value
-                    )
+                    detector_type = logout_detector_type
+                    detector_value = logout_detector_value
                 else:
-                    # Try to find a CSS selector from the login sequence to use as logout detector
-                    # This is the most reliable approach: if the login form elements appear, user is logged out
+                    # If the login form elements appear, the user is logged
+                    # out, so a login-sequence selector is the most reliable
+                    # detector. Fall back to text when there is no sequence.
                     css_selector = self._find_login_sequence_selector(
                         target_id
                     )
                     if css_selector:
-                        self.create_logout_detector(
-                            target_id, "sel", css_selector
-                        )
+                        detector_type, detector_value = "sel", css_selector
                     else:
-                        # Fallback to text-based detector if no login sequence found
-                        self.create_logout_detector(target_id, "text", "Login")
+                        detector_type, detector_value = "text", "Login"
+                created = self.create_logout_detector(
+                    target_id, detector_type, detector_value
+                )
+                if created.get("error"):
+                    return created
 
-            # Step 3: Enable logout detection
+            # Enabling requires check_session_url and a detector to exist.
             enable_payload: Dict[str, Any] = {
                 "site": {"logout_detection_enabled": True}
             }
@@ -797,8 +798,10 @@ class ProbelyClient:
                             "css"
                         ):
                             return step["css"]
-        except Exception:
-            pass
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            logger.warning(
+                "Could not parse login sequence for target %s", target_id
+            )
         return None
 
     # Extra Hosts (API path: /targets/{id}/assets/)

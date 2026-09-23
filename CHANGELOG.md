@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **`probely_configure_logout_detection`**: if setting `check_session_url`, listing logout detectors, or creating a detector fails, the tool now returns that error instead of going on to enable logout detection and reporting success.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

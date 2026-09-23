@@ -655,3 +655,77 @@ def test_find_login_sequence_selector_returns_none_when_empty(
     result = client._find_login_sequence_selector("t1")
 
     assert result is None
+
+
+def test_configure_logout_detection_stops_when_session_url_patch_fails(
+    client, mock_response
+):
+    client._session.request.side_effect = [
+        mock_response(
+            status_code=400,
+            json_data={"check_session_url": ["Invalid URL"]},
+            reason="Bad Request",
+        ),
+    ]
+
+    result = client.configure_logout_detection(
+        target_id="t1",
+        enabled=True,
+        check_session_url="not-a-url",
+        logout_detector_type="text",
+        logout_detector_value="Login",
+    )
+
+    assert client._session.request.call_count == 1
+    assert result["error"]["status"] == 400
+
+
+def test_configure_logout_detection_stops_when_listing_detectors_fails(
+    client, mock_response
+):
+    client._session.request.side_effect = [
+        mock_response(json_data={"id": "t1"}),
+        mock_response(status_code=404, json_data={}, reason="Not Found"),
+    ]
+
+    result = client.configure_logout_detection(
+        target_id="t1",
+        enabled=True,
+        check_session_url="https://app.test/api/me",
+    )
+
+    assert client._session.request.call_count == 2
+    assert result["error"]["status"] == 404
+
+
+def test_configure_logout_detection_stops_when_creating_detector_fails(
+    client, mock_response
+):
+    client._session.request.side_effect = [
+        mock_response(json_data={"id": "t1"}),
+        mock_response(json_data={"results": []}),
+        mock_response(status_code=400, json_data={}, reason="Bad Request"),
+    ]
+
+    result = client.configure_logout_detection(
+        target_id="t1",
+        enabled=True,
+        check_session_url="https://app.test/api/me",
+        logout_detector_type="sel",
+        logout_detector_value="#login",
+    )
+
+    assert client._session.request.call_count == 3
+    assert result["error"]["status"] == 400
+
+
+def test_find_login_sequence_selector_returns_none_for_invalid_content(
+    client, mock_response
+):
+    client._session.request.return_value = mock_response(
+        json_data={
+            "results": [{"type": "login", "enabled": True, "content": "{"}]
+        }
+    )
+
+    assert client._find_login_sequence_selector("t1") is None
