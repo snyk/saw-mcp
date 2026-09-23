@@ -1,6 +1,8 @@
 # Snyk API & Web MCP Server — AppBuilder Specification
 
 > **Purpose:** This document is a complete technical specification for rebuilding the Snyk API & Web MCP Server from scratch. It covers architecture, every source file, every MCP tool, the HTTP client, configuration system, skills, rules, scripts, and deployment. An AI agent given this document should be able to reproduce the entire project.
+>
+> **Status:** this is a hand-maintained snapshot, last checked against the code at commit `c2fb714`. The code is the source of truth: if they disagree, trust the code, and update this file in the same PR that changes the behavior it describes.
 
 ---
 
@@ -134,9 +136,10 @@ saw-mcp/
 **`requirements.txt`:**
 
 ```
-python-dotenv>=1.0.0
+python-dotenv>=1.2.3
 fastmcp>=2.0.0
 requests>=2.32.3
+urllib3>=2.6.3
 pydantic>=2.8.2
 PyYAML>=6.0.2
 typer>=0.12.5
@@ -148,6 +151,7 @@ tenacity>=8.5.0
 | `python-dotenv` | Load `.env` from project root so `MCP_SAW_API_KEY` persists across sessions |
 | `fastmcp` | MCP server framework (tool registration, STDIO transport, JSON-RPC) |
 | `requests` | HTTP client for Probely API calls |
+| `urllib3` | Not imported directly; a floor on `requests`' transitive dependency to avoid known vulnerabilities |
 | `pydantic` | Schema validation (used internally by FastMCP for tool parameter schemas) |
 | `PyYAML` | Parse `config.yaml` |
 | `typer` | CLI framework (used internally by FastMCP) |
@@ -331,6 +335,14 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
 - `verify_domain(domain_id)` → `POST /domains/{id}/verify/`
 - `delete_domain(domain_id)` → `DELETE /domains/{id}/`
 
+**Credentials:**
+- `list_credentials(page?, search?, is_sensitive?, length?)` → `GET /credentials/` (sensitive values are not returned)
+- `get_credential(credential_id)` → `GET /credentials/{id}/` (`value` is null when sensitive)
+- `create_credential(name, value, is_sensitive?, description?, team?)` → `POST /credentials/`
+  - `is_sensitive` defaults to `True`. The response includes a `uri` (`credentials://<id>`) used to reference the credential in auth configs and `custom_field_mappings`.
+- `update_credential(credential_id, **fields)` → `PATCH /credentials/{id}/`
+- `delete_credential(credential_id)` → `DELETE /credentials/{id}/` (returns `{}` on 204)
+
 **Labels:**
 - `list_labels(page?)` → `GET /labels/`
 - `get_label(label_id)` → `GET /labels/{id}/`
@@ -342,11 +354,14 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
 **Targets:**
 - `list_targets(page?, search?)` → `GET /targets/`
 - `get_target(target_id)` → `GET /targets/{id}/`
-- `create_target(name, url, desc?, label_names?, default_label?, name_prefix?, scanning_agent_id?)` → `POST /targets/`
+- `_build_create_target_payload(name, url, desc?, label_names?, default_label?, name_prefix?, scanning_agent_id?)` — shared by both create methods:
   - Nests `name`, `url`, `desc` under `site` key.
   - Merges config default label + user labels, deduplicated by name.
   - Prepends `name_prefix` to target name.
   - Optionally sets `scanning_agent: {"id": "..."}`.
+- `create_web_target(..., allow_duplicate?, skip_reachability_check?)` → `POST /targets/` with `type: "single"`
+  - `allow_duplicate=True` sends `duplicate_check=false`; `skip_reachability_check=True` sends `skip_reachability_check=true` (query params).
+- `create_api_target(name, target_url, schema_type, schema?, api_schema_url?, ..., allow_duplicate?, skip_reachability_check?)` → `POST /targets/` with `type: "api"` (see *API Target Creation* below)
 - `update_target(target_id, **fields)` → `PATCH /targets/{id}/`
 - `delete_target(target_id)` → `DELETE /targets/{id}/`
 - `verify_target(target_id)` → `POST /targets/{id}/verify/`
@@ -355,7 +370,7 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
 - `list_sequences(target_id, page?)` → `GET /targets/{id}/sequences/`
 - `get_sequence(target_id, sequence_id)` → `GET /targets/{id}/sequences/{sid}/`
 - `create_sequence(target_id, name, sequence_type, content, enabled?, custom_field_mappings?)` → `POST /targets/{id}/sequences/`
-  - Pretty-prints JSON content via `_pretty_json_content()`.
+  - Pretty-prints JSON content via `_prettyjson_content()`.
 - `update_sequence(target_id, sequence_id, **fields)` → `PATCH /targets/{id}/sequences/{sid}/`
 - `delete_sequence(target_id, sequence_id)` → `DELETE /targets/{id}/sequences/{sid}/`
 
@@ -427,23 +442,12 @@ def request(self, method, path, params?, json?, data?, files?, headers?) -> Tupl
   - `status`: `"connected"`, `"connected_with_issues"`, `"disconnected"`
 - `get_scanning_agent(agent_id)` → `GET /scanning-agents/{id}/`
 
-**API Target Creation (multi-step, best-effort endpoint discovery):**
-- `create_api_target_from_postman(name, target_url, postman_json, desc?, label_names?, default_label?, name_prefix?)`:
-  1. Creates a target via `create_target()`.
-  2. Tries POST to multiple candidate endpoints in order:
-     - `/targets/{id}/apis/import/postman/`
-     - `/targets/{id}/apis/import/`
-     - `/targets/{id}/api/import/`
-  3. Returns `target_id` + import result or error.
-
-- `create_api_target_from_openapi(name, target_url, openapi_schema, desc?, label_names?, default_label?, name_prefix?)`:
-  1. Creates a target via `create_target()`.
-  2. Tries POST to multiple candidate endpoints in order:
-     - `/targets/{id}/apis/import/openapi/`
-     - `/targets/{id}/apis/import/swagger/`
-     - `/targets/{id}/apis/import/`
-     - `/targets/{id}/api/import/openapi/`
-  3. Returns `target_id` + import result or error.
+**API Target Creation (single request):**
+- `create_api_target(...)` sends one `POST /targets/` with the schema in the payload:
+  - `site.api_scan_settings.api_schema_type` is `"openapi"` or `"postman"`.
+  - OpenAPI from a URL: `site.api_scan_settings.api_schema_url` is set and the platform fetches the schema itself.
+  - Inline schema: the body gets `schema` (OpenAPI) or `collection` (Postman).
+  - Query params: `check_fullpath=false`, `duplicate_check=not allow_duplicate`, `skip_fullpath_warning=true`, `skip_reachability_check`, `skip_redirect_check=true`.
 
 **Generic Fallback:**
 - `raw(method, path, params?, json?, data?)` → proxies to `request()`, returns body only.
@@ -466,6 +470,10 @@ This is the central factory that:
 **`_parse_list_of_dicts(value)`** — Normalizes complex tool parameters:
 - Handles native `list`, JSON string, Python-repr string (via `ast.literal_eval`), single `dict` → wraps in list.
 - Needed because `from __future__ import annotations` + FastMCP/Pydantic can deliver complex types as strings.
+
+**SSRF-safe fetching** — used when the Postman tool is given `postman_collection_url`:
+- `_assert_url_is_safe(url, allowlist?)` requires `https://`, applies the optional `MCP_SAW_URL_ALLOWLIST` host allow-list, and rejects hosts that resolve to private, loopback, link-local, reserved, multicast, or unspecified addresses (including IPv4-mapped IPv6).
+- `_safe_get(url, timeout?, allowlist?)` follows up to 5 redirects manually, re-validating every hop.
 
 **`_generate_totp(secret, algorithm?, digits?, period?)`** — Pure-Python TOTP implementation:
 - Strips whitespace/dashes, uppercases, pads with `=` for base32.
@@ -491,18 +499,10 @@ Registered tools are wrapped so that each invocation emits a per-call audit line
 
 ### 6.5 Server Entry Point (`server.py`)
 
-```python
-from .tools import build_server
-
-
-def main() -> None:
-    app = build_server()
-    app.run()
-
-
-if __name__ == "__main__":
-    main()
-```
+`main()` configures logging and runs the server over stdio:
+- Log level from `MCP_SAW_LOG_LEVEL` (default `INFO`; unknown values fall back to `INFO`).
+- Logs go to the console and to `~/saw-mcp.log` via a `RotatingFileHandler` (50 MB, 3 backups).
+- Calls `build_server()` and then `app.run()`.
 
 Run with: `python -m snyk_apiweb.server`
 
@@ -528,6 +528,15 @@ All tool names are prefixed with `probely_` for namespacing.
 | `probely_list_teams` | `page?` | List teams |
 | `probely_get_team` | `teamId` | Get team details |
 
+### Credentials
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `probely_list_credentials` | `page?`, `search?`, `is_sensitive?`, `length?` | List credentials (sensitive values hidden). Each has a `uri` like `credentials://<id>` |
+| `probely_get_credential` | `credentialId` | Get a credential (value is null if sensitive) |
+| `probely_create_credential` | `name`, `value`, `is_sensitive?`, `description?`, `team?` | Store a credential; use the returned `uri` in auth configs and `custom_field_mappings` |
+| `probely_update_credential` | `credentialId`, `name?`, `value?`, `is_sensitive?`, `description?` | Partial update |
+| `probely_delete_credential` | `credentialId` | Delete a credential (disabled by default) |
+
 ### Labels
 | Tool | Parameters | Description |
 |------|-----------|-------------|
@@ -538,8 +547,8 @@ All tool names are prefixed with `probely_` for namespacing.
 |------|-----------|-------------|
 | `probely_list_targets` | `page?`, `search?` | List/search targets |
 | `probely_get_target` | `targetId` | Get target details |
-| `probely_create_web_target` | `name`, `url`, `desc?`, `labels?`, `scanning_agent_id?` | Create a web target. Labels are name strings; default label auto-merged from config |
-| `probely_update_target` | `targetId`, `name?`, `url?`, `desc?`, `labels?`, `scanning_agent_id?`, `headers?`, `cookies?` | Update a target. Use `headers`/`cookies` to set custom HTTP headers/cookies sent with every scan request. Each entry: `{"name": "...", "value": "..."}` |
+| `probely_create_web_target` | `name`, `url`, `desc?`, `labels?`, `scanning_agent_id?`, `allow_duplicate?`, `skip_reachability_check?` | Create a web target. Labels are name strings; default label auto-merged from config |
+| `probely_update_target` | `targetId`, `name?`, `url?`, `desc?`, `labels?`, `scanning_agent_id?`, `headers?`, `cookies?`, `basic_auth_username?`, `basic_auth_password?`, `api_auth_headers?`, `api_auth_cookies?` | Update a target. `headers`/`cookies` are custom values sent with every scan request (`{"name": "...", "value": "..."}`). `basic_auth_*` must be given together. `api_auth_*` also turn on API login (`api_login_method: headers_or_cookies`). `scanning_agent_id=""` removes the agent |
 | `probely_delete_target` | `targetId` | Delete a target |
 
 ### Login Sequences
@@ -615,8 +624,8 @@ All tool names are prefixed with `probely_` for namespacing.
 ### API Target Creation
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `probely_create_api_target_from_postman` | `name`, `target_url`, `postman_collection_url?`, `postman_collection_json?`, `desc?`, `labels?` | Create API target from Postman collection |
-| `probely_create_api_target_from_openapi` | `name`, `target_url`, `openapi_schema_url?`, `openapi_schema_json?`, `desc?`, `labels?` | Create API target from OpenAPI/Swagger schema |
+| `probely_create_api_target_from_postman` | `name`, `target_url`, `postman_collection_url?`, `postman_collectionjson?`, `desc?`, `labels?`, `allow_duplicate?`, `skip_reachability_check?` | Create API target from Postman collection. A collection URL is fetched by the server through `_safe_get` |
+| `probely_create_api_target_from_openapi` | `name`, `target_url`, `openapi_schema_url?`, `openapi_schemajson?`, `desc?`, `labels?`, `allow_duplicate?`, `skip_reachability_check?` | Create API target from OpenAPI/Swagger schema. A schema URL is passed to the platform as `api_schema_url`, not fetched by the server |
 
 ---
 
@@ -655,9 +664,14 @@ All paths are relative to the base URL (`https://api.probely.com`). All paths en
 | POST | `/labels/` | `create_label` |
 | PATCH | `/labels/{id}/` | `update_label` |
 | DELETE | `/labels/{id}/` | `delete_label` |
+| GET | `/credentials/` | `list_credentials` |
+| GET | `/credentials/{id}/` | `get_credential` |
+| POST | `/credentials/` | `create_credential` |
+| PATCH | `/credentials/{id}/` | `update_credential` |
+| DELETE | `/credentials/{id}/` | `delete_credential` |
 | GET | `/targets/` | `list_targets` |
 | GET | `/targets/{id}/` | `get_target` |
-| POST | `/targets/` | `create_target` |
+| POST | `/targets/` | `create_web_target`, `create_api_target` |
 | PATCH | `/targets/{id}/` | `update_target`, `configure_form_login`, `configure_sequence_login`, `configure_2fa`, `disable_2fa`, `configure_logout_detection` |
 | DELETE | `/targets/{id}/` | `delete_target` |
 | POST | `/targets/{id}/verify/` | `verify_target` |
@@ -768,9 +782,9 @@ Labels are passed by name. The Probely API resolves them server-side (reuses exi
 
 Tool registration is controlled by a decorator pattern. `register_tool(name)` checks `is_tool_enabled(name, tool_filter)` before calling `app.tool(name=name)`. If disabled, the function exists but is not registered with FastMCP.
 
-### 9.11 API Target Import (Best-Effort Endpoint Discovery)
+### 9.11 API Target Creation
 
-For Postman and OpenAPI import, the client tries multiple endpoint patterns since the exact path may vary by Probely account version. It iterates through candidates and returns the first successful response.
+API targets are created in a single `POST /targets/` that carries the schema, either inline (`schema` / `collection`) or, for OpenAPI, as `site.api_scan_settings.api_schema_url`. There is no separate import step or endpoint discovery.
 
 ---
 
