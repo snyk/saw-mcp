@@ -51,8 +51,12 @@ line-length = 79
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "B", "SIM"]
 ignore = ["E501"]        # Line too long; tighten later
+
+[tool.ruff.lint.flake8-bugbear]
+# FastMCP tool parameters declare their schema with pydantic.Field defaults.
+extend-immutable-calls = ["pydantic.Field"]
 
 [tool.ruff.format]
 quote-style = "double"
