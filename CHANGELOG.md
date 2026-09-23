@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Malformed API responses**: a response labeled `application/json` with a body that isn't valid JSON (for example a proxy error page) is now returned as `{"raw": ...}` with the usual error details, instead of raising a JSON decode error.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

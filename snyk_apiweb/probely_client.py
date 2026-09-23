@@ -129,14 +129,20 @@ class ProbelyClient:
             timeout=self.timeout,
         )
         content_type = resp.headers.get("Content-Type", "")
+        body: Dict[str, Any] = {"raw": resp.text}
         if "application/json" in content_type:
-            json_data = resp.json()
-            if isinstance(json_data, dict):
-                body: Dict[str, Any] = json_data
+            try:
+                json_data = resp.json()
+            except ValueError:
+                # e.g. a proxy error page served with a JSON content type
+                logger.warning(
+                    "%s %s returned invalid JSON", method.upper(), url
+                )
             else:
-                body = {"results": json_data}
-        else:
-            body = {"raw": resp.text}
+                if isinstance(json_data, dict):
+                    body = json_data
+                else:
+                    body = {"results": json_data}
         if not resp.ok:
             if isinstance(body, dict):
                 body.setdefault("error", {})

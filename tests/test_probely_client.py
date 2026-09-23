@@ -97,6 +97,23 @@ def test_request_enriches_body_on_non_ok_status(client, mock_response):
     assert "api.example.com" in body["error"]["url"]
 
 
+def test_request_returns_raw_for_malformed_json(client, mock_response):
+    resp = mock_response(
+        status_code=502,
+        text="<html>Bad Gateway</html>",
+        content_type="application/json",
+        reason="Bad Gateway",
+    )
+    resp.json.side_effect = ValueError("Expecting value")
+    client._session.request.return_value = resp
+
+    status, body = client.request("GET", "/targets/")
+
+    assert status == 502
+    assert body["raw"] == "<html>Bad Gateway</html>"
+    assert body["error"]["status"] == 502
+
+
 # --- _redact_for_log ---
 
 
