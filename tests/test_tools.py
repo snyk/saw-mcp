@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import re
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 
 from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
+from snyk_apiweb.probely_client import ProbelyClient
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
@@ -201,6 +202,49 @@ def test_shipped_config_files_list_only_real_tool_names(monkeypatch):
         f"{unknown}. Tool names are matched exactly, so a stale entry has no "
         "effect. Update config.yaml.dist and saw_rules.mdc when renaming a tool."
     )
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "args", "client_method", "client_return", "expected"),
+    [
+        (
+            "probely_create_scanreport",
+            {"scanId": "s1", "report_type": "owasp", "format": "html"},
+            "create_scan_report",
+            {"id": "r1"},
+            {"id": "r1"},
+        ),
+        (
+            "probely_getreport",
+            {"reportId": "r1"},
+            "get_report",
+            {"id": "r1", "status": "done"},
+            {"id": "r1", "status": "done"},
+        ),
+        (
+            "probely_downloadreport",
+            {"reportId": "r1"},
+            "download_report",
+            (200, {"raw": "<pdf>"}),
+            {"status": 200, "raw": "<pdf>"},
+        ),
+    ],
+)
+def test_report_tools_call_existing_client_methods(
+    monkeypatch, tool_name, args, client_method, client_return, expected
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    mock_client = create_autospec(ProbelyClient, instance=True)
+    getattr(mock_client, client_method).return_value = client_return
+
+    with patch("snyk_apiweb.tools.ProbelyClient", return_value=mock_client):
+        app = build_server()
+    tool = asyncio.run(app.get_tool(tool_name))
+    result = asyncio.run(tool.run(args))
+
+    assert result.structured_content == expected
+    getattr(mock_client, client_method).assert_called_once()
 
 
 # --- SSRF protection: _assert_url_is_safe ---

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Report tools**: `probely_create_scanreport`, `probely_getreport`, and `probely_downloadreport` called client methods that did not exist and failed with `AttributeError` on every call. They now call `create_scan_report`, `get_report`, and `download_report`.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

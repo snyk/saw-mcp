@@ -1185,20 +1185,20 @@ def build_server() -> FastMCP:
             report_type: Type of report - "default", "executive", "owasp", "pci", "hipaa", "iso27001"
             format: File format - "pdf" or "html"
         """
-        return client.create_scanreport(
+        return client.create_scan_report(
             scan_id=scanId, report_type=report_type, report_format=format
         )
 
     @register_tool("probely_downloadreport")
     def probely_downloadreport(reportId: str) -> Dict[str, Any]:
         """Download a report by its ID."""
-        status, body = client.downloadreport(report_id=reportId)
+        status, body = client.download_report(report_id=reportId)
         return {"status": status, **body}
 
     @register_tool("probely_getreport")
     def probely_getreport(reportId: str) -> Dict[str, Any]:
         """Get report metadata/status by ID."""
-        return client.getreport(report_id=reportId)
+        return client.get_report(report_id=reportId)
 
     # Scanning Agents
     @register_tool("probely_list_scanning_agents")
