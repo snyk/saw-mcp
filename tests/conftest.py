@@ -1,11 +1,26 @@
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 
+from snyk_apiweb import config
 from snyk_apiweb.probely_client import ProbelyClient
+
+
+@pytest.fixture(autouse=True)
+def _allow_tmp_path_config(tmp_path, monkeypatch):
+    """Let tests load config files from their own tmp_path.
+
+    The system temp dir is not an allowed config location in production.
+    """
+    monkeypatch.setattr(
+        config,
+        "_ALLOWED_CONFIG_BASES",
+        (*config._ALLOWED_CONFIG_BASES, os.path.realpath(tmp_path)),
+    )
 
 
 @pytest.fixture()

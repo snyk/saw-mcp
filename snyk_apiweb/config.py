@@ -4,7 +4,6 @@ import logging
 import os
 import shutil
 import subprocess
-import tempfile
 from typing import Any, Dict
 
 import yaml
@@ -42,11 +41,11 @@ DEFAULT_DISABLED_TOOLS = [
     "probely_bulk_update_findings",
 ]
 
-# Allowed base directories for config paths (prevents path traversal)
+# Allowed base directories for config paths (prevents path traversal). The
+# system temp dir is deliberately excluded: any local user can write there.
 _ALLOWED_CONFIG_BASES = (
     os.path.realpath(os.path.dirname(DEFAULT_CONFIG_PATH)),
     os.path.realpath(os.getcwd()),
-    os.path.realpath(tempfile.gettempdir()),
 )
 
 

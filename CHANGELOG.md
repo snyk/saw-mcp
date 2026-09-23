@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Security
+
+- **Config path restriction**: config files in the system temp directory are no longer accepted. Any local user can write there, so a planted file could have enabled destructive tools. Config files must be under the project `config/` directory or the current working directory.
+
 ## [1.3.0] - 2026-08-25
 
 ### Security

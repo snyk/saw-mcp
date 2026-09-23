@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 from unittest.mock import MagicMock
 
 import pytest
@@ -63,6 +64,21 @@ def test_load_config_rejects_path_traversal_via_env(monkeypatch):
         ValueError, match="resolves outside allowed directories"
     ):
         load_config()
+
+
+def test_load_config_rejects_path_in_system_temp_dir(monkeypatch):
+    """Anyone can write to the temp dir, so config there is rejected."""
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".yaml", dir=tempfile.gettempdir()
+    ) as f:
+        f.write("saw: {}\n")
+        f.flush()
+        monkeypatch.setenv("MCP_SAW_CONFIG_PATH", f.name)
+
+        with pytest.raises(
+            ValueError, match="resolves outside allowed directories"
+        ):
+            load_config()
 
 
 def test_load_config_env_only_returns_empty_when_no_config_file(monkeypatch):
