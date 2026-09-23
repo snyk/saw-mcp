@@ -17,15 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Verify tag matches package version
-        run: |
-          PKG_VERSION=$(grep '^version' pyproject.toml | sed 's/.*= *"\(.*\)"/\1/')
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "❌ Tag $TAG_VERSION does not match package version $PKG_VERSION"
-            exit 1
-          fi
-          echo "✅ Tag and package version match: $PKG_VERSION"
+      - name: Verify tag matches every version declaration
+        run: python3 scripts/check-versions.py "${GITHUB_REF_NAME#v}"
 
       - uses: actions/setup-python@v7
         with:

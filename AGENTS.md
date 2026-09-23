@@ -96,7 +96,7 @@ matrix locally when changing Python compatibility.
   lint + format, playwright-cli smoke test.
 - **CircleCI** (`.circleci/config.yml`): pytest, ruff, prodsec security scans.
 - **Release** (`.github/workflows/release.yml`): triggered by `v*` tags; the `build` job checks
-  the tag against `pyproject.toml`. See *Version bumps and releases* for the other files.
+  the tag against all four version declarations (see *Version bumps and releases*).
 
 ## Version bumps and releases
 
@@ -106,6 +106,9 @@ Version is declared in **four places** — keep them in sync:
 2. `pyproject.toml` (`project.version`)
 3. `server.json` (`version` and `packages[0].version`)
 4. `.cursor-plugin/plugin.json` (`version`)
+
+`scripts/check-versions.py` (run by pytest and by the release workflow against the tag) fails
+when they disagree.
 
 Release flow: bump all four → merge → tag `vX.Y.Z` → CI builds wheel/sdist/tarball and publishes
 to PyPI. Update `CHANGELOG.md` for user-visible changes.
