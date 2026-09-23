@@ -655,3 +655,20 @@ def test_find_login_sequence_selector_returns_none_when_empty(
     result = client._find_login_sequence_selector("t1")
 
     assert result is None
+
+
+def test_configure_logout_detection_falls_back_to_text_detector(
+    client, mock_response
+):
+    """Without a login sequence, a text 'Login' detector is created."""
+    client._session.request.side_effect = [
+        mock_response(json_data={"results": []}),  # GET logout detectors
+        mock_response(json_data={"results": []}),  # GET sequences
+        mock_response(json_data={}),  # POST create logout detector
+        mock_response(json_data={"id": "t1"}),  # PATCH enable
+    ]
+
+    client.configure_logout_detection(target_id="t1", enabled=True)
+
+    create_call = client._session.request.call_args_list[2]
+    assert create_call.kwargs["json"] == {"type": "text", "value": "Login"}

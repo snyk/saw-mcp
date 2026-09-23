@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import re
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 
 from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
+from snyk_apiweb.probely_client import ProbelyClient
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
@@ -201,6 +202,124 @@ def test_shipped_config_files_list_only_real_tool_names(monkeypatch):
         f"{unknown}. Tool names are matched exactly, so a stale entry has no "
         "effect. Update config.yaml.dist and saw_rules.mdc when renaming a tool."
     )
+
+
+# --- probely_update_target ---
+
+
+@pytest.fixture()
+def mock_server(monkeypatch):
+    """Build the server around an autospec'd ProbelyClient."""
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    mock_client = create_autospec(ProbelyClient, instance=True)
+    mock_client.update_target.return_value = {"id": "t1"}
+    mock_client.resolve_labels.side_effect = lambda names: [
+        {"name": n} for n in names
+    ]
+    with patch("snyk_apiweb.tools.ProbelyClient", return_value=mock_client):
+        app = build_server()
+    return app, mock_client
+
+
+def _update_target(app, **args):
+    tool = asyncio.run(app.get_tool("probely_update_target"))
+    return asyncio.run(tool.run({"targetId": "t1", **args}))
+
+
+def test_update_target_basic_auth_sets_site_fields(mock_server):
+    app, mock_client = mock_server
+
+    _update_target(
+        app,
+        basic_auth_username="credentials://u",
+        basic_auth_password="credentials://p",
+    )
+
+    site = mock_client.update_target.call_args.kwargs["site"]
+    assert site["has_basic_auth"] is True
+    assert site["basic_auth"] == {
+        "username": "credentials://u",
+        "password": "credentials://p",
+    }
+
+
+def test_update_target_basic_auth_requires_both_fields(mock_server):
+    app, mock_client = mock_server
+
+    result = _update_target(app, basic_auth_username="api-user")
+
+    assert "error" in result.structured_content
+    mock_client.update_target.assert_not_called()
+
+
+def test_update_target_api_auth_headers_enable_api_login(mock_server):
+    app, mock_client = mock_server
+    header = {
+        "name": "X-API-Key",
+        "value": "credentials://k",
+        "value_is_sensitive": False,
+        "allow_testing": False,
+        "authentication": True,
+        "authentication_secondary": False,
+    }
+
+    _update_target(app, api_auth_headers=[header])
+
+    site = mock_client.update_target.call_args.kwargs["site"]
+    assert site["headers"] == [header]
+    assert site["api_scan_settings"] == {
+        "api_login_enabled": True,
+        "api_headers_cookies_login_enabled_secondary": False,
+        "api_login_method": "headers_or_cookies",
+    }
+
+
+def test_update_target_plain_headers_do_not_enable_api_login(mock_server):
+    app, mock_client = mock_server
+
+    _update_target(app, headers=[{"name": "X-Env", "value": "staging"}])
+
+    site = mock_client.update_target.call_args.kwargs["site"]
+    assert site["headers"] == [{"name": "X-Env", "value": "staging"}]
+    assert "api_scan_settings" not in site
+
+
+def test_update_target_empty_scanning_agent_removes_it(mock_server):
+    app, mock_client = mock_server
+
+    _update_target(app, scanning_agent_id="")
+
+    assert mock_client.update_target.call_args.kwargs["scanning_agent"] is None
+
+
+def test_update_target_labels_and_name(mock_server):
+    app, mock_client = mock_server
+
+    _update_target(app, name="Shop", labels=["Production"])
+
+    kwargs = mock_client.update_target.call_args.kwargs
+    assert kwargs["site"] == {"name": "Shop"}
+    assert kwargs["labels"] == [{"name": "Production"}]
+
+
+# --- register_tool audit wrapper ---
+
+
+def test_tool_exception_is_audited_and_reraised(mock_server):
+    app, mock_client = mock_server
+    mock_client.get_target.side_effect = RuntimeError("boom")
+    tool = asyncio.run(app.get_tool("probely_get_target"))
+
+    with (
+        patch("snyk_apiweb.tools.record_tool_call") as record,
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        asyncio.run(tool.run({"targetId": "t1"}))
+
+    tool_name, outcome, _duration, error = record.call_args.args
+    assert (tool_name, outcome) == ("probely_get_target", "error")
+    assert error == "RuntimeError: boom"
 
 
 # --- SSRF protection: _assert_url_is_safe ---

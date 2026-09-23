@@ -35,7 +35,7 @@ jobs:
       - install-deps
       - run:
           name: Run tests
-          command: pytest tests/ -v
+          command: pytest tests/ -v --cov
 
   lint:
     <<: *defaults

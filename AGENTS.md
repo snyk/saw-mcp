@@ -69,6 +69,7 @@ Use these exact commands — don't invent alternatives.
 | --- | --- |
 | Install (editable + dev) | `pip install setuptools wheel && pip install -e ".[dev]"` |
 | Run tests | `pytest tests/ -v` |
+| Run tests with coverage (as CI does) | `pytest tests/ -v --cov` |
 | Lint | `ruff check .` |
 | Format check | `ruff format --check .` |
 | Auto-format | `ruff format .` |
