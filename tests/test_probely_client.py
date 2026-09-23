@@ -655,3 +655,28 @@ def test_find_login_sequence_selector_returns_none_when_empty(
     result = client._find_login_sequence_selector("t1")
 
     assert result is None
+
+
+# --- pagination ---
+
+
+def test_list_methods_forward_page_param(client, mock_response):
+    client._session.request.return_value = mock_response(json_data={})
+
+    client.list_teams(page=2)
+    client.list_targets(page=2)
+    client.list_findings("t1", page=2)
+
+    for call in client._session.request.call_args_list:
+        assert call.kwargs["params"]["page"] == 2
+
+
+def test_list_methods_omit_page_when_none(client, mock_response):
+    client._session.request.return_value = mock_response(json_data={})
+
+    client.list_teams()
+    client.list_targets()
+    client.list_findings("t1")
+
+    for call in client._session.request.call_args_list:
+        assert call.kwargs["params"] is None

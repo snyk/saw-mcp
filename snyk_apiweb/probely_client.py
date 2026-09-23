@@ -167,7 +167,9 @@ class ProbelyClient:
     # Users
     def list_users(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/users/", params={"page": page} if page else None
+            "GET",
+            "/users/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_user(self, user_id: str) -> Dict[str, Any]:
@@ -190,7 +192,9 @@ class ProbelyClient:
     # API Users
     def list_api_users(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/api-users/", params={"page": page} if page else None
+            "GET",
+            "/api-users/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_api_user(self, api_user_id: str) -> Dict[str, Any]:
@@ -217,7 +221,9 @@ class ProbelyClient:
     # Roles & Permissions
     def list_roles(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/roles/", params={"page": page} if page else None
+            "GET",
+            "/roles/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_role(self, role_id: str) -> Dict[str, Any]:
@@ -225,13 +231,17 @@ class ProbelyClient:
 
     def list_permissions(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/permissions/", params={"page": page} if page else None
+            "GET",
+            "/permissions/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     # Teams
     def list_teams(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/teams/", params={"page": page} if page else None
+            "GET",
+            "/teams/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_team(self, team_id: str) -> Dict[str, Any]:
@@ -254,7 +264,9 @@ class ProbelyClient:
     # Domains
     def list_domains(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/domains/", params={"page": page} if page else None
+            "GET",
+            "/domains/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_domain(self, domain_id: str) -> Dict[str, Any]:
@@ -329,7 +341,9 @@ class ProbelyClient:
     # Labels
     def list_labels(self, page: Optional[int] = None) -> Dict[str, Any]:
         return self.request(
-            "GET", "/labels/", params={"page": page} if page else None
+            "GET",
+            "/labels/",
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_label(self, label_id: str) -> Dict[str, Any]:
@@ -365,7 +379,7 @@ class ProbelyClient:
         self, page: Optional[int] = None, search: Optional[str] = None
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
-        if page:
+        if page is not None:
             params["page"] = page
         if search:
             params["search"] = search
@@ -535,7 +549,7 @@ class ProbelyClient:
         return self.request(
             "GET",
             f"/targets/{target_id}/sequences/",
-            params={"page": page} if page else None,
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_sequence(self, target_id: str, sequence_id: str) -> Dict[str, Any]:
@@ -808,7 +822,7 @@ class ProbelyClient:
         return self.request(
             "GET",
             f"/targets/{target_id}/assets/",
-            params={"page": page} if page else None,
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_extra_host(
@@ -857,7 +871,7 @@ class ProbelyClient:
         return self.request(
             "GET",
             f"/targets/{target_id}/scans/",
-            params={"page": page} if page else None,
+            params={"page": page} if page is not None else None,
         )[1]
 
     def get_scan(self, target_id: str, scan_id: str) -> Dict[str, Any]:
@@ -891,7 +905,7 @@ class ProbelyClient:
         state: Optional[str] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
-        if page:
+        if page is not None:
             params["page"] = page
         if severity:
             params["severity"] = severity
