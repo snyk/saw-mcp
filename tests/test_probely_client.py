@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+import pytest
+import requests
+
 from snyk_apiweb.probely_client import ProbelyClient
 
 # --- __init__ ---
@@ -95,6 +98,66 @@ def test_request_enriches_body_on_non_ok_status(client, mock_response):
     assert body["error"]["status"] == 404
     assert body["error"]["reason"] == "Not Found"
     assert "api.example.com" in body["error"]["url"]
+
+
+# --- request retries ---
+
+
+@pytest.fixture()
+def no_retry_sleep(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda _seconds: None)
+
+
+@pytest.mark.parametrize(
+    "exc", [requests.ReadTimeout(), requests.ConnectionError()]
+)
+def test_request_retries_idempotent_method_on_transient_error(
+    client, mock_response, no_retry_sleep, exc
+):
+    client._session.request.side_effect = [exc, mock_response()]
+
+    status, _ = client.request("GET", "/targets/")
+
+    assert status == 200
+    assert client._session.request.call_count == 2
+
+
+def test_request_gives_up_after_three_attempts(client, no_retry_sleep):
+    client._session.request.side_effect = requests.ReadTimeout()
+
+    with pytest.raises(requests.ReadTimeout):
+        client.request("GET", "/targets/")
+
+    assert client._session.request.call_count == 3
+
+
+@pytest.mark.parametrize("method", ["POST", "PATCH", "post"])
+@pytest.mark.parametrize(
+    "exc", [requests.ReadTimeout(), requests.ConnectionError()]
+)
+def test_request_does_not_retry_non_idempotent_after_send(
+    client, no_retry_sleep, method, exc
+):
+    client._session.request.side_effect = exc
+
+    with pytest.raises(type(exc)):
+        client.request(method, "/targets/t1/scan_now/")
+
+    assert client._session.request.call_count == 1
+
+
+def test_request_retries_non_idempotent_on_connect_timeout(
+    client, mock_response, no_retry_sleep
+):
+    client._session.request.side_effect = [
+        requests.ConnectTimeout(),
+        mock_response(status_code=201),
+    ]
+
+    status, _ = client.request("POST", "/targets/t1/scan_now/")
+
+    assert status == 201
+    assert client._session.request.call_count == 2
 
 
 # --- _redact_for_log ---

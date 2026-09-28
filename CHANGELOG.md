@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **No duplicate scans or resources on timeouts**: `ProbelyClient` no longer retries `POST`/`PATCH` requests after a read timeout or dropped connection, where the server may already have acted on the request. Previously a slow `probely_start_scan` or create call could be replayed up to three times, starting duplicate scans or creating duplicate targets/credentials. Idempotent methods (`GET`, `PUT`, `DELETE`, …) keep the existing retries, and all methods are still retried when the connection could not be established at all (connect timeout).
+
 ## [1.3.0] - 2026-08-25
 
 ### Security
