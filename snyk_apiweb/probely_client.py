@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import requests
 from tenacity import (
-    retry,
+    Retrying,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -47,6 +47,16 @@ _SENSITIVE_LOG_KEYS = frozenset(
 )
 
 _REDACTED = "***REDACTED***"
+
+# A read timeout or dropped connection may happen after the server already
+# acted on the request, so only idempotent methods are retried on those.
+# Non-idempotent methods (POST starts scans and creates resources, PATCH) are
+# retried only when the connection was never established.
+_IDEMPOTENT_METHODS = frozenset(
+    {"GET", "HEAD", "OPTIONS", "PUT", "DELETE", "TRACE"}
+)
+_IDEMPOTENT_RETRY_EXCEPTIONS = (requests.ConnectionError, requests.Timeout)
+_UNSENT_RETRY_EXCEPTIONS = (requests.ConnectTimeout,)
 
 
 def _redact_for_log(obj: Any) -> Any:
@@ -89,14 +99,6 @@ class ProbelyClient:
         path = path if path.startswith("/") else f"/{path}"
         return f"{self.base_url}{path}"
 
-    @retry(
-        reraise=True,
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=8),
-        retry=retry_if_exception_type(
-            (requests.ConnectionError, requests.Timeout)
-        ),
-    )
     def request(
         self,
         method: str,
@@ -107,6 +109,7 @@ class ProbelyClient:
         files: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Tuple[int, Dict[str, Any]]:
+        method = method.upper()
         url = self._url(path)
         tool_name = current_tool_name.get() or ""
         # Guard on level so we don't redact (deep-copy) bodies when DEBUG is off.
@@ -114,29 +117,46 @@ class ProbelyClient:
             logger.debug(
                 "[%s] %s %s %s",
                 tool_name,
-                method.upper(),
+                method,
                 url,
                 _redact_for_log(json),
             )
-        resp = self._session.request(
-            method=method.upper(),
-            url=url,
-            params=params,
-            json=json,
-            data=data,
-            files=files,
-            headers=headers,
-            timeout=self.timeout,
+        retryable = (
+            _IDEMPOTENT_RETRY_EXCEPTIONS
+            if method in _IDEMPOTENT_METHODS
+            else _UNSENT_RETRY_EXCEPTIONS
         )
+        for attempt in Retrying(
+            reraise=True,
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=1, max=8),
+            retry=retry_if_exception_type(retryable),
+        ):
+            with attempt:
+                resp = self._session.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    data=data,
+                    files=files,
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+        body: Dict[str, Any] = {"raw": resp.text}
         content_type = resp.headers.get("Content-Type", "")
         if "application/json" in content_type:
-            json_data = resp.json()
-            if isinstance(json_data, dict):
-                body: Dict[str, Any] = json_data
+            try:
+                json_data = resp.json()
+            except requests.JSONDecodeError:
+                logger.warning(
+                    "%s %s returned an unparseable JSON body", method, url
+                )
             else:
-                body = {"results": json_data}
-        else:
-            body = {"raw": resp.text}
+                if isinstance(json_data, dict):
+                    body = json_data
+                else:
+                    body = {"results": json_data}
         if not resp.ok:
             if isinstance(body, dict):
                 body.setdefault("error", {})
@@ -149,7 +169,7 @@ class ProbelyClient:
                 )
             logger.warning(
                 "%s %s returned %s %s",
-                method.upper(),
+                method,
                 url,
                 resp.status_code,
                 resp.reason,
