@@ -83,6 +83,22 @@ def test_request_returns_raw_for_non_json(client, mock_response):
     assert body == {"raw": "<html>hello</html>"}
 
 
+@pytest.mark.parametrize(
+    ("status_code", "text"), [(204, ""), (502, "Bad gateway<")]
+)
+def test_request_falls_back_to_raw_for_invalid_json(
+    client, mock_response, status_code, text
+):
+    resp = mock_response(status_code=status_code, text=text)
+    resp.json.side_effect = requests.JSONDecodeError("Expecting value", "", 0)
+    client._session.request.return_value = resp
+
+    status, body = client.request("DELETE", "/targets/t1/")
+
+    assert status == status_code
+    assert body["raw"] == text
+
+
 def test_request_enriches_body_on_non_ok_status(client, mock_response):
     resp = mock_response(
         status_code=404,
