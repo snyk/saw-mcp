@@ -3,6 +3,10 @@
 # terminal sessions and Cursor.  .env is gitignored and loaded automatically
 # at server startup.
 #
+# Updates MCP_SAW_API_KEY in place when .env already exists, preserves
+# unrelated entries and comments, and only touches MCP_SAW_BASE_URL when
+# --base-url is supplied.
+#
 # Usage:
 #   ./scripts/setup-env.sh                              # production (default)
 #   ./scripts/setup-env.sh --base-url https://api.x.y   # custom API endpoint
@@ -15,8 +19,10 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
 PROD_CONSOLE="https://plus.probely.app/api-keys"
+ENV_FILE=".env"
 BASE_URL=""
 API_KEY=""
+CREATED=0
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
 while [ "$#" -gt 0 ]; do
@@ -63,17 +69,65 @@ if [ -z "${API_KEY:-}" ]; then
   exit 1
 fi
 
-# ── Write .env ───────────────────────────────────────────────────────────────
-{
-  echo "MCP_SAW_API_KEY=$API_KEY"
-  if [ -n "$BASE_URL" ]; then
-    echo "MCP_SAW_BASE_URL=$BASE_URL"
-  fi
-} > .env
-chmod 600 .env
+# Upsert KEY=VALUE in ENV_FILE. Replaces the first matching assignment,
+# drops later duplicates of the same key, appends when missing. Other lines
+# (including comments and blank lines) are left unchanged.
+upsert_env_var() {
+  local key="$1"
+  local value="$2"
+  local tmp
+  local found=0
+  local line
+  local prefix
 
-if [ -z "$BASE_URL" ]; then
-  echo "Created .env with your API key (permissions: owner-only)."
+  tmp="$(mktemp "${TMPDIR:-/tmp}/saw-env.XXXXXX")"
+
+  if [ -f "$ENV_FILE" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      prefix="${line%%=*}"
+      if [ "$prefix" = "$key" ]; then
+        if [ "$found" -eq 0 ]; then
+          printf '%s=%s\n' "$key" "$value"
+          found=1
+        fi
+      else
+        printf '%s\n' "$line"
+      fi
+    done < "$ENV_FILE" > "$tmp"
+  fi
+
+  if [ "$found" -eq 0 ]; then
+    printf '%s=%s\n' "$key" "$value" >> "$tmp"
+  fi
+
+  if ! mv "$tmp" "$ENV_FILE"; then
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+# ── Write .env ───────────────────────────────────────────────────────────────
+if [ ! -f "$ENV_FILE" ]; then
+  CREATED=1
+  : > "$ENV_FILE"
+fi
+
+upsert_env_var "MCP_SAW_API_KEY" "$API_KEY"
+if [ -n "$BASE_URL" ]; then
+  upsert_env_var "MCP_SAW_BASE_URL" "$BASE_URL"
+fi
+chmod 600 "$ENV_FILE"
+
+if [ "$CREATED" -eq 1 ]; then
+  if [ -z "$BASE_URL" ]; then
+    echo "Created .env with your API key (permissions: owner-only)."
+  else
+    echo "Created .env for $BASE_URL (permissions: owner-only)."
+  fi
 else
-  echo "Created .env for $BASE_URL (permissions: owner-only)."
+  if [ -z "$BASE_URL" ]; then
+    echo "Updated .env with your API key (permissions: owner-only)."
+  else
+    echo "Updated .env for $BASE_URL (permissions: owner-only)."
+  fi
 fi
