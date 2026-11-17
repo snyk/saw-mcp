@@ -54,7 +54,11 @@ if [ -z "$API_KEY" ]; then
     read -rs API_KEY
     echo
   else
-    read -r API_KEY
+    # Bash `read` returns nonzero when input ends at EOF without a
+    # trailing newline, even after capturing a nonempty value. With
+    # `set -e` that aborts before the empty-key check. Tolerate EOF
+    # here; the check below still rejects an empty key.
+    read -r API_KEY || true
   fi
 fi
 
