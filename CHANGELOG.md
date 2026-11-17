@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **Preserve unrelated `.env` settings in `setup-env.sh` (FRG-160)**: re-running the script no longer rewrites the whole file. It upserts `MCP_SAW_API_KEY`, touches `MCP_SAW_BASE_URL` only when `--base-url` is supplied, keeps comments and other keys, collapses duplicate managed entries, and still applies owner-only permissions without printing the key.
 - **No duplicate scans or resources on timeouts**: `ProbelyClient` no longer retries `POST`/`PATCH` requests after a read timeout or dropped connection, where the server may already have acted on the request. Previously a slow `probely_start_scan` or create call could be replayed up to three times, starting duplicate scans or creating duplicate targets/credentials. Idempotent methods (`GET`, `PUT`, `DELETE`, …) keep the existing retries, and all methods are still retried when the connection could not be established at all (connect timeout).
 - **Tolerate empty or malformed JSON responses**: a response labelled `application/json` whose body is empty or not valid JSON (e.g. an empty `204`, or a gateway error page) no longer crashes the tool call with a decode error; the body is returned as `{"raw": ...}` like other non-JSON responses, with the usual `error` details on non-2xx statuses.
 
