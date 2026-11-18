@@ -15,6 +15,7 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for usage, examples, and tool reference.
 ## Requirements
 
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (provides `uvx`; required only for the one-command / MCP `uvx` install path — not for source or release-tarball installs)
 - Node.js 18+ and npm (for web target login recording via `playwright-cli`; optional if using Playwright MCP instead)
 - Snyk API & Web API key
 
@@ -56,6 +57,8 @@ Install directly from Devin's MCP Marketplace:
 No manual configuration needed — Devin handles the setup automatically.
 
 #### One-command install (any MCP client)
+
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) installed (`uv` provides `uvx`). Source and release-tarball alternatives below do not need uv.
 
 ```bash
 uvx --from git+https://github.com/snyk/saw-mcp.git saw-mcp
