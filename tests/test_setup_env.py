@@ -258,3 +258,41 @@ def test_retains_owner_only_permissions_on_update(tmp_path):
     assert result.returncode == 0, result.stderr
     mode = env_path.stat().st_mode
     assert stat.S_IMODE(mode) == 0o600
+
+
+def test_replaces_export_prefixed_key(tmp_path, monkeypatch):
+    project = _prepare_project(tmp_path)
+    env_path = project / ".env"
+    env_path.write_text(
+        f"export MCP_SAW_API_KEY={DUMMY_KEY}\nMCP_SAW_LOG_LEVEL=DEBUG\n"
+    )
+    os.chmod(env_path, 0o600)
+
+    result = _run_setup(project, DUMMY_KEY_UPDATED)
+
+    assert result.returncode == 0, result.stderr
+    text = env_path.read_text()
+    assert text.count("MCP_SAW_API_KEY=") == 1
+    assert DUMMY_KEY not in text
+    assert "MCP_SAW_LOG_LEVEL=DEBUG" in text
+    _assert_config_reader(
+        env_path,
+        monkeypatch,
+        expected_key=DUMMY_KEY_UPDATED,
+        expected_base=None,
+    )
+
+
+def test_preserves_symlinked_env_and_leaves_no_temp_files(tmp_path):
+    project = _prepare_project(tmp_path)
+    target = project / "real.env"
+    target.write_text(f"MCP_SAW_API_KEY={DUMMY_KEY}\n")
+    env_path = project / ".env"
+    env_path.symlink_to(target)
+
+    result = _run_setup(project, DUMMY_KEY_UPDATED)
+
+    assert result.returncode == 0, result.stderr
+    assert env_path.is_symlink()
+    assert f"MCP_SAW_API_KEY={DUMMY_KEY_UPDATED}" in target.read_text()
+    assert not list(project.glob(".env.*"))

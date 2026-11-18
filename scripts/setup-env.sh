@@ -69,9 +69,10 @@ if [ -z "${API_KEY:-}" ]; then
   exit 1
 fi
 
-# Upsert KEY=VALUE in ENV_FILE. Replaces the first matching assignment,
-# drops later duplicates of the same key, appends when missing. Other lines
-# (including comments and blank lines) are left unchanged.
+# Upsert KEY=VALUE in ENV_FILE. Replaces the first matching assignment
+# (including `export KEY=...` lines), drops later duplicates of the same key,
+# appends when missing. Other lines (including comments and blank lines) are
+# left unchanged.
 upsert_env_var() {
   local key="$1"
   local value="$2"
@@ -80,11 +81,13 @@ upsert_env_var() {
   local line
   local prefix
 
-  tmp="$(mktemp "${TMPDIR:-/tmp}/saw-env.XXXXXX")"
+  # Same directory as ENV_FILE so the final mv is an atomic rename.
+  tmp="$(mktemp "$(dirname "$ENV_FILE")/.env.XXXXXX")"
 
   if [ -f "$ENV_FILE" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
       prefix="${line%%=*}"
+      prefix="${prefix#export }"
       if [ "$prefix" = "$key" ]; then
         if [ "$found" -eq 0 ]; then
           printf '%s=%s\n' "$key" "$value"
@@ -100,7 +103,11 @@ upsert_env_var() {
     printf '%s=%s\n' "$key" "$value" >> "$tmp"
   fi
 
-  if ! mv "$tmp" "$ENV_FILE"; then
+  if [ -L "$ENV_FILE" ]; then
+    # Write through a symlinked .env instead of replacing the link.
+    cat "$tmp" > "$ENV_FILE" || { rm -f "$tmp"; return 1; }
+    rm -f "$tmp"
+  elif ! mv "$tmp" "$ENV_FILE"; then
     rm -f "$tmp"
     return 1
   fi
