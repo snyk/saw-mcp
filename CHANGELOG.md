@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+
+- **Document `uv` as a prerequisite for `uvx` installs (FRG-158)**: README Requirements and the one-command install section now state that `uv` provides `uvx`, link to the official [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/), and note that source and release-tarball installs do not need uv.
+
 ### Fixed
 
 - **Preserve unrelated `.env` settings in `setup-env.sh` (FRG-160)**: re-running the script no longer rewrites the whole file. It upserts `MCP_SAW_API_KEY`, touches `MCP_SAW_BASE_URL` only when `--base-url` is supplied, keeps comments, multi-line values and other keys byte for byte, replaces and de-duplicates managed entries however they are spelled (`export`, spaces around `=`, indentation, BOM), never touches text inside a quoted multi-line value, removes its temporary file on interrupt or failure, and still applies owner-only permissions without printing the key.
