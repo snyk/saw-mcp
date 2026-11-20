@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+
+- **Document `uv` as a prerequisite for `uvx` installs (FRG-158)**: README Requirements and the one-command install section now state that `uv` provides `uvx`, link to the official [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/), and note that source and release-tarball installs do not need uv.
+
 ### Fixed
 
 - **No duplicate scans or resources on timeouts**: `ProbelyClient` no longer retries `POST`/`PATCH` requests after a read timeout or dropped connection, where the server may already have acted on the request. Previously a slow `probely_start_scan` or create call could be replayed up to three times, starting duplicate scans or creating duplicate targets/credentials. Idempotent methods (`GET`, `PUT`, `DELETE`, …) keep the existing retries, and all methods are still retried when the connection could not be established at all (connect timeout).
