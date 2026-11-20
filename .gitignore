@@ -4,6 +4,8 @@ package.json
 dist/
 *.log
 .env
+.env.*
+!.env.example
 venv
 config/config.yaml
 .DS_Store

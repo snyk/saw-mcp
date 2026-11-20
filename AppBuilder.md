@@ -941,7 +941,7 @@ Three input modes:
 2. **Piped stdin**: supports `op read ... | ./scripts/setup-env.sh` for secret manager integration.
 3. **Argument** (backward compat): accepts key as `$1` but warns about shell history exposure.
 
-Creates `.env` with `MCP_SAW_API_KEY=...` in the project root. Sets `chmod 600` on the file to restrict permissions to owner-only. Rejects empty keys.
+Creates `.env` with `MCP_SAW_API_KEY=...` in the project root when missing, or updates that key in place when `.env` already exists. Unrelated entries and comments are preserved. `MCP_SAW_BASE_URL` is written only when `--base-url` is supplied. Sets `chmod 600` on the file to restrict permissions to owner-only. Rejects empty keys. Never prints the API key.
 
 ### 12.3 MCP Inspector (`scripts/inspector.sh`)
 

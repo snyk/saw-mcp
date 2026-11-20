@@ -14,7 +14,10 @@ TARBALL_PATH="$DIST_DIR/$TARBALL_NAME"
 STAGE_DIR="$(mktemp -d)"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 
-# Copy project to staging, excluding build-time artifacts
+# Copy project to staging, excluding build-time artifacts.
+# `.env` and `.env.*` can hold a key (setup-env.sh temp files), so they are
+# excluded; rsync uses the first matching rule, hence the committed template
+# `.env.example` is included before the `.env.*` exclude.
 rsync -a \
   --exclude 'venv' \
   --exclude 'dist' \
@@ -23,6 +26,8 @@ rsync -a \
   --exclude '__pycache__' \
   --exclude 'distribution' \
   --exclude '.env' \
+  --include '.env.example' \
+  --exclude '.env.*' \
   --exclude '.ruff_cache' \
   --exclude '.pytest_cache' \
   "$PROJECT_DIR/" "$STAGE_DIR/SnykAPIWeb/"
