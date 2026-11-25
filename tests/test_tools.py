@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from pathlib import Path
 from unittest.mock import patch
@@ -8,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
+from snyk_apiweb.probely_client import current_tool_name
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
     UnsafeURLError,
@@ -362,3 +364,86 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     monkeypatch.setattr("requests.get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+# --- Audit writer failure resilience ---
+
+
+def test_audit_failure_preserves_result_and_restores_tool_context(
+    monkeypatch, mock_response, caplog
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    resp = mock_response(
+        status_code=200,
+        json_data={"results": [{"id": "t1"}]},
+    )
+    outer_token = current_tool_name.set("outer_tool")
+    try:
+        with (
+            patch("requests.Session") as mock_session_cls,
+            patch(
+                "snyk_apiweb.tools.record_tool_call",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            session = mock_session_cls.return_value
+            session.headers = {}
+            session.request.return_value = resp
+
+            app = build_server()
+            tool = next(
+                t
+                for t in asyncio.run(app.list_tools())
+                if t.name == "probely_list_targets"
+            )
+            with caplog.at_level(logging.WARNING, logger="snyk_apiweb.tools"):
+                result = tool.fn()
+
+        assert result == {"results": [{"id": "t1"}]}
+        assert current_tool_name.get() == "outer_tool"
+        assert "probely_list_targets" in caplog.text
+        assert "OSError" in caplog.text
+    finally:
+        current_tool_name.reset(outer_token)
+
+
+def test_audit_failure_preserves_exception_and_restores_tool_context(
+    monkeypatch, caplog
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    outer_token = current_tool_name.set("outer_tool")
+    try:
+        with (
+            patch("requests.Session") as mock_session_cls,
+            patch(
+                "snyk_apiweb.tools.record_tool_call",
+                side_effect=OSError("audit sink down"),
+            ),
+        ):
+            session = mock_session_cls.return_value
+            session.headers = {}
+            session.request.side_effect = RuntimeError("tool failed")
+
+            app = build_server()
+            tool = next(
+                t
+                for t in asyncio.run(app.list_tools())
+                if t.name == "probely_list_targets"
+            )
+            with caplog.at_level(logging.WARNING, logger="snyk_apiweb.tools"):
+                with pytest.raises(RuntimeError, match="tool failed"):
+                    tool.fn()
+
+        assert current_tool_name.get() == "outer_tool"
+        assert "probely_list_targets" in caplog.text
+        assert "OSError" in caplog.text
+    finally:
+        current_tool_name.reset(outer_token)
