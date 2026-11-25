@@ -249,6 +249,38 @@ def _generate_totp(
     }
 
 
+def _extract_numeric_status(value: Any) -> Optional[int]:
+    """Return *value* if it is a plain integer status code, else None."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None
+
+
+def _summarize_api_error(result: Dict[str, Any]) -> str:
+    """Build a safe audit error summary for an API error dict."""
+    err = result.get("error")
+    status: Optional[int] = None
+    if isinstance(err, dict):
+        status = _extract_numeric_status(err.get("status"))
+    if status is None:
+        status = _extract_numeric_status(result.get("status"))
+    if status is not None:
+        return f"api_error(status={status})"
+    return "api_error"
+
+
+def _summarize_exception(exc: Exception) -> str:
+    """Build a safe audit error summary for a raised exception."""
+    category = type(exc).__name__
+    response = getattr(exc, "response", None)
+    status = _extract_numeric_status(getattr(response, "status_code", None))
+    if status is None:
+        status = _extract_numeric_status(getattr(exc, "status_code", None))
+    if status is not None:
+        return f"{category}(status={status})"
+    return category
+
+
 def build_server() -> FastMCP:
     cfg = load_config()
     base_url = get_probely_base_url(cfg)
@@ -278,11 +310,11 @@ def build_server() -> FastMCP:
                         result = func(*args, **kwargs)
                         if isinstance(result, dict) and result.get("error"):
                             outcome = "api_error"
-                            error_summary = str(result.get("error"))
+                            error_summary = _summarize_api_error(result)
                         return result
                     except Exception as exc:
                         outcome = "error"
-                        error_summary = f"{type(exc).__name__}: {exc}"
+                        error_summary = _summarize_exception(exc)
                         raise
                     finally:
                         duration_ms = (time.perf_counter() - start) * 1000
