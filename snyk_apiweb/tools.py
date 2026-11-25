@@ -85,7 +85,7 @@ def _parse_list_of_dicts(value: Any) -> Optional[List[Dict[str, Any]]]:
     if isinstance(value, dict):
         return [value]
     raise ValueError(
-        f"Expected a JSON array (list of objects), got: {type(value).__name__}. Value: {repr(value)[:200]}"
+        f"Expected a JSON array (list of objects), got: {type(value).__name__}"
     )
 
 
