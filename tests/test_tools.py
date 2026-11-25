@@ -362,3 +362,52 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     monkeypatch.setattr("requests.get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+# --- Tool filtering: empty enabled list ---
+
+
+@pytest.mark.parametrize(
+    "tools_cfg",
+    [
+        {"enabled": []},
+        {"enabled": [], "disabled": []},
+        {"enabled": [], "disabled": ["probely_delete_sequence"]},
+    ],
+)
+def test_build_server_empty_enabled_registers_zero_tools(
+    tmp_config, monkeypatch, tools_cfg
+):
+    path = tmp_config({"tools": tools_cfg})
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", path)
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+
+    app = build_server()
+    tools = asyncio.run(app.list_tools())
+
+    assert tools == []
+
+
+def test_build_server_nonempty_override_registers_expected_tools(
+    tmp_config, monkeypatch
+):
+    path = tmp_config(
+        {
+            "tools": {
+                "enabled": ["probely_delete_target"],
+                "disabled": ["probely_delete_sequence"],
+            }
+        }
+    )
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", path)
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+
+    app = build_server()
+    tool_names = {tool.name for tool in asyncio.run(app.list_tools())}
+
+    assert "probely_delete_target" in tool_names
+    assert "probely_list_targets" in tool_names
+    assert "probely_delete_sequence" not in tool_names
+    assert "probelyrequest" not in tool_names
