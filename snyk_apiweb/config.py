@@ -288,6 +288,24 @@ def get_target_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _validate_tool_name_list(value: Any, field_name: str) -> list[str] | None:
+    """Validate that a tool filter list is None or a list of strings."""
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError(
+            f"Config 'tools.{field_name}' must be a list of strings, "
+            f"got {type(value).__name__}"
+        )
+    for item in value:
+        if not isinstance(item, str):
+            raise ValueError(
+                f"Config 'tools.{field_name}' entries must be strings, "
+                f"got {type(item).__name__}"
+            )
+    return list(value)
+
+
 def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """Get tool filtering configuration.
 
@@ -310,14 +328,29 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
       opts specific default-off tools back in without turning every other tool
       off.
     """
-    tools_cfg = cfg.get("tools") or {}
+    raw_tools = cfg.get("tools")
+    if raw_tools is None:
+        tools_cfg: Dict[str, Any] = {}
+    elif not isinstance(raw_tools, dict):
+        raise ValueError(
+            "Config 'tools' section must be a mapping, "
+            f"got {type(raw_tools).__name__}"
+        )
+    else:
+        tools_cfg = raw_tools
+
+    raw_disabled = _validate_tool_name_list(
+        tools_cfg.get("disabled"), "disabled"
+    )
+    enabled_list = _validate_tool_name_list(
+        tools_cfg.get("enabled"), "enabled"
+    )
 
     disabled_tools = list(DEFAULT_DISABLED_TOOLS)
-    for name in tools_cfg.get("disabled") or []:
+    for name in raw_disabled or []:
         if name not in disabled_tools:
             disabled_tools.append(name)
 
-    enabled_list = tools_cfg.get("enabled")
     enabled_overrides_blacklist = (
         "disabled" in tools_cfg
         and enabled_list is not None

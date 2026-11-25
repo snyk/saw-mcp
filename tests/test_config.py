@@ -471,3 +471,63 @@ def test_is_tool_enabled_no_filter_means_all_enabled():
     tf = {"enabled_tools": None, "disabled_tools": []}
 
     assert is_tool_enabled("anything", tf) is True
+
+
+@pytest.mark.parametrize(
+    "bad_tools",
+    ["probely_list_targets", "", [], ["probely_list_targets"], 123, 0, False],
+)
+def test_tool_filter_rejects_non_mapping_tools_section(bad_tools):
+    with pytest.raises(ValueError, match="'tools' section must be a mapping"):
+        get_tool_filter({"tools": bad_tools})
+
+
+@pytest.mark.parametrize("field", ["enabled", "disabled"])
+@pytest.mark.parametrize(
+    "bad_value",
+    ["probely_list_targets", "", {}, {"probely_list_targets": True}, 42, True],
+)
+def test_tool_filter_rejects_non_list_filter_fields(field, bad_value):
+    with pytest.raises(ValueError, match=f"tools.{field}"):
+        get_tool_filter({"tools": {field: bad_value}})
+
+
+@pytest.mark.parametrize("field", ["enabled", "disabled"])
+@pytest.mark.parametrize(
+    "bad_entries",
+    [
+        [123],
+        [None],
+        [True],
+        [{"name": "probely_list_targets"}],
+        [["probely_list_targets"]],
+        ["probely_list_targets", 42],
+    ],
+)
+def test_tool_filter_rejects_non_string_filter_entries(field, bad_entries):
+    with pytest.raises(ValueError, match=f"tools.{field}"):
+        get_tool_filter({"tools": {field: bad_entries}})
+
+
+def test_tool_filter_preserves_null_and_absent_semantics():
+    for cfg in (
+        {},
+        {"tools": None},
+        {"tools": {}},
+        {"tools": {"enabled": None, "disabled": None}},
+    ):
+        tf = get_tool_filter(cfg)
+        assert tf["enabled_tools"] is None
+        assert tf["disabled_tools"] == DEFAULT_DISABLED_TOOLS
+        assert tf["enabled_overrides_blacklist"] is False
+
+
+def test_tool_filter_preserves_override_with_null_disabled():
+    cfg = {"tools": {"enabled": ["probely_delete_target"], "disabled": None}}
+    tf = get_tool_filter(cfg)
+
+    assert tf["enabled_tools"] == ["probely_delete_target"]
+    assert tf["enabled_overrides_blacklist"] is True
+    assert is_tool_enabled("probely_delete_target", tf) is True
+    assert is_tool_enabled("probely_list_targets", tf) is True
+    assert is_tool_enabled("probelyrequest", tf) is False
