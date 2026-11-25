@@ -1198,7 +1198,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_getreport")
     def probely_getreport(reportId: str) -> Dict[str, Any]:
         """Get report metadata/status by ID."""
-        return client.getreport(report_id=reportId)
+        return client.get_report(report_id=reportId)
 
     # Scanning Agents
     @register_tool("probely_list_scanning_agents")

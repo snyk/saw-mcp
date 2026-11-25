@@ -362,3 +362,71 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     monkeypatch.setattr("requests.get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+# --- Reports: probely_getreport ---
+
+
+def test_probely_getreport_success_via_registered_tool(
+    monkeypatch, mock_response
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    resp = mock_response(
+        status_code=200,
+        json_data={"id": "rep-123", "status": "completed"},
+    )
+    with patch("requests.Session") as mock_session_cls:
+        session = mock_session_cls.return_value
+        session.headers = {}
+        session.request.return_value = resp
+
+        app = build_server()
+        tool = next(
+            t
+            for t in asyncio.run(app.list_tools())
+            if t.name == "probely_getreport"
+        )
+        result = tool.fn(reportId="rep-123")
+
+    assert result == {"id": "rep-123", "status": "completed"}
+    req_kwargs = session.request.call_args.kwargs
+    assert req_kwargs["method"] == "GET"
+    assert req_kwargs["url"] == "https://api.probely.com/report/rep-123/"
+
+
+def test_probely_getreport_upstream_error_via_registered_tool(
+    monkeypatch, mock_response
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    resp = mock_response(
+        status_code=404,
+        json_data={"detail": "Not found"},
+        reason="Not Found",
+    )
+    with patch("requests.Session") as mock_session_cls:
+        session = mock_session_cls.return_value
+        session.headers = {}
+        session.request.return_value = resp
+
+        app = build_server()
+        tool = next(
+            t
+            for t in asyncio.run(app.list_tools())
+            if t.name == "probely_getreport"
+        )
+        result = tool.fn(reportId="rep-missing")
+
+    assert result["detail"] == "Not found"
+    assert result["error"]["status"] == 404
+    assert result["error"]["reason"] == "Not Found"
+    assert (
+        result["error"]["url"] == "https://api.probely.com/report/rep-missing/"
+    )
