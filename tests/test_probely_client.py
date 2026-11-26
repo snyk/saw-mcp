@@ -116,6 +116,65 @@ def test_request_enriches_body_on_non_ok_status(client, mock_response):
     assert "api.example.com" in body["error"]["url"]
 
 
+@pytest.mark.parametrize(
+    ("raw_error", "expect_detail"),
+    [
+        (None, False),
+        ("Upstream failure", True),
+        ("", True),
+        (["field required", "invalid url"], True),
+        ([], True),
+        (500, True),
+        (False, True),
+    ],
+)
+def test_request_normalizes_non_dict_error_values_on_non_ok_status(
+    client, mock_response, raw_error, expect_detail
+):
+    resp = mock_response(
+        status_code=500,
+        json_data={"error": raw_error},
+        content_type="application/json",
+        reason="Internal Server Error",
+    )
+    client._session.request.return_value = resp
+
+    status, body = client.request("GET", "/targets/")
+
+    assert status == 500
+    assert isinstance(body["error"], dict)
+    assert body["error"]["status"] == 500
+    assert body["error"]["reason"] == "Internal Server Error"
+    assert body["error"]["url"] == "https://api.example.com/targets/"
+    if expect_detail:
+        assert body["error"]["detail"] == raw_error
+    else:
+        assert "detail" not in body["error"]
+
+
+def test_request_preserves_object_error_fields_on_non_ok_status(
+    client, mock_response
+):
+    resp = mock_response(
+        status_code=400,
+        json_data={"error": {"message": "Invalid input", "code": "BAD_INPUT"}},
+        content_type="application/json",
+        reason="Bad Request",
+    )
+    client._session.request.return_value = resp
+
+    status, body = client.request("POST", "/targets/")
+
+    assert status == 400
+    assert body["error"] == {
+        "message": "Invalid input",
+        "code": "BAD_INPUT",
+        "status": 400,
+        "reason": "Bad Request",
+        "url": "https://api.example.com/targets/",
+    }
+
+
 # --- request retries ---
 
 

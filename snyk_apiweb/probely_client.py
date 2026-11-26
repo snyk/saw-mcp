@@ -159,8 +159,13 @@ class ProbelyClient:
                     body = {"results": json_data}
         if not resp.ok:
             if isinstance(body, dict):
-                body.setdefault("error", {})
-                body["error"].update(
+                error_obj = body.get("error")
+                if not isinstance(error_obj, dict):
+                    error_obj = (
+                        {} if error_obj is None else {"detail": error_obj}
+                    )
+                    body["error"] = error_obj
+                error_obj.update(
                     {
                         "status": resp.status_code,
                         "reason": resp.reason,
