@@ -286,10 +286,22 @@ def build_server() -> FastMCP:
                         raise
                     finally:
                         duration_ms = (time.perf_counter() - start) * 1000
-                        record_tool_call(
-                            name, outcome, duration_ms, error_summary
-                        )
-                        current_tool_name.reset(token)
+                        try:
+                            record_tool_call(
+                                name, outcome, duration_ms, error_summary
+                            )
+                        except Exception as audit_exc:
+                            try:
+                                logger.warning(
+                                    "Failed to record audit entry for tool "
+                                    "%s (%s)",
+                                    name,
+                                    type(audit_exc).__name__,
+                                )
+                            except Exception:
+                                pass
+                        finally:
+                            current_tool_name.reset(token)
 
                 return app.tool(name=name)(wrapper)
             return func  # Return undecorated function (not registered)
