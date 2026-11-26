@@ -73,6 +73,34 @@ def test_parse_raises_for_random_string():
         _parse_list_of_dicts("not valid at all")
 
 
+@pytest.mark.parametrize(
+    "raw_value",
+    [
+        '[{"value": "synthetic-canary-08"',
+        '"synthetic-canary-08"',
+    ],
+)
+def test_parse_validation_error_omits_raw_string_value(raw_value):
+    with pytest.raises(ValueError) as exc_info:
+        _parse_list_of_dicts(raw_value)
+
+    message = str(exc_info.value)
+    assert "Expected a JSON array" in message
+    assert "str" in message
+    assert "synthetic-canary-08" not in message
+
+
+def test_parse_validation_error_omits_raw_non_string_value():
+    canary = ("synthetic-non-string-canary-08",)
+    with pytest.raises(ValueError) as exc_info:
+        _parse_list_of_dicts(canary)
+
+    message = str(exc_info.value)
+    assert "Expected a JSON array" in message
+    assert "tuple" in message
+    assert "synthetic-non-string-canary-08" not in message
+
+
 def test_parse_raises_for_oversized_string():
     oversized = "[" + ("0," * _MAX_PARSE_INPUT_LEN) + "0]"
 
