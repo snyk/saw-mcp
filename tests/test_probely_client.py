@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -284,6 +285,59 @@ def test_request_skips_debug_logging_when_debug_disabled(
         client.request("GET", "/targets/t1/")
 
     mock_logger.debug.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("content_type", "raw_text"),
+    [
+        ("text/plain", "synthetic-plain-body-marker-06"),
+        (
+            "text/html",
+            "<html><body>synthetic-html-body-marker-06</body></html>",
+        ),
+    ],
+)
+def test_request_suppresses_raw_non_json_body_in_debug_log(
+    client, mock_response, caplog, content_type, raw_text
+):
+    resp = mock_response(
+        status_code=200,
+        text=raw_text,
+        content_type=content_type,
+    )
+    client._session.request.return_value = resp
+
+    with caplog.at_level(logging.DEBUG, logger="snyk_apiweb.probely_client"):
+        status, body = client.request("GET", "/report/r1/download/")
+
+    assert status == 200
+    assert body == {"raw": raw_text}
+    assert raw_text not in caplog.text
+    assert "***REDACTED***" in caplog.text
+
+
+def test_request_suppresses_raw_malformed_json_body_in_debug_log(
+    client, mock_response, caplog
+):
+    marker = "synthetic-malformed-json-marker-06"
+    raw_text = f'{{"password": "{marker}"'
+    resp = mock_response(
+        status_code=502,
+        text=raw_text,
+        content_type="application/json",
+        reason="Bad Gateway",
+    )
+    resp.json.side_effect = requests.JSONDecodeError("Expecting value", "", 0)
+    client._session.request.return_value = resp
+
+    with caplog.at_level(logging.DEBUG, logger="snyk_apiweb.probely_client"):
+        status, body = client.request("GET", "/targets/")
+
+    assert status == 502
+    assert body["raw"] == raw_text
+    assert body["error"]["status"] == 502
+    assert marker not in caplog.text
+    assert "***REDACTED***" in caplog.text
 
 
 # --- resolve_labels ---

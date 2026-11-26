@@ -144,6 +144,7 @@ class ProbelyClient:
                     timeout=self.timeout,
                 )
         body: Dict[str, Any] = {"raw": resp.text}
+        is_raw_fallback = True
         content_type = resp.headers.get("Content-Type", "")
         if "application/json" in content_type:
             try:
@@ -153,6 +154,7 @@ class ProbelyClient:
                     "%s %s returned an unparseable JSON body", method, url
                 )
             else:
+                is_raw_fallback = False
                 if isinstance(json_data, dict):
                     body = json_data
                 else:
@@ -175,11 +177,18 @@ class ProbelyClient:
                 resp.reason,
             )
         if logger.isEnabledFor(logging.DEBUG):
+            log_body = _redact_for_log(body)
+            if (
+                is_raw_fallback
+                and isinstance(log_body, dict)
+                and "raw" in log_body
+            ):
+                log_body = {**log_body, "raw": _REDACTED}
             logger.debug(
                 "[%s] Response: %s %s",
                 tool_name,
                 resp.status_code,
-                _redact_for_log(body),
+                log_body,
             )
         return resp.status_code, body
 
