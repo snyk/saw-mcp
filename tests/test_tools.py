@@ -362,3 +362,32 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     monkeypatch.setattr("requests.get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+# --- Tool filter validation before tool registration ---
+
+
+@pytest.mark.parametrize(
+    "cfg_data",
+    [
+        {"tools": []},
+        {"tools": "probely_list_targets"},
+        {"tools": {"enabled": "probely_list_targets"}},
+        {"tools": {"disabled": "probely_delete_target"}},
+        {"tools": {"enabled": ["probely_list_targets", 123]}},
+        {"tools": {"disabled": [None]}},
+    ],
+)
+def test_build_server_rejects_malformed_tools_before_registration(
+    tmp_config, monkeypatch, cfg_data
+):
+    path = tmp_config(cfg_data)
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", path)
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+
+    with patch("snyk_apiweb.tools.FastMCP") as mock_fastmcp:
+        with pytest.raises(ValueError, match="tools"):
+            build_server()
+
+    mock_fastmcp.assert_not_called()
