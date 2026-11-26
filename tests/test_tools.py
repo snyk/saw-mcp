@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import requests
 
+import snyk_apiweb.audit as audit
 from snyk_apiweb.config import DEFAULT_DISABLED_TOOLS
 from snyk_apiweb.tools import (
     _MAX_PARSE_INPUT_LEN,
@@ -362,3 +365,183 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     monkeypatch.setattr("requests.get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+# --- Audit wrapper: safe error summaries ---
+
+
+def _reset_audit_handlers() -> None:
+    audit._configured = False
+    for handler in list(audit.audit_logger.handlers):
+        audit.audit_logger.removeHandler(handler)
+        handler.close()
+
+
+def test_audit_wrapper_sanitizes_api_error_in_both_sinks(
+    tmp_path, monkeypatch, mock_response, caplog
+):
+    _reset_audit_handlers()
+    log_file = tmp_path / "audit.log"
+    monkeypatch.setenv(audit.AUDIT_LOG_ENV, str(log_file))
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    canary = "synthetic-api-secret-07"
+    resp = mock_response(
+        status_code=401,
+        json_data={"error": {"message": canary}},
+        reason="Unauthorized",
+    )
+    try:
+        with patch("requests.Session") as mock_session_cls:
+            session = mock_session_cls.return_value
+            session.headers = {}
+            session.request.return_value = resp
+
+            app = build_server()
+            tool = next(
+                t
+                for t in asyncio.run(app.list_tools())
+                if t.name == "probely_list_targets"
+            )
+            with caplog.at_level(logging.INFO, logger="snyk_apiweb.audit"):
+                result = tool.fn()
+
+        assert result["error"]["message"] == canary
+        assert result["error"]["status"] == 401
+        file_output = log_file.read_text(encoding="utf-8")
+        audit_output = "\n".join(
+            record.getMessage()
+            for record in caplog.records
+            if record.name == "snyk_apiweb.audit"
+        )
+        for sink_output in (audit_output, file_output):
+            assert "outcome=api_error" in sink_output
+            assert "api_error(status=401)" in sink_output
+            assert canary not in sink_output
+            assert "Unauthorized" not in sink_output
+    finally:
+        _reset_audit_handlers()
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_summary", "canary"),
+    [
+        (
+            {"error": "synthetic-str-error-07"},
+            "error='api_error'",
+            "synthetic-str-error-07",
+        ),
+        (
+            {"error": ["synthetic-list-error-07"]},
+            "error='api_error'",
+            "synthetic-list-error-07",
+        ),
+        (
+            {"error": {"status": "synthetic-status-07"}},
+            "error='api_error'",
+            "synthetic-status-07",
+        ),
+        (
+            {"error": {"status": True, "detail": "synthetic-bool-07"}},
+            "error='api_error'",
+            "synthetic-bool-07",
+        ),
+        (
+            {"status": 503, "error": "synthetic-top-status-07"},
+            "error='api_error(status=503)'",
+            "synthetic-top-status-07",
+        ),
+    ],
+)
+def test_audit_wrapper_handles_malformed_error_shapes_in_both_sinks(
+    tmp_path,
+    monkeypatch,
+    mock_response,
+    caplog,
+    payload,
+    expected_summary,
+    canary,
+):
+    _reset_audit_handlers()
+    log_file = tmp_path / "audit.log"
+    monkeypatch.setenv(audit.AUDIT_LOG_ENV, str(log_file))
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    resp = mock_response(status_code=200, json_data=payload)
+    try:
+        with patch("requests.Session") as mock_session_cls:
+            session = mock_session_cls.return_value
+            session.headers = {}
+            session.request.return_value = resp
+
+            app = build_server()
+            tool = next(
+                t
+                for t in asyncio.run(app.list_tools())
+                if t.name == "probely_list_targets"
+            )
+            with caplog.at_level(logging.INFO, logger="snyk_apiweb.audit"):
+                result = tool.fn()
+
+        assert result == payload
+        file_output = log_file.read_text(encoding="utf-8")
+        for sink_output in (caplog.text, file_output):
+            assert "outcome=api_error" in sink_output
+            assert expected_summary in sink_output
+            assert canary not in sink_output
+    finally:
+        _reset_audit_handlers()
+
+
+def test_audit_wrapper_sanitizes_exception_in_both_sinks(
+    tmp_path, monkeypatch, mock_response, caplog
+):
+    _reset_audit_handlers()
+    log_file = tmp_path / "audit.log"
+    monkeypatch.setenv(audit.AUDIT_LOG_ENV, str(log_file))
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    plain_canary = "synthetic-runtime-secret-07"
+    http_canary = "synthetic-http-secret-07"
+    http_exc = requests.HTTPError(
+        http_canary, response=mock_response(status_code=403)
+    )
+    try:
+        with patch("requests.Session") as mock_session_cls:
+            session = mock_session_cls.return_value
+            session.headers = {}
+            session.request.side_effect = [
+                RuntimeError(plain_canary),
+                http_exc,
+            ]
+
+            app = build_server()
+            tool = next(
+                t
+                for t in asyncio.run(app.list_tools())
+                if t.name == "probely_list_targets"
+            )
+            with caplog.at_level(logging.INFO, logger="snyk_apiweb.audit"):
+                with pytest.raises(RuntimeError, match=plain_canary):
+                    tool.fn()
+                with pytest.raises(requests.HTTPError, match=http_canary):
+                    tool.fn()
+
+        file_output = log_file.read_text(encoding="utf-8")
+        for sink_output in (caplog.text, file_output):
+            assert "outcome=error" in sink_output
+            assert "error='RuntimeError'" in sink_output
+            assert "error='HTTPError(status=403)'" in sink_output
+            assert plain_canary not in sink_output
+            assert http_canary not in sink_output
+    finally:
+        _reset_audit_handlers()
