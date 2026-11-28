@@ -120,8 +120,9 @@ tools:
 
 Alternatively, if you want to lock the server down to a small set, use `enabled`
 on its own as a strict whitelist (only those tools run). The same strict
-whitelist applies when `enabled` lists any tool that is not already on the
-blacklist, even if a `disabled` section is also present.
+whitelist applies when `enabled` is empty (`enabled: []`, which registers zero
+tools) or lists any tool that is not already on the blacklist, even if a
+`disabled` section is also present.
 
 ## Audit trail
 

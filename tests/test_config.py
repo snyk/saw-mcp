@@ -471,3 +471,30 @@ def test_is_tool_enabled_no_filter_means_all_enabled():
     tf = {"enabled_tools": None, "disabled_tools": []}
 
     assert is_tool_enabled("anything", tf) is True
+
+
+def test_empty_enabled_without_disabled_disables_all_tools():
+    cfg = {"tools": {"enabled": []}}
+    tf = get_tool_filter(cfg)
+
+    assert tf["enabled_tools"] == []
+    assert tf["enabled_overrides_blacklist"] is False
+    assert is_tool_enabled("probely_list_targets", tf) is False
+    assert is_tool_enabled("probely_delete_target", tf) is False
+    assert is_tool_enabled("probelyrequest", tf) is False
+
+
+@pytest.mark.parametrize(
+    "disabled_value",
+    [[], ["probely_delete_sequence"], None],
+)
+def test_empty_enabled_with_disabled_disables_all_tools(disabled_value):
+    cfg = {"tools": {"enabled": [], "disabled": disabled_value}}
+    tf = get_tool_filter(cfg)
+
+    assert tf["enabled_tools"] == []
+    assert tf["enabled_overrides_blacklist"] is False
+    assert is_tool_enabled("probely_list_targets", tf) is False
+    assert is_tool_enabled("probely_get_target", tf) is False
+    assert is_tool_enabled("probely_delete_target", tf) is False
+    assert is_tool_enabled("probelyrequest", tf) is False

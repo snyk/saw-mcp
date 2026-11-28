@@ -302,13 +302,14 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     How ``enabled`` is interpreted:
 
-    - ``enabled`` alone, or together with ``disabled`` when any ``enabled``
-      entry is not on the merged blacklist → strict whitelist: only those tools
-      are available.
-    - ``enabled`` together with ``disabled`` when *every* ``enabled`` entry is
-      already on the merged blacklist → re-enable override mode: ``enabled``
-      opts specific default-off tools back in without turning every other tool
-      off.
+    - ``enabled`` alone, or together with ``disabled`` when ``enabled`` is
+      empty or any ``enabled`` entry is not on the merged blacklist → strict
+      whitelist: only those tools are available (an empty ``enabled: []``
+      registers zero tools).
+    - ``enabled`` together with ``disabled`` when ``enabled`` is non-empty and
+      *every* ``enabled`` entry is already on the merged blacklist → re-enable
+      override mode: ``enabled`` opts specific default-off tools back in
+      without turning every other tool off.
     """
     tools_cfg = cfg.get("tools") or {}
 
@@ -320,7 +321,7 @@ def get_tool_filter(cfg: Dict[str, Any]) -> Dict[str, Any]:
     enabled_list = tools_cfg.get("enabled")
     enabled_overrides_blacklist = (
         "disabled" in tools_cfg
-        and enabled_list is not None
+        and bool(enabled_list)
         and all(name in disabled_tools for name in enabled_list)
     )
 
