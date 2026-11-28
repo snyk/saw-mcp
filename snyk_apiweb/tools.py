@@ -1192,7 +1192,7 @@ def build_server() -> FastMCP:
     @register_tool("probely_downloadreport")
     def probely_downloadreport(reportId: str) -> Dict[str, Any]:
         """Download a report by its ID."""
-        status, body = client.downloadreport(report_id=reportId)
+        status, body = client.download_report(report_id=reportId)
         return {"status": status, **body}
 
     @register_tool("probely_getreport")
