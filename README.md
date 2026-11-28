@@ -230,6 +230,20 @@ Creates `dist/SnykAPIWeb-<version>.tgz` (version from `snyk_apiweb/__init__.py`)
 
 ## Development & Testing
 
+### Run local checks
+
+From the repository root, create and activate a Python 3.10+ virtual environment,
+then install the development dependencies and run the same checks as CI.
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install setuptools wheel && pip install -e ".[dev]"
+pytest tests/ -v
+ruff check .
+ruff format --check .
+```
+
 ### Run the Server (standalone)
 
 Running the server directly starts it and waits for an MCP client connection. This is mainly useful for **development and debugging**:
