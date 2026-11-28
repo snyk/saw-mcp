@@ -1185,7 +1185,7 @@ def build_server() -> FastMCP:
             report_type: Type of report - "default", "executive", "owasp", "pci", "hipaa", "iso27001"
             format: File format - "pdf" or "html"
         """
-        return client.create_scanreport(
+        return client.create_scan_report(
             scan_id=scanId, report_type=report_type, report_format=format
         )
 

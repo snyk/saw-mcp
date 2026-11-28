@@ -362,3 +362,78 @@ def test_safe_get_returns_ok_response(monkeypatch):
 
     monkeypatch.setattr("requests.get", fake_get)
     assert _safe_get("https://example.com/schema.json") is ok
+
+
+# --- Reports: probely_create_scanreport ---
+
+
+def test_probely_create_scanreport_via_registered_tool(
+    monkeypatch, mock_response
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    resp = mock_response(
+        status_code=201,
+        json_data={"id": "rep-1", "status": "queued"},
+    )
+    with patch("requests.Session") as mock_session_cls:
+        session = mock_session_cls.return_value
+        session.headers = {}
+        session.request.return_value = resp
+
+        app = build_server()
+        tool = next(
+            t
+            for t in asyncio.run(app.list_tools())
+            if t.name == "probely_create_scanreport"
+        )
+        result = tool.fn(scanId="scan-123", report_type="owasp", format="html")
+
+    assert result == {"id": "rep-1", "status": "queued"}
+    req_kwargs = session.request.call_args.kwargs
+    assert req_kwargs["method"] == "POST"
+    assert req_kwargs["url"] == "https://api.probely.com/report/"
+    assert req_kwargs["json"] == {
+        "scan": "scan-123",
+        "type": "owasp",
+        "format": "html",
+    }
+
+
+def test_probely_create_scanreport_defaults_via_registered_tool(
+    monkeypatch, mock_response
+):
+    monkeypatch.setenv("MCP_SAW_API_KEY", "x" * 32)
+    monkeypatch.setenv("MCP_SAW_CONFIG_PATH", "/nonexistent/config.yaml")
+    monkeypatch.delenv("MCP_PROBELY_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("MCP_SAW_BASE_URL", raising=False)
+
+    resp = mock_response(
+        status_code=201,
+        json_data={"id": "rep-2", "status": "queued"},
+    )
+    with patch("requests.Session") as mock_session_cls:
+        session = mock_session_cls.return_value
+        session.headers = {}
+        session.request.return_value = resp
+
+        app = build_server()
+        tool = next(
+            t
+            for t in asyncio.run(app.list_tools())
+            if t.name == "probely_create_scanreport"
+        )
+        result = tool.fn(scanId="scan-456")
+
+    assert result == {"id": "rep-2", "status": "queued"}
+    req_kwargs = session.request.call_args.kwargs
+    assert req_kwargs["method"] == "POST"
+    assert req_kwargs["url"] == "https://api.probely.com/report/"
+    assert req_kwargs["json"] == {
+        "scan": "scan-456",
+        "type": "default",
+        "format": "pdf",
+    }
